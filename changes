@@ -1,1 +1,164 @@
+*&---------------------------------------------------------------------*
+*& Form CONVERT_FLOAT_TO_CHAR
+*&---------------------------------------------------------------------*
+*& Convert floating point number to character for display
+*&---------------------------------------------------------------------*
+FORM convert_float_to_char USING    iv_float TYPE f
+                           CHANGING cv_char  TYPE char23.
 
+  DATA: lv_string TYPE string,
+        lv_decimals TYPE i VALUE 6.  " Number of decimal places
+
+  " Handle initial/zero values
+  IF iv_float IS INITIAL OR iv_float = 0.
+    cv_char = '0'.
+    RETURN.
+  ENDIF.
+
+  " Convert float to string with proper formatting
+  TRY.
+      " Method 1: Using WRITE TO with proper formatting
+      WRITE iv_float TO cv_char LEFT-JUSTIFIED DECIMALS lv_decimals.
+      
+      " Remove trailing zeros if needed
+      CONDENSE cv_char NO-GAPS.
+      
+      " Alternative: Keep scientific notation for very large/small numbers
+      IF iv_float > 999999999 OR iv_float < 0.000001.
+        WRITE iv_float TO cv_char EXPONENT 2.
+      ENDIF.
+      
+    CATCH cx_root.
+      " Fallback: convert to string
+      lv_string = iv_float.
+      cv_char = lv_string.
+  ENDTRY.
+
+ENDFORM.
+
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Form BUILD_OUTPUT_TABLE (Updated section)
+*&---------------------------------------------------------------------*
+      " Check if characteristics should be displayed
+      IF p_shchar = gc_x.
+        " Loop through characteristics for this operation
+        LOOP AT it_plmk INTO ls_plmk
+          WHERE plnty = ls_plpo-plnty
+            AND plnnr = ls_plpo-plnnr
+            AND plnkn = ls_plpo-plnkn
+            AND zaehl = ls_plpo-zaehl.
+
+          " Fill characteristic data
+          gs_output-merknr = ls_plmk-merknr.
+          gs_output-verwmerkm = ls_plmk-verwmerkm.
+          gs_output-kurztext = ls_plmk-kurztext.
+          gs_output-ltextkz = ls_plmk-ltextkz.
+          
+          " FIXED: Convert floating point to character
+          gs_output-toleranzun_f = ls_plmk-toleranzun.  " Store original
+          gs_output-toleranzob_f = ls_plmk-toleranzob.  " Store original
+          
+          PERFORM convert_float_to_char USING ls_plmk-toleranzun
+                                        CHANGING gs_output-toleranzun.
+          PERFORM convert_float_to_char USING ls_plmk-toleranzob
+                                        CHANGING gs_output-toleranzob.
+          
+          gs_output-methode = ls_plmk-methode.
+          gs_output-stichprver = ls_plmk-stichprver.
+          gs_output-pruefeinh = ls_plmk-pruefeinh.
+          gs_output-katalgart1 = ls_plmk-katalgart1.
+          gs_output-auswmenge1 = ls_plmk-auswmenge1.
+
+          " Parse control indicators
+          PERFORM parse_control_indicators USING ls_plmk-steuerkz
+                                            CHANGING gs_output.
+
+          " Store keys for long text
+          gs_output-zaehl_char = ls_plmk-zaehl.
+          gs_output-kzeinstell = ls_plmk-kzeinstell.
+          gs_output-ltextspr = ls_plmk-ltextspr.
+
+          APPEND gs_output TO gt_output.
+          CLEAR: gs_output-merknr, gs_output-verwmerkm,
+                 gs_output-kurztext, gs_output-ltextkz,
+                 gs_output-toleranzun, gs_output-toleranzob.
+        ENDLOOP.
+
+        " If no characteristics found, still add operation
+        IF sy-subrc <> 0.
+          APPEND gs_output TO gt_output.
+        ENDIF.
+      ELSE.
+        " Just add operation without characteristics
+        APPEND gs_output TO gt_output.
+      ENDIF.
+
+
+
+
+SELECTION-SCREEN BEGIN OF BLOCK b5 WITH FRAME TITLE TEXT-006.
+  " Characteristic Data
+  SELECT-OPTIONS: s_merknr FOR plmk-merknr,
+                  s_verwm  FOR plmk-verwmerkm,
+                  s_kurzt  FOR plmk-kurztext,
+                  s_charlt FOR plmk-kurztext,  " Char long text search
+                  s_ltxtkz FOR plmk-ltextkz.
+                  
+  " FIXED: Use character range for floating point fields
+  PARAMETERS: s_tolun_l TYPE char23,  " Lower limit - low value
+              s_tolun_h TYPE char23,  " Lower limit - high value
+              s_tolob_l TYPE char23,  " Upper limit - low value
+              s_tolob_h TYPE char23.  " Upper limit - high value
+              
+  SELECT-OPTIONS: s_methd  FOR plmk-methode,
+                  s_stichp FOR plmk-stichprver.
+SELECTION-SCREEN END OF BLOCK b5.
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Form GET_DATA (Updated PLMK selection)
+*&---------------------------------------------------------------------*
+  " Step 3: Get Characteristics (PLMK) if needed
+  IF p_shchar = gc_x OR
+     s_merknr IS NOT INITIAL OR
+     s_verwm IS NOT INITIAL OR
+     s_kurzt IS NOT INITIAL OR
+     s_charlt IS NOT INITIAL.
+     
+    SELECT * FROM plmk
+      INTO TABLE lt_plmk
+      FOR ALL ENTRIES IN lt_plpo
+      WHERE plnty = lt_plpo-plnty
+        AND plnnr = lt_plpo-plnnr
+        AND plnkn = lt_plpo-plnkn
+        AND zaehl = lt_plpo-zaehl
+        AND merknr IN s_merknr
+        AND verwmerkm IN s_verwm
+        AND kurztext IN s_kurzt
+        AND ltextkz IN s_ltxtkz
+        " Removed toleranzun and toleranzob from WHERE clause
+        " Will filter after conversion
+        AND methode IN s_methd
+        AND stichprver IN s_stichp
+        AND loekz = space
+        AND ltextspr = sy-langu
+        AND gueltigab LE p_datuv
+        AND valid_to_on_db GE p_datuv.
+        
+    " FIXED: Apply floating point filter after SELECT
+    IF s_tolun_l IS NOT INITIAL OR s_tolun_h IS NOT INITIAL.
+      DELETE lt_plmk WHERE toleranzun < s_tolun_l OR
+                           toleranzun > s_tolun_h.
+    ENDIF.
+    
+    IF s_tolob_l IS NOT INITIAL OR s_tolob_h IS NOT INITIAL.
+      DELETE lt_plmk WHERE toleranzob < s_tolob_l OR
+                           toleranzob > s_tolob_h.
+    ENDIF.
+  ENDIF.
