@@ -1,1 +1,605 @@
+*&---------------------------------------------------------------------*
+*& Include ZRE_A2R_VALID_TASKLIST_F01
+*&---------------------------------------------------------------------*
 
+*&---------------------------------------------------------------------*
+*& Form GET_DATA
+*&---------------------------------------------------------------------*
+FORM get_data.
+  
+  DATA: lt_plko TYPE STANDARD TABLE OF plko,
+        lt_plas TYPE STANDARD TABLE OF plas,
+        lt_plpo TYPE STANDARD TABLE OF plpo,
+        lt_plmk TYPE STANDARD TABLE OF plmk,
+        lt_tapl TYPE STANDARD TABLE OF tapl,
+        lt_eapl TYPE STANDARD TABLE OF eapl,
+        lt_crhd_h TYPE STANDARD TABLE OF crhd,
+        lt_crhd_o TYPE STANDARD TABLE OF crhd.
+
+  " Step 1: Select Task List Headers (PLKO)
+  SELECT * FROM plko
+    INTO TABLE lt_plko
+    WHERE plnty IN ('A', 'E', 'T')  " Based on checkbox selection
+      AND plnnr IN s_plnnr
+      AND plnal IN s_plnal
+      AND ktext IN s_ktext
+      AND werks IN s_werks
+      AND vagrp IN s_vagrp
+      AND verwe IN s_verwe
+      AND statu IN s_statu
+      AND anlzu IN s_anlzu
+      AND strat IN s_strat
+      AND istru IN s_istru
+      AND adpsp IN s_adpsp
+      AND slwbez IN s_slwbez
+      AND andat IN s_andat
+      AND annam IN s_annam
+      AND aedat IN s_aedat
+      AND aenam IN s_aenam
+      AND loekz EQ space              " Not deleted
+      AND datuv LE p_datuv            " Valid from <= key date
+      AND valid_to GE p_datuv.        " Valid to >= key date
+
+  CHECK lt_plko IS NOT INITIAL.
+
+  " Step 2: Get Assignments (PLAS) and Operations (PLPO)
+  SELECT * FROM plas
+    INTO TABLE lt_plas
+    FOR ALL ENTRIES IN lt_plko
+    WHERE plnty = lt_plko-plnty
+      AND plnnr = lt_plko-plnnr
+      AND plnal = lt_plko-plnal
+      AND loekz = space.
+
+  CHECK lt_plas IS NOT INITIAL.
+
+  SELECT * FROM plpo
+    INTO TABLE lt_plpo
+    FOR ALL ENTRIES IN lt_plas
+    WHERE plnty = lt_plas-plnty
+      AND plnnr = lt_plas-plnnr
+      AND plnkn = lt_plas-plnkn
+      AND zaehl = lt_plas-zaehl
+      AND vornr IN s_vornr
+      AND ltxa1 IN s_ltxa1
+      AND steus IN s_steus
+      AND ktsch IN s_ktsch
+      AND execution_stage IN s_exstg
+      AND anlzu IN s_anlzuo
+      AND istru IN s_istruo
+      AND larnt IN s_larnt
+      AND ebeln IN s_ebeln
+      AND ebelp IN s_ebelp
+      AND lifnr IN s_lifnr
+      AND loekz = space
+      AND txtsp = sy-langu
+      AND datuv LE p_datuv
+      AND valid_to GE p_datuv.
+
+  " Apply long text indicator filter if checked
+  IF p_ltind = gc_x.
+    DELETE lt_plpo WHERE txtsp IS INITIAL.
+  ELSE.
+    DELETE lt_plpo WHERE txtsp IS NOT INITIAL.
+  ENDIF.
+
+  CHECK lt_plpo IS NOT INITIAL.
+
+  " Step 3: Get Characteristics (PLMK) if needed
+  IF p_shchar = gc_x OR
+     s_merknr IS NOT INITIAL OR
+     s_verwm IS NOT INITIAL OR
+     s_kurzt IS NOT INITIAL OR
+     s_charlt IS NOT INITIAL.
+     
+    SELECT * FROM plmk
+      INTO TABLE lt_plmk
+      FOR ALL ENTRIES IN lt_plpo
+      WHERE plnty = lt_plpo-plnty
+        AND plnnr = lt_plpo-plnnr
+        AND plnkn = lt_plpo-plnkn
+        AND zaehl = lt_plpo-zaehl
+        AND merknr IN s_merknr
+        AND verwmerkm IN s_verwm
+        AND kurztext IN s_kurzt
+        AND ltextkz IN s_ltxtkz
+        AND toleranzun IN s_tolun
+        AND toleranzob IN s_tolob
+        AND methode IN s_methd
+        AND stichprver IN s_stichp
+        AND loekz = space
+        AND ltextspr = sy-langu
+        AND gueltigab LE p_datuv
+        AND valid_to_on_db GE p_datuv.
+  ENDIF.
+
+  " Step 4: Get Functional Location and Equipment assignments
+  IF lt_plko IS NOT INITIAL.
+    SELECT * FROM tapl
+      INTO TABLE lt_tapl
+      FOR ALL ENTRIES IN lt_plko
+      WHERE plnty = lt_plko-plnty
+        AND plnnr = lt_plko-plnnr
+        AND plnal = lt_plko-plnal
+        AND tplnr IN s_tplnr.
+
+    SELECT * FROM eapl
+      INTO TABLE lt_eapl
+      FOR ALL ENTRIES IN lt_plko
+      WHERE plnty = lt_plko-plnty
+        AND plnnr = lt_plko-plnnr
+        AND plnal = lt_plko-plnal
+        AND equnr IN s_equnr.
+  ENDIF.
+
+  " Step 5: Get Work Centers
+  IF lt_plko IS NOT INITIAL.
+    SELECT * FROM crhd
+      INTO TABLE lt_crhd_h
+      FOR ALL ENTRIES IN lt_plko
+      WHERE objid = lt_plko-arbid
+        AND objty = lt_plko-arbty
+        AND arbpl IN s_arbplh.
+  ENDIF.
+
+  IF lt_plpo IS NOT INITIAL.
+    SELECT * FROM crhd
+      INTO TABLE lt_crhd_o
+      FOR ALL ENTRIES IN lt_plpo
+      WHERE objid = lt_plpo-arbid
+        AND objty = lt_plpo-objty
+        AND arbpl IN s_arbplo.
+  ENDIF.
+
+  " Step 6: Build output table
+  PERFORM build_output_table USING lt_plko
+                                     lt_plas
+                                     lt_plpo
+                                     lt_plmk
+                                     lt_tapl
+                                     lt_eapl
+                                     lt_crhd_h
+                                     lt_crhd_o.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form BUILD_OUTPUT_TABLE
+*&---------------------------------------------------------------------*
+FORM build_output_table USING it_plko TYPE STANDARD TABLE
+                               it_plas TYPE STANDARD TABLE
+                               it_plpo TYPE STANDARD TABLE
+                               it_plmk TYPE STANDARD TABLE
+                               it_tapl TYPE STANDARD TABLE
+                               it_eapl TYPE STANDARD TABLE
+                               it_crhd_h TYPE STANDARD TABLE
+                               it_crhd_o TYPE STANDARD TABLE.
+
+  DATA: ls_plko  TYPE plko,
+        ls_plas  TYPE plas,
+        ls_plpo  TYPE plpo,
+        ls_plmk  TYPE plmk,
+        ls_tapl  TYPE tapl,
+        ls_eapl  TYPE eapl,
+        ls_crhd_h TYPE crhd,
+        ls_crhd_o TYPE crhd.
+
+  LOOP AT it_plko INTO ls_plko.
+    
+    " Get functional location
+    CLEAR ls_tapl.
+    READ TABLE it_tapl INTO ls_tapl
+      WITH KEY plnty = ls_plko-plnty
+               plnnr = ls_plko-plnnr
+               plnal = ls_plko-plnal.
+
+    " Get equipment
+    CLEAR ls_eapl.
+    READ TABLE it_eapl INTO ls_eapl
+      WITH KEY plnty = ls_plko-plnty
+               plnnr = ls_plko-plnnr
+               plnal = ls_plko-plnal.
+
+    " Get header work center
+    CLEAR ls_crhd_h.
+    READ TABLE it_crhd_h INTO ls_crhd_h
+      WITH KEY objid = ls_plko-arbid
+               objty = ls_plko-arbty.
+
+    " Loop through operations
+    LOOP AT it_plpo INTO ls_plpo
+      WHERE plnty = ls_plko-plnty
+        AND plnnr = ls_plko-plnnr.
+
+      " Get operation work center
+      CLEAR ls_crhd_o.
+      READ TABLE it_crhd_o INTO ls_crhd_o
+        WITH KEY objid = ls_plpo-arbid
+                 objty = ls_plpo-objty.
+
+      " Initialize output record
+      CLEAR gs_output.
+      
+      " Fill header data
+      gs_output-plnty = ls_plko-plnty.
+      gs_output-plnnr = ls_plko-plnnr.
+      gs_output-plnal = ls_plko-plnal.
+      gs_output-tplnr = ls_tapl-tplnr.
+      gs_output-equnr = ls_eapl-equnr.
+      gs_output-ktext = ls_plko-ktext.
+      gs_output-werks = ls_plko-werks.
+      gs_output-arbpl_header = ls_crhd_h-arbpl.
+      gs_output-vagrp = ls_plko-vagrp.
+      gs_output-verwe = ls_plko-verwe.
+      gs_output-statu = ls_plko-statu.
+      gs_output-anlzu = ls_plko-anlzu.
+      gs_output-strat = ls_plko-strat.
+      gs_output-istru = ls_plko-istru.
+      gs_output-adpsp = ls_plko-adpsp.
+      gs_output-slwbez = ls_plko-slwbez.
+      gs_output-andat = ls_plko-andat.
+      gs_output-annam = ls_plko-annam.
+      gs_output-aedat = ls_plko-aedat.
+      gs_output-aenam = ls_plko-aenam.
+
+      " Fill operation data
+      gs_output-vornr = ls_plpo-vornr.
+      gs_output-ltxa1 = ls_plpo-ltxa1.
+      gs_output-steus = ls_plpo-steus.
+      gs_output-arbpl_oper = ls_crhd_o-arbpl.
+      gs_output-ktsch = ls_plpo-ktsch.
+      gs_output-arbei = ls_plpo-arbei.
+      gs_output-arbeh = ls_plpo-arbeh.
+      gs_output-dauno = ls_plpo-dauno.
+      gs_output-daune = ls_plpo-daune.
+      gs_output-kalid = ls_plpo-kalid.
+      gs_output-execution_stage = ls_plpo-execution_stage.
+      gs_output-anlzu_op = ls_plpo-anlzu.
+      gs_output-istru_op = ls_plpo-istru.
+      gs_output-larnt = ls_plpo-larnt.
+      gs_output-ebeln = ls_plpo-ebeln.
+      gs_output-ebelp = ls_plpo-ebelp.
+      gs_output-lifnr = ls_plpo-lifnr.
+      gs_output-preis = ls_plpo-preis.
+      gs_output-waers = ls_plpo-waers.
+      gs_output-sakto = ls_plpo-sakto.
+      gs_output-ekorg = ls_plpo-ekorg.
+      gs_output-ekgrp = ls_plpo-ekgrp.
+      
+      " Store internal keys for characteristic lookup
+      gs_output-plnkn = ls_plpo-plnkn.
+      gs_output-zaehl_op = ls_plpo-zaehl.
+      gs_output-txtsp = ls_plpo-txtsp.
+
+      " Check if characteristics should be displayed
+      IF p_shchar = gc_x.
+        " Loop through characteristics for this operation
+        LOOP AT it_plmk INTO ls_plmk
+          WHERE plnty = ls_plpo-plnty
+            AND plnnr = ls_plpo-plnnr
+            AND plnkn = ls_plpo-plnkn
+            AND zaehl = ls_plpo-zaehl.
+
+          " Fill characteristic data
+          gs_output-merknr = ls_plmk-merknr.
+          gs_output-verwmerkm = ls_plmk-verwmerkm.
+          gs_output-kurztext = ls_plmk-kurztext.
+          gs_output-ltextkz = ls_plmk-ltextkz.
+          gs_output-toleranzun = ls_plmk-toleranzun.
+          gs_output-toleranzob = ls_plmk-toleranzob.
+          gs_output-methode = ls_plmk-methode.
+          gs_output-stichprver = ls_plmk-stichprver.
+          gs_output-pruefeinh = ls_plmk-pruefeinh.
+          gs_output-katalgart1 = ls_plmk-katalgart1.
+          gs_output-auswmenge1 = ls_plmk-auswmenge1.
+
+          " Parse control indicators
+          PERFORM parse_control_indicators USING ls_plmk-steuerkz
+                                            CHANGING gs_output.
+
+          " Store keys for long text
+          gs_output-zaehl_char = ls_plmk-zaehl.
+          gs_output-kzeinstell = ls_plmk-kzeinstell.
+          gs_output-ltextspr = ls_plmk-ltextspr.
+
+          APPEND gs_output TO gt_output.
+          CLEAR: gs_output-merknr, gs_output-verwmerkm,
+                 gs_output-kurztext, gs_output-ltextkz.
+        ENDLOOP.
+
+        " If no characteristics found, still add operation
+        IF sy-subrc <> 0.
+          APPEND gs_output TO gt_output.
+        ENDIF.
+      ELSE.
+        " Just add operation without characteristics
+        APPEND gs_output TO gt_output.
+      ENDIF.
+
+    ENDLOOP.
+  ENDLOOP.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form PARSE_CONTROL_INDICATORS
+*&---------------------------------------------------------------------*
+FORM parse_control_indicators USING iv_steuerkz TYPE plmk-steuerkz
+                               CHANGING cs_output TYPE ty_output.
+
+  " Parse 28-character control indicator field
+  cs_output-ci_quant = iv_steuerkz+0(1).
+  cs_output-ci_measured = iv_steuerkz+1(1).
+  cs_output-ci_ref_attr = iv_steuerkz+2(1).
+  cs_output-ci_upper_lim = iv_steuerkz+3(1).
+  cs_output-ci_lower_lim = iv_steuerkz+4(1).
+  cs_output-ci_check_tgt = iv_steuerkz+5(1).
+  cs_output-ci_scope = iv_steuerkz+6(1).
+  cs_output-ci_longterm = iv_steuerkz+7(1).
+  cs_output-ci_rec_type = iv_steuerkz+8(1).
+  cs_output-ci_doc_req = iv_steuerkz+9(1).
+  cs_output-ci_char_cat = iv_steuerkz+10(1).
+  cs_output-ci_sync = iv_steuerkz+11(1).
+  cs_output-ci_sample_add = iv_steuerkz+12(1).
+  cs_output-ci_destruct = iv_steuerkz+13(1).
+  cs_output-ci_calculated = iv_steuerkz+14(1).
+  cs_output-ci_samp_proc = iv_steuerkz+15(1).
+  cs_output-ci_qual_score = iv_steuerkz+16(1).
+  cs_output-ci_no_change = iv_steuerkz+17(1).
+  cs_output-ci_rec_defect = iv_steuerkz+18(1).
+  cs_output-ci_control_qm = iv_steuerkz+19(1).
+  cs_output-ci_spec_chg = iv_steuerkz+20(1).
+  cs_output-ci_test_equip = iv_steuerkz+21(1).
+  cs_output-ci_def_auto = iv_steuerkz+22(1).
+  cs_output-ci_chg_doc = iv_steuerkz+23(1).
+  cs_output-ci_spc = iv_steuerkz+24(1).
+  cs_output-ci_print = iv_steuerkz+25(1).
+  cs_output-ci_parameter = iv_steuerkz+26(1).
+  cs_output-ci_process = iv_steuerkz+27(1).
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form READ_LONG_TEXT
+*&---------------------------------------------------------------------*
+FORM read_long_text.
+
+  DATA: lv_name TYPE tdobname,
+        ls_output_temp TYPE ty_output.
+
+  " Determine which level to read long text
+  IF p_shchar = gc_x AND p_shlt = gc_x.
+    " Read characteristic long text
+    LOOP AT gt_output INTO gs_output WHERE ltextkz = gc_x.
+      
+      " Build name for characteristic long text
+      lv_name = gs_output-plnty && 
+                gs_output-plnnr && 
+                gs_output-plnkn &&
+                gs_output-kzeinstell &&
+                gs_output-merknr &&
+                gs_output-zaehl_char.
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          id                      = 'QM'
+          language                = sy-langu
+          name                    = lv_name
+          object                  = 'QSS'
+        TABLES
+          lines                   = gt_lines
+        EXCEPTIONS
+          id                      = 1
+          language                = 2
+          name                    = 3
+          not_found               = 4
+          object                  = 5
+          reference_check         = 6
+          wrong_access_to_archive = 7
+          OTHERS                  = 8.
+
+      IF sy-subrc = 0 AND gt_lines IS NOT INITIAL.
+        " Create separate lines for each long text line
+        LOOP AT gt_lines INTO gs_line.
+          ls_output_temp = gs_output.
+          ls_output_temp-tdformat_char = gs_line-tdformat.
+          ls_output_temp-tdline_char = gs_line-tdline.
+          APPEND ls_output_temp TO gt_output_temp.
+        ENDLOOP.
+      ENDIF.
+
+      CLEAR: lv_name, gt_lines.
+    ENDLOOP.
+
+  ELSEIF p_shlt = gc_x.
+    " Read operation long text
+    LOOP AT gt_output INTO gs_output WHERE txtsp IS NOT INITIAL.
+      
+      " Build name for operation long text
+      lv_name = gs_output-plnty &&
+                gs_output-plnnr &&
+                gs_output-plnkn &&
+                gs_output-zaehl_op.
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          id                      = 'PLPO'
+          language                = sy-langu
+          name                    = lv_name
+          object                  = 'ROUTING'
+        TABLES
+          lines                   = gt_lines
+        EXCEPTIONS
+          id                      = 1
+          language                = 2
+          name                    = 3
+          not_found               = 4
+          object                  = 5
+          reference_check         = 6
+          wrong_access_to_archive = 7
+          OTHERS                  = 8.
+
+      IF sy-subrc = 0 AND gt_lines IS NOT INITIAL.
+        " Create separate lines for each long text line
+        LOOP AT gt_lines INTO gs_line.
+          ls_output_temp = gs_output.
+          ls_output_temp-tdformat_op = gs_line-tdformat.
+          ls_output_temp-tdline_op = gs_line-tdline.
+          APPEND ls_output_temp TO gt_output_temp.
+        ENDLOOP.
+      ENDIF.
+
+      CLEAR: lv_name, gt_lines.
+    ENDLOOP.
+  ENDIF.
+
+  " Replace output table if long text was read
+  IF gt_output_temp IS NOT INITIAL.
+    gt_output = gt_output_temp.
+    CLEAR gt_output_temp.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form BUILD_FIELDCAT
+*&---------------------------------------------------------------------*
+FORM build_fieldcat.
+
+  " Macro for adding fields to catalog
+  DEFINE add_field.
+    CLEAR gs_fieldcat.
+    gs_fieldcat-fieldname = &1.
+    gs_fieldcat-seltext_m = &2.
+    gs_fieldcat-col_pos = &3.
+    gs_fieldcat-outputlen = &4.
+    IF &5 IS NOT INITIAL.
+      gs_fieldcat-key = gc_x.
+    ENDIF.
+    APPEND gs_fieldcat TO gt_fieldcat.
+  END-OF-DEFINITION.
+
+  " Add all fields according to FDS section 5.3.3
+  add_field 'PLNTY' 'Task List Type' 1 1 'X'.
+  add_field 'PLNNR' 'Group' 2 8 'X'.
+  add_field 'PLNAL' 'Group Counter' 3 2 'X'.
+  add_field 'TPLNR' 'Functional Location' 4 30 ''.
+  add_field 'EQUNR' 'Equipment' 5 18 ''.
+  add_field 'KTEXT' 'Header Text' 6 40 ''.
+  add_field 'WERKS' 'Planning Plant' 7 4 ''.
+  add_field 'ARBPL_HEADER' 'Work Center (Header)' 8 8 ''.
+  " ... continue for all fields
+
+  " Conditionally add characteristic fields if shown
+  IF p_shchar = gc_x.
+    add_field 'MERKNR' 'Number' 50 4 ''.
+    add_field 'VERWMERKM' 'Master Insp. Char' 51 8 ''.
+    " ... continue for characteristic fields
+  ENDIF.
+
+  " Conditionally add long text fields if shown
+  IF p_shlt = gc_x.
+    IF p_shchar = gc_x.
+      add_field 'TDFORMAT_CHAR' 'LT Format (Char)' 80 2 ''.
+      add_field 'TDLINE_CHAR' 'Long Text (Char)' 81 132 ''.
+    ELSE.
+      add_field 'TDFORMAT_OP' 'LT Format (Op)' 80 2 ''.
+      add_field 'TDLINE_OP' 'Long Text (Op)' 81 132 ''.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form DISPLAY_ALV
+*&---------------------------------------------------------------------*
+FORM display_alv.
+
+  DATA: lt_events TYPE slis_t_event,
+        ls_event  TYPE slis_alv_event.
+
+  " Set layout
+  gs_layout-colwidth_optimize = gc_x.
+  gs_layout-zebra = gc_x.
+
+  " Register user command event for toolbar buttons
+  ls_event-name = 'USER_COMMAND'.
+  ls_event-form = 'USER_COMMAND'.
+  APPEND ls_event TO lt_events.
+
+  " Register PF status event for custom buttons
+  ls_event-name = 'PF_STATUS_SET'.
+  ls_event-form = 'SET_PF_STATUS'.
+  APPEND ls_event TO lt_events.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program       = gv_repid
+      i_callback_pf_status_set = 'SET_PF_STATUS'
+      i_callback_user_command  = 'USER_COMMAND'
+      is_layout                = gs_layout
+      it_fieldcat              = gt_fieldcat
+      it_events                = lt_events
+    TABLES
+      t_outtab                 = gt_output
+    EXCEPTIONS
+      program_error            = 1
+      OTHERS                   = 2.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form SET_PF_STATUS
+*&---------------------------------------------------------------------*
+FORM set_pf_status USING rt_extab TYPE slis_t_extab.
+
+  SET PF-STATUS 'STANDARD_FULLSCREEN' EXCLUDING rt_extab.
+
+  " Add custom buttons
+  " Button codes: SHOW_CHAR, SHOW_LT
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form USER_COMMAND
+*&---------------------------------------------------------------------*
+FORM user_command USING r_ucomm LIKE sy-ucomm
+                         rs_selfield TYPE slis_selfield.
+
+  CASE r_ucomm.
+    WHEN 'SHOW_CHAR' OR 'HIDE_CHAR'.
+      " Toggle show/hide characteristics
+      IF gv_show_char = gc_x.
+        gv_show_char = space.
+        p_shchar = space.
+      ELSE.
+        gv_show_char = gc_x.
+        p_shchar = gc_x.
+      ENDIF.
+      " Refresh data and display
+      PERFORM get_data.
+      PERFORM build_fieldcat.
+      rs_selfield-refresh = gc_x.
+
+    WHEN 'SHOW_LT' OR 'HIDE_LT'.
+      " Toggle show/hide long text
+      IF gv_show_lt = gc_x.
+        gv_show_lt = space.
+        p_shlt = space.
+      ELSE.
+        gv_show_lt = gc_x.
+        p_shlt = gc_x.
+      ENDIF.
+      " Refresh data and display
+      IF p_shlt = gc_x.
+        PERFORM read_long_text.
+      ELSE.
+        " Reload without long text
+        PERFORM get_data.
+      ENDIF.
+      PERFORM build_fieldcat.
+      rs_selfield-refresh = gc_x.
+
+  ENDCASE.
+
+ENDFORM.
