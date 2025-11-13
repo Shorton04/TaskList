@@ -1,1 +1,60 @@
+*&---------------------------------------------------------------------*
+*& Report ZRE_A2R_VALID_TASKLIST
+*&---------------------------------------------------------------------*
+*& Task List Validation Report
+*& Displays Task List header, operations, characteristics and long texts
+*&---------------------------------------------------------------------*
 
+REPORT zre_a2r_valid_tasklist.
+
+* Include files
+INCLUDE zre_a2r_valid_tasklist_top.  " Global data declarations
+INCLUDE zre_a2r_valid_tasklist_sel.  " Selection screen
+INCLUDE zre_a2r_valid_tasklist_f01.  " Subroutines
+
+*----------------------------------------------------------------------*
+* INITIALIZATION
+*----------------------------------------------------------------------*
+INITIALIZATION.
+  gv_repid = sy-repid.
+  gv_show_char = p_shchar.
+  gv_show_lt = p_shlt.
+
+*----------------------------------------------------------------------*
+* AT SELECTION-SCREEN
+*----------------------------------------------------------------------*
+AT SELECTION-SCREEN.
+  " Validate that at least one task list type is selected
+  IF p_funloc = space AND p_equip = space AND p_gen = space.
+    MESSAGE 'Please select at least one Task List Type' TYPE 'E'.
+  ENDIF.
+
+*----------------------------------------------------------------------*
+* START-OF-SELECTION
+*----------------------------------------------------------------------*
+START-OF-SELECTION.
+  
+  " Fetch data
+  PERFORM get_data.
+
+  " Check if data was found
+  IF gt_output IS INITIAL.
+    MESSAGE 'No data found for the selected criteria' TYPE 'S'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  " Read long text if requested
+  IF p_shlt = gc_x.
+    PERFORM read_long_text.
+  ENDIF.
+
+*----------------------------------------------------------------------*
+* END-OF-SELECTION
+*----------------------------------------------------------------------*
+END-OF-SELECTION.
+
+  " Build field catalog
+  PERFORM build_fieldcat.
+
+  " Display ALV
+  PERFORM display_alv.
