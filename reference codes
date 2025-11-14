@@ -1,0 +1,1794 @@
+* ====================================================================
+* RICEFW ID.........: 8938
+* TR Number.........: D30K906939
+* Version...........: 1.0
+* Program...........: ZRE_A2R_MAINTPLAN_REPORT
+* Transaction Code..: N/A
+* Author............: RQ28830
+* Date..............: 23.10.2025 -
+* --------------------------------------------------------------------
+* Description.......: Maintenance Plans and Items Report
+* --------------------------------------------------------------------
+* Modification list.:
+* Date      Author    TR Number          Description
+* 10/23/25  RQ28830   D30K906939    Initialized program.
+*
+* ====================================================================
+REPORT ZRE_A2R_MAINTPLAN_REPORT MESSAGE-ID ZA2R_MAINTREPORT.
+
+*----------------------------------------------------------------------*
+*                           Includes                                   *
+*----------------------------------------------------------------------*
+INCLUDE zre_a2r_maintplan_report_top.
+INCLUDE zre_a2r_maintplan_report_sel.
+INCLUDE zre_a2r_maintplan_report_f01.
+
+*----------------------------------------------------------------------*
+*                     AT SELECTION-SCREEN OUTPUT                       *
+*----------------------------------------------------------------------*
+AT SELECTION-SCREEN OUTPUT.
+  PERFORM set_dropdown_values.
+
+*----------------------------------------------------------------------*
+*                     START-OF-SELECTION                               *
+*----------------------------------------------------------------------*
+
+START-OF-SELECTION.
+
+  PERFORM get_data.
+  PERFORM prepare_items.
+  PERFORM display_salv_table.
+
+*----------------------------------------------------------------------*
+*                     END-OF-SELECTION                               *
+*----------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*& Include ZRE_A2R_MAINTPLAN_REPORT_TOP
+*&---------------------------------------------------------------------*
+
+"--- Structure for ALV Display
+TYPES: BEGIN OF ty_header,
+
+         "=== Default fields ===
+         maintenance_plant TYPE vimpla-iwerk,
+         maintenance_plan  TYPE vimpla-warpl,
+         maintenance_strat TYPE vimpla-strat,
+         maintenance_pcat  TYPE vimpla-mptyp,
+         maintenance_auth  TYPE vimpla-begru,
+         maintenance_sort  TYPE vimpla-plan_sort,
+         start_cycle       TYPE vimpla-stadt,
+         maintenance_ptext TYPE vimpla-wptxt,
+         maintenance_stat  TYPE string,       "Concatenated Status
+         objnr             TYPE vimpla-objnr, "for status join
+         created_by        TYPE vimpla-ernam,
+         created_on        TYPE vimpla-ersdt,
+         maintenance_item  TYPE vimpla-wapos,
+         functional_loc    TYPE vimpla-tplnr,
+         equipment_no      TYPE vimpla-equnr,
+         order_type        TYPE vimpla-auart,
+         work_center       TYPE crhd-arbpl,
+         priority          TYPE vimpla-priok,
+         planner_group     TYPE vimpla-wpgrp,
+         maintenance_actvt TYPE vimpla-ilart,
+         business_area     TYPE vimpla-gsber,
+         plant_section     TYPE vimpla-beber,
+         task_list_type    TYPE vimpla-plnty,
+         task_list_grp     TYPE vimpla-plnnr,
+         task_list_cntr    TYPE vimpla-plnal,
+         item_status       TYPE vimpla-status,
+         short_text        TYPE vimpla-pstxt,
+
+         "=== Additional fields ===
+         horiz             TYPE vimpla-horiz,
+         horiz_days        TYPE vimpla-horiz_days,
+         horiz_qualifier   TYPE vimpla-horiz_qualifier,
+         kostl             TYPE vimpla-kostl,
+         sfakt             TYPE vimpla-sfakt,
+         vsneg             TYPE vimpla-vsneg,
+         toneg             TYPE vimpla-toneg,
+         fabkl             TYPE vimpla-fabkl,
+         eqktx             TYPE eqkt-eqktx,
+         pltxt             TYPE iflo-pltxt,
+         lastorder         TYPE mhio-aufnr,
+         vspos             TYPE vimpla-vspos,
+         topos             TYPE vimpla-topos,
+         laufn             TYPE vimpla-laufn,
+         ktext             TYPE aufk-ktext,
+         ltknz             TYPE vimpla-ltknz,
+         call_confirm      TYPE vimpla-call_confirm,
+         openorder         TYPE mhio-aufnr,
+         andor             TYPE vimpla-andor,
+         hunit             TYPE vimpla-hunit,
+         stich             TYPE vimpla-stich,
+         abrho             TYPE vimpla-abrho,
+         iaufnr            TYPE vimpla-iaufnr,
+         expand            TYPE c,
+       END OF ty_header.
+
+
+TYPES: BEGIN OF ty_item_combined,
+         maintenance_plan     TYPE vimpla-warpl,
+         maintenance_item     TYPE vimpla-wapos,
+         item_type            TYPE char10,     " 'OBJLIST' or 'LONGTEXT'
+         maintenance_plant    TYPE vimpla-iwerk,
+         tplnr                TYPE tplnr,
+         equnr                TYPE equnr,
+         tdformat             TYPE tdformat,
+         tdline               TYPE tdline,
+         concatinated_longtxt TYPE string,
+       END OF ty_item_combined.
+
+
+"--- Object List
+TYPES: BEGIN OF ty_objlist,
+
+         maintenance_plan  TYPE vimpla-warpl,
+         maintenance_plant TYPE vimpla-iwerk,
+         tplnr             TYPE iflo-tplnr,
+         equnr             TYPE objk-equnr,
+
+       END OF ty_objlist.
+
+"--- Long Text
+TYPES: BEGIN OF ty_longtext,
+
+         maintenance_plan  TYPE vimpla-warpl,
+         maintenance_plant TYPE vimpla-iwerk,
+         maintenance_item  TYPE vimpla-wapos,
+         tdformat          TYPE tline-tdformat,
+         tdline            TYPE tline-tdline,
+
+       END OF ty_longtext.
+
+ "--- Status
+ TYPES: BEGIN OF ty_status_result,
+         objnr TYPE jest-objnr,
+         txt04 TYPE tj02t-txt04,
+       END OF ty_status_result.
+
+TYPES: BEGIN OF ty_display_salv,
+         row_type          TYPE char1,
+         parent_plan       TYPE vimpla-warpl,
+         icon              TYPE string,
+         expand_icon       TYPE string,
+         maintenance_plant TYPE vimpla-iwerk,
+         maintenance_plan  TYPE vimpla-warpl,
+         maintenance_strat TYPE vimpla-strat,
+         maintenance_pcat  TYPE vimpla-mptyp,
+         maintenance_auth  TYPE vimpla-begru,
+         maintenance_sort  TYPE vimpla-plan_sort,
+         start_cycle       TYPE vimpla-stadt,
+         maintenance_ptext TYPE vimpla-wptxt,
+         planner_group     TYPE vimpla-wpgrp,
+         functional_loc    TYPE vimpla-tplnr,
+         equipment_no      TYPE vimpla-equnr,
+         maintenance_stat  TYPE string,
+         lastorder         TYPE mhio-aufnr,
+         openorder         TYPE mhio-aufnr,
+         work_center       TYPE crhd-arbpl,
+         priority          TYPE vimpla-priok,
+         objnr             TYPE vimpla-objnr,
+         ltknz             TYPE vimpla-ltknz,
+         tplnr             TYPE tplnr,
+         equnr             TYPE equnr,
+         maintenance_item  TYPE vimpla-wapos,
+         tdformat          TYPE tdformat,
+         tdline            TYPE tdline,
+         row_color         TYPE lvc_t_scol,
+         is_expanded_obj   TYPE abap_bool,
+         is_expanded_txt   TYPE abap_bool,
+ END OF ty_display_salv.
+
+*---------------------------------------------------------------------*
+* Data Declarations
+*---------------------------------------------------------------------*
+
+"--- Selection Screen
+DATA: gv_ltext TYPE c LENGTH 132,
+      gv_olist TYPE c LENGTH 3,
+      gv_ltxt  TYPE c LENGTH 3.
+
+"--- ALV Display
+DATA: gt_header        TYPE STANDARD TABLE OF ty_header WITH KEY maintenance_plan,
+      gt_objlist       TYPE STANDARD TABLE OF ty_objlist  WITH DEFAULT KEY,
+      gt_longtext      TYPE STANDARD TABLE OF ty_longtext WITH DEFAULT KEY,
+      gt_item_combined TYPE STANDARD TABLE OF ty_item_combined WITH DEFAULT KEY,
+      gt_display_enh   TYPE STANDARD TABLE OF ty_display_salv,
+      gs_selfield      TYPE slis_selfield,
+      gv_plan          TYPE vimpla-warpl,
+      gv_mode          TYPE c LENGTH 4,  "OBJ or LTXT
+      lo_alv           TYPE REF TO cl_salv_table.
+*---------------------------------------------------------------------*
+* Data for button logic
+*---------------------------------------------------------------------*
+
+DATA: gt_item_backup TYPE STANDARD TABLE OF ty_item_combined,
+      gv_show_olist  TYPE abap_bool,
+      gv_show_ltxt   TYPE abap_bool,
+      gv_btn_olist   TYPE char30,
+      gv_btn_ltxt    TYPE char30.
+
+*---------------------------------------------------------------------*
+* Constants declarations
+*---------------------------------------------------------------------*
+CONSTANTS:
+
+  "---Dropdown values
+  gc_yes           TYPE char3 VALUE 'YES',
+  gc_no            TYPE char3 VALUE 'NO',
+
+  "---Item types
+  gc_objlist       TYPE char7 VALUE 'OBJLIST',
+  gc_longtext      TYPE char8 VALUE 'LONGTEXT',
+
+  "---Text object prameters
+  gc_ltxt_id       TYPE char4 VALUE 'LTXT',
+  gc_mpos_object   TYPE char4 VALUE 'MPOS',
+
+  "---User commands
+  gc_cmd_olist     TYPE sy-ucomm VALUE '&OLIST',
+  gc_cmd_ltxt      TYPE sy-ucomm VALUE '&LTXT',
+
+  "---Screen input values
+  gc_scdisabled    TYPE char1 VALUE '0',
+  gc_scenabled     TYPE char1 VALUE '1',
+
+  "--- Initial values
+  gc_space         TYPE char1 VALUE ' ',
+  gc_x             TYPE char1 VALUE 'X',
+
+  "--- Icon constants
+  gc_icon_expand   TYPE string VALUE '@3P@',
+  gc_icon_collapse TYPE string VALUE '@30@',
+  gc_icon_object   TYPE string VALUE '@15@',
+  gc_icon_text     TYPE string VALUE '@16@',
+  gc_icon_refresh  TYPE string VALUE '@42@',
+
+  "--- Icons Message
+  gc_msg_no_data   TYPE string VALUE 'No data to display',
+  gc_msg_refreshed TYPE string VALUE 'Data refreshed successfully',
+  gc_msg_hide_obj  TYPE string VALUE 'Please hide Object List first to view Long Text',
+  gc_msg_hide_txt  TYPE string VALUE 'Please hide Long Text first to view Object List'.
+
+
+*&---------------------------------------------------------------------*
+*& Include ZRE_A2R_MAINTPLAN_REPORT_SEL
+*&---------------------------------------------------------------------*
+TABLES: vimpla, TJ02T, iflo, objk, crhd, aufk, mhio, eqkt.
+
+*----------------------------------------------------------------------
+* Selection Screen Definitions
+*----------------------------------------------------------------------
+SELECTION-SCREEN BEGIN OF BLOCK b1
+            WITH FRAME TITLE TEXT-001.
+
+  SELECT-OPTIONS:  so_iwerk FOR vimpla-iwerk OBLIGATORY,
+                   so_warpl FOR vimpla-warpl,
+                   so_mptyp FOR vimpla-mptyp,
+                   so_strat FOR vimpla-strat,
+                   so_begru FOR vimpla-begru,
+                   so_psort FOR vimpla-plan_sort,
+                   so_stadt FOR vimpla-stadt,
+                   so_wptxt FOR vimpla-wptxt,
+                   so_txt04 FOR tj02t-txt04,
+                   so_ernam FOR vimpla-ernam,
+                   so_ersdt FOR vimpla-ersdt.
+SELECTION-SCREEN END OF BLOCK b1.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK b2
+            WITH FRAME TITLE TEXT-002.
+
+  SELECT-OPTIONS:  so_wapos FOR vimpla-wapos,
+                   s_vtplnr FOR vimpla-tplnr,
+                   s_equnr  FOR vimpla-equnr,
+                   s_itplnr FOR iflo-tplnr,
+                   so_equnr FOR objk-equnr,
+                   so_auart FOR vimpla-auart,
+                   so_arbpl FOR crhd-arbpl,
+                   so_priok FOR vimpla-priok,
+                   so_wpgrp FOR vimpla-wpgrp,
+                   so_ilart FOR vimpla-ilart,
+                   so_gsber FOR vimpla-gsber,
+                   so_beber FOR vimpla-beber,
+                   so_plnnr FOR vimpla-plnnr,
+                   so_stat  FOR vimpla-status,
+                   so_stxt  FOR vimpla-pstxt,
+                   so_ltext FOR gv_ltext.
+SELECTION-SCREEN END OF BLOCK b2.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE text-003.
+
+
+PARAMETERS: p_olist LIKE gv_olist AS LISTBOX VISIBLE LENGTH 5 DEFAULT 'NO' USER-COMMAND ucomm,
+            p_ltxt  LIKE gv_ltxt  AS LISTBOX VISIBLE LENGTH 5 DEFAULT 'NO' USER-COMMAND ucomm.
+
+SELECTION-SCREEN END OF BLOCK b3.
+
+
+*&---------------------------------------------------------------------*
+*& Include ZRE_A2R_MAINTPLAN_REPORT_F01
+*&---------------------------------------------------------------------*
+*
+*---------------------------------------------------------------------*
+* Event Handler Class Definition
+*---------------------------------------------------------------------*
+CLASS lcl_event_handler_enh DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS:
+      on_double_click FOR EVENT double_click OF cl_salv_events_table
+        IMPORTING row column,
+
+      on_user_command FOR EVENT added_function OF cl_salv_events_table
+        IMPORTING e_salv_function.
+ENDCLASS.
+
+*---------------------------------------------------------------------*
+* Event Handler Class Implementation
+*---------------------------------------------------------------------*
+CLASS lcl_event_handler_enh IMPLEMENTATION.
+
+  METHOD on_double_click.
+    DATA: ls_display TYPE ty_display_salv.
+
+    READ TABLE gt_display_enh INTO ls_display INDEX row.
+    CHECK sy-subrc = 0.
+
+    IF ls_display-row_type = 'H'.
+      IF ls_display-is_expanded_obj = abap_true OR ls_display-is_expanded_txt = abap_true.
+        ls_display-is_expanded_obj = abap_false.
+        ls_display-is_expanded_txt = abap_false.
+      ELSE.
+        IF gv_show_olist = abap_true.
+          ls_display-is_expanded_obj = abap_true.
+        ENDIF.
+        IF gv_show_ltxt = abap_true.
+          ls_display-is_expanded_txt = abap_true.
+        ENDIF.
+      ENDIF.
+      MODIFY gt_display_enh FROM ls_display INDEX row.
+      PERFORM refresh_display_only.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD on_user_command.
+
+    CASE e_salv_function.
+
+      WHEN gc_cmd_olist OR '&OLISTS' OR '&OLISTH'.  " Toggle Object List
+        " Check if Long Text is currently shown
+        IF gv_show_ltxt = abap_true.
+          MESSAGE 'Hide Long Text first to show Object List' TYPE 'I'.
+          RETURN.
+        ENDIF.
+
+        " Toggle Object List
+        IF gv_show_olist = abap_true.
+          " HIDE Object List
+          gv_show_olist = abap_false.
+          DELETE gt_display_enh WHERE row_type = 'O'.
+          MESSAGE 'Object List hidden' TYPE 'S'.
+        ELSE.
+          " SHOW Object List
+          gv_show_olist = abap_true.
+
+          IF gt_objlist IS INITIAL.
+            PERFORM load_object_list.
+          ENDIF.
+
+          READ TABLE gt_display_enh WITH KEY row_type = 'H' TRANSPORTING NO FIELDS.
+          IF sy-subrc <> 0.
+            PERFORM build_salv CHANGING gt_display_enh.
+          ELSE.
+            DELETE gt_display_enh WHERE row_type = 'O'.
+            LOOP AT gt_header ASSIGNING FIELD-SYMBOL(<header>).
+              LOOP AT gt_display_enh ASSIGNING FIELD-SYMBOL(<disp>)
+                WHERE row_type = 'H'
+                  AND maintenance_plan = <header>-maintenance_plan.
+                DATA(lv_header_index) = sy-tabix.
+                EXIT.
+              ENDLOOP.
+
+              LOOP AT gt_objlist ASSIGNING FIELD-SYMBOL(<obj>)
+                WHERE maintenance_plan = <header>-maintenance_plan.
+
+                DATA(ls_display) = VALUE ty_display_salv(
+                  row_type = 'O'
+                  parent_plan = <header>-maintenance_plan
+                  maintenance_plant = <obj>-maintenance_plant
+                  maintenance_item = <header>-maintenance_item
+                  maintenance_strat = <header>-maintenance_strat
+                  planner_group = <header>-planner_group
+                  tplnr = <obj>-tplnr
+                  equnr = <obj>-equnr
+                ).
+
+                DATA(ls_color) = VALUE lvc_s_scol(
+                  fname = ''
+                  color-col = 1
+                  color-int = 1
+                  color-inv = 0
+                ).
+                APPEND ls_color TO ls_display-row_color.
+
+                INSERT ls_display INTO gt_display_enh INDEX lv_header_index + 1.
+                ADD 1 TO lv_header_index.
+              ENDLOOP.
+            ENDLOOP.
+          ENDIF.
+
+          MESSAGE 'Object List shown' TYPE 'S'.
+        ENDIF.
+
+        PERFORM refresh_display_only.
+
+      WHEN gc_cmd_ltxt OR '&LTXTS' OR '&LTXTH'.  " Toggle Long Text
+        " Check if Object List is currently shown
+        IF gv_show_olist = abap_true.
+          MESSAGE 'Hide Object List first to show Long Text' TYPE 'I'.
+          RETURN.
+        ENDIF.
+
+        " Toggle Long Text
+        IF gv_show_ltxt = abap_true.
+          " HIDE Long Text
+          gv_show_ltxt = abap_false.
+          DELETE gt_display_enh WHERE row_type = 'T'.
+          MESSAGE 'Long Text hidden' TYPE 'S'.
+        ELSE.
+          " SHOW Long Text
+          gv_show_ltxt = abap_true.
+
+          IF gt_longtext IS INITIAL.
+            PERFORM load_long_text.
+          ENDIF.
+
+          READ TABLE gt_display_enh WITH KEY row_type = 'H' TRANSPORTING NO FIELDS.
+          IF sy-subrc <> 0.
+            PERFORM build_salv CHANGING gt_display_enh.
+          ELSE.
+            DELETE gt_display_enh WHERE row_type = 'T'.
+            LOOP AT gt_header ASSIGNING <header>.
+              LOOP AT gt_display_enh ASSIGNING <disp>
+                WHERE row_type = 'H'
+                  AND maintenance_plan = <header>-maintenance_plan.
+                lv_header_index = sy-tabix.
+                EXIT.
+              ENDLOOP.
+
+              LOOP AT gt_longtext ASSIGNING FIELD-SYMBOL(<txt>)
+                WHERE maintenance_plan = <header>-maintenance_plan.
+
+                ls_display = VALUE ty_display_salv(
+                  row_type = 'T'
+                  parent_plan = <header>-maintenance_plan
+                  maintenance_plant = <txt>-maintenance_plant
+                  maintenance_item = <txt>-maintenance_item
+                  maintenance_strat = <header>-maintenance_strat
+                  planner_group = <header>-planner_group
+                  tdformat = <txt>-tdformat
+                  tdline = <txt>-tdline
+                ).
+
+                ls_color = VALUE lvc_s_scol(
+                  fname = ''
+                  color-col = 3
+                  color-int = 1
+                  color-inv = 0
+                ).
+                APPEND ls_color TO ls_display-row_color.
+
+                INSERT ls_display INTO gt_display_enh INDEX lv_header_index + 1.
+                ADD 1 TO lv_header_index.
+              ENDLOOP.
+            ENDLOOP.
+          ENDIF.
+
+          MESSAGE 'Long Text shown' TYPE 'S'.
+        ENDIF.
+
+        PERFORM refresh_display_only.
+
+      WHEN 'REFRESH'.
+        PERFORM get_data.
+        IF gt_header IS NOT INITIAL.
+          PERFORM prepare_items.
+          PERFORM refresh_display_only.
+        ENDIF.
+
+    ENDCASE.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& MODULE STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  DATA: lv_title    TYPE string,
+        lv_pfstatus TYPE sypfkey.
+
+  " Determine which PF-STATUS to use based on current state
+  IF gv_show_olist = abap_true.
+    lv_pfstatus = 'ZSALV_OLIST_SHOW'.  " Object List shown
+  ELSEIF gv_show_ltxt = abap_true.
+    lv_pfstatus = 'ZSALV_LTXT_SHOW'.   " Long Text shown
+  ELSE.
+    lv_pfstatus = 'ZSALV_BOTH_HIDE'.   " Both hidden
+  ENDIF.
+
+  SET PF-STATUS lv_pfstatus.
+
+  " Build dynamic title
+  lv_title = 'Maintenance Plans and Items Report'.
+  IF gv_show_olist = abap_true.
+    lv_title = lv_title && ' - Object List Active'.
+  ENDIF.
+  IF gv_show_ltxt = abap_true.
+    lv_title = lv_title && ' - Long Text Active'.
+  ENDIF.
+
+  SET TITLEBAR 'TITLE_100' WITH lv_title.
+
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& MODULE USER_COMMAND_0100 INPUT
+*&---------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE sy-ucomm.
+
+    WHEN '&OLIST' OR '&OLISTS' OR '&OLISTH'.
+      PERFORM toggle_object_list.
+
+    WHEN '&LTXT' OR '&LTXTS' OR '&LTXTH'.
+      PERFORM toggle_long_text.
+
+    WHEN 'REFRESH'.
+      PERFORM refresh_display_only.
+
+    WHEN '&F03' OR '&F15' OR '&F12'.
+      CLEAR: gv_show_olist, gv_show_ltxt.
+      LEAVE TO SCREEN 0.
+
+  ENDCASE.
+
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Form toggle_object_list
+*&---------------------------------------------------------------------*
+FORM toggle_object_list.
+
+  DATA: lv_header_index TYPE sy-tabix,
+        ls_display      TYPE ty_display_salv,
+        ls_color        TYPE lvc_s_scol.
+
+  CHECK gv_show_ltxt = abap_false.
+
+  CASE gv_show_olist.
+    WHEN abap_true.
+      gv_show_olist = abap_false.
+      DELETE gt_display_enh WHERE row_type = 'O'.
+      MESSAGE 'Object List hidden' TYPE 'S'.
+
+    WHEN abap_false.
+      gv_show_olist = abap_true.
+
+      IF gt_objlist IS INITIAL.
+          PERFORM load_object_list.
+      ENDIF.
+
+      READ TABLE gt_display_enh WITH KEY row_type = 'H' TRANSPORTING NO FIELDS.
+
+      IF sy-subrc = 0.
+        DELETE gt_display_enh WHERE row_type = 'O'.
+
+      LOOP AT gt_header ASSIGNING FIELD-SYMBOL(<header>).
+        LOOP AT gt_display_enh ASSIGNING FIELD-SYMBOL(<disp>)
+          WHERE row_type = 'H'
+            AND maintenance_plan = <header>-maintenance_plan.
+          lv_header_index = sy-tabix.
+          EXIT.
+        ENDLOOP.
+
+        LOOP AT gt_objlist ASSIGNING FIELD-SYMBOL(<obj>)
+          WHERE maintenance_plan = <header>-maintenance_plan.
+
+          MOVE-CORRESPONDING <header> TO ls_display.
+
+           ls_display-row_type = 'O'.
+           ls_display-parent_plan = <header>-maintenance_plan.
+           ls_display-maintenance_plant = <obj>-maintenance_plant.
+           ls_display-tplnr = <obj>-tplnr.
+           ls_display-equnr = <obj>-equnr.
+
+       CLEAR ls_display-row_color.
+          ls_color = VALUE lvc_s_scol(
+            fname = ''
+            color-col = 1
+            color-int = 1
+            color-inv = 0
+          ).
+          APPEND ls_color TO ls_display-row_color.
+
+          INSERT ls_display INTO gt_display_enh INDEX lv_header_index + 1.
+          ADD 1 TO lv_header_index.
+        ENDLOOP.
+      ENDLOOP.
+   ENDIF.
+      MESSAGE 'Object List shown' TYPE 'S'.
+  ENDCASE.
+
+  CHECK lo_alv IS BOUND.
+  lo_alv->refresh( ).
+  lo_alv->get_functions( )->set_all( abap_true ).
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form toggle_long_text
+*&---------------------------------------------------------------------*
+FORM toggle_long_text.
+
+  DATA: lv_header_index TYPE sy-tabix,
+        ls_display      TYPE ty_display_salv,
+        ls_color        TYPE lvc_s_scol.
+
+  CHECK gv_show_olist = abap_false.
+
+  CASE gv_show_ltxt.
+    WHEN abap_true.
+      gv_show_ltxt = abap_false.
+      DELETE gt_display_enh WHERE row_type = 'T'.
+      MESSAGE 'Long Text hidden' TYPE 'S'.
+
+    WHEN abap_false.
+      gv_show_ltxt = abap_true.
+
+      IF gt_longtext IS INITIAL.
+        PERFORM load_long_text.
+      ENDIF.
+
+      READ TABLE gt_display_enh WITH KEY row_type = 'H' TRANSPORTING NO FIELDS.
+      IF sy-subrc = 0.
+
+      DELETE gt_display_enh WHERE row_type = 'T'.
+
+      LOOP AT gt_header ASSIGNING FIELD-SYMBOL(<header>).
+        LOOP AT gt_display_enh ASSIGNING FIELD-SYMBOL(<disp>)
+          WHERE row_type = 'H'
+            AND maintenance_plan = <header>-maintenance_plan.
+          lv_header_index = sy-tabix.
+          EXIT.
+        ENDLOOP.
+
+        LOOP AT gt_longtext ASSIGNING FIELD-SYMBOL(<txt>)
+          WHERE maintenance_plan = <header>-maintenance_plan.
+
+          MOVE-CORRESPONDING <header> TO ls_display.
+
+            ls_display-row_type = 'T'.
+            ls_display-parent_plan = <header>-maintenance_plan.
+            ls_display-maintenance_plant = <txt>-maintenance_plant.
+            ls_display-maintenance_item = <txt>-maintenance_item.
+            ls_display-tdformat = <txt>-tdformat.
+            ls_display-tdline = <txt>-tdline.
+
+        CLEAR ls_display-row_color.
+          ls_color = VALUE lvc_s_scol(
+            fname = ''
+            color-col = 3
+            color-int = 1
+            color-inv = 0
+          ).
+          APPEND ls_color TO ls_display-row_color.
+
+          INSERT ls_display INTO gt_display_enh INDEX lv_header_index + 1.
+          ADD 1 TO lv_header_index.
+        ENDLOOP.
+      ENDLOOP.
+    ENDIF.
+      MESSAGE 'Long Text shown' TYPE 'S'.
+  ENDCASE.
+
+  CHECK lo_alv IS BOUND.
+  lo_alv->refresh( ).
+  lo_alv->get_functions( )->set_all( abap_true ).
+
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*& Selection screen dropdown
+*&---------------------------------------------------------------------*
+FORM set_dropdown_values.
+
+  DATA: lt_values TYPE vrm_values,
+        ls_value  TYPE vrm_value.
+
+  CLEAR lt_values.
+
+  ls_value-key = gc_yes. ls_value-text = gc_yes. APPEND ls_value TO lt_values.
+  ls_value-key = gc_no.  ls_value-text = gc_no.  APPEND ls_value TO lt_values.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'P_OLIST'
+      values = lt_values.
+
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'P_LTXT'
+      values = lt_values.
+
+  LOOP AT SCREEN.
+    IF screen-name = 'P_LTXT' .
+      IF p_olist = gc_yes.
+        screen-input = gc_scdisabled.
+      ELSE.
+        screen-input = gc_scenabled.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+
+    IF screen-name = 'P_OLIST' .
+      IF p_ltxt = gc_yes.
+        screen-input = gc_scdisabled.
+      ELSE.
+        screen-input = gc_scenabled.
+      ENDIF.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& ALV Display Get Data
+*&---------------------------------------------------------------------*
+FORM get_data.
+
+  DATA:
+    lt_objnr         TYPE STANDARD TABLE OF j_objnr,
+    lt_status_result TYPE STANDARD TABLE OF ty_status_result.
+
+  SELECT DISTINCT
+       a~iwerk           AS maintenance_plant,
+       a~warpl           AS maintenance_plan,
+       a~strat           AS maintenance_strat,
+       a~mptyp           AS maintenance_pcat,
+       a~begru           AS maintenance_auth,
+       a~plan_sort       AS maintenance_sort,
+       a~stadt           AS maintenance_stadt,
+       a~wptxt           AS maintenance_ptext,
+       a~ernam           AS created_by,
+       a~ersdt           AS created_on,
+       a~wapos           AS maintenance_item,
+       a~tplnr           AS functional_loc,
+       a~equnr           AS equipment_no,
+       a~auart           AS order_type,
+       c~arbpl           AS work_center,
+       a~priok           AS priority,
+       a~wpgrp           AS planner_group,
+       a~ilart           AS maintenance_actvt,
+       a~gsber           AS business_area,
+       a~beber           AS plant_section,
+       a~plnty           AS task_list_type,
+       a~plnnr           AS task_list_grp,
+       a~plnal           AS task_list_cntr,
+       a~status          AS item_status,
+       a~pstxt           AS short_text,
+       a~objnr           AS objnr,
+       ' '               AS maintenance_stat,
+
+
+        "----Additional Fields
+       a~horiz,
+       a~horiz_days,
+       a~horiz_qualifier,
+       a~kostl,
+       a~sfakt,
+       a~vsneg,
+       a~toneg,
+       a~fabkl,
+       eq~eqktx,
+       ifl~pltxt,
+       @gc_space           AS lastorder,
+       a~vspos,
+       a~topos,
+       a~laufn,
+       d~ktext,
+       mpos~ltknz,
+       a~call_confirm,
+       @gc_space           AS openorder,
+       a~andor,
+       a~hunit,
+       a~stich,
+       a~abrho,
+       a~iaufnr
+
+
+  INTO CORRESPONDING FIELDS OF TABLE @gt_header
+    FROM vimpla AS a
+    LEFT JOIN crhd  AS c    ON c~objty = a~objty AND c~objid = a~gewrk
+    LEFT JOIN objk  AS b    ON b~obknr = a~obknr
+    LEFT JOIN aufk  AS d    ON d~aufnr = a~laufn
+    LEFT JOIN iflo  AS ifl  ON ifl~iloan = a~iloan AND ifl~spras = @sy-langu
+    LEFT JOIN eqkt  AS eq   ON eq~equnr = a~equnr AND eq~spras = @sy-langu
+    LEFT JOIN mhio  AS mh   ON mh~warpl = a~warpl
+    LEFT JOIN jest  AS j    ON j~objnr = a~objnr AND j~inact = @space
+    LEFT JOIN tj02t AS tj   ON tj~istat = j~stat  AND tj~spras = @sy-langu
+    LEFT JOIN mpos  AS mpos ON mpos~warpl = a~warpl AND mpos~wapos = a~wapos
+
+   WHERE a~iwerk IN @so_iwerk
+      AND a~warpl IN @so_warpl
+      AND a~mptyp IN @so_mptyp
+      AND a~strat IN @so_strat
+      AND a~begru IN @so_begru
+      AND a~plan_sort IN @so_psort
+      AND a~stadt IN @so_stadt
+      AND a~wptxt IN @so_wptxt
+      AND a~ernam IN @so_ernam
+      AND a~ersdt IN @so_ersdt
+      AND a~wapos IN @so_wapos
+      AND a~tplnr IN @s_itplnr
+      AND a~equnr IN @so_equnr
+      AND a~auart IN @so_auart
+      AND c~arbpl IN @so_arbpl
+      AND a~priok IN @so_priok
+      AND a~wpgrp IN @so_wpgrp
+      AND a~ilart IN @so_ilart
+      AND a~gsber IN @so_gsber
+      AND a~beber IN @so_beber
+      AND a~plnnr IN @so_plnnr
+      AND a~status IN @so_stat
+      AND a~pstxt IN @so_stxt.
+
+  IF sy-subrc <> 0.
+    MESSAGE e005.
+    RETURN.
+  ENDIF.
+
+  IF gt_header IS INITIAL.
+    MESSAGE i006.
+    RETURN.
+  ENDIF.
+
+  " Get last completed and open orders
+  SELECT warpl, aufnr, addat
+  FROM mhio
+  FOR ALL ENTRIES IN @gt_header
+  WHERE warpl = @gt_header-maintenance_plan
+  INTO TABLE @DATA(lt_mhio).
+
+  IF sy-subrc <> 0.
+    MESSAGE e007.
+  ENDIF.
+
+  lt_objnr = VALUE #( FOR <header> IN gt_header ( <header>-objnr ) ).
+  SORT lt_objnr BY table_line.
+  DELETE ADJACENT DUPLICATES FROM lt_objnr COMPARING table_line.
+
+  " Get maintenance status
+  IF lt_objnr IS NOT INITIAL.
+    SELECT jest~objnr, tj02t~txt04
+      FROM jest
+      INNER JOIN tj02t
+        ON jest~stat = tj02t~istat
+       AND tj02t~spras = @sy-langu
+      FOR ALL ENTRIES IN @lt_objnr
+      WHERE jest~objnr = @lt_objnr-table_line
+        AND jest~inact = @gc_space
+      INTO TABLE @DATA(lt_status_texts).
+
+    IF sy-subrc = 0.
+      SORT lt_status_texts BY objnr txt04.
+    ENDIF.
+  ENDIF.
+
+  LOOP AT gt_header ASSIGNING FIELD-SYMBOL(<ls_head>).
+
+    " Build maintenance status
+    CLEAR <ls_head>-maintenance_stat.
+    LOOP AT lt_status_texts ASSIGNING FIELD-SYMBOL(<status>)
+      WHERE objnr = <ls_head>-objnr.
+      IF <ls_head>-maintenance_stat IS INITIAL.
+        <ls_head>-maintenance_stat = <status>-txt04.
+      ELSE.
+        CONCATENATE <ls_head>-maintenance_stat <status>-txt04
+          INTO <ls_head>-maintenance_stat SEPARATED BY space.
+      ENDIF.
+    ENDLOOP.
+
+    " Get last order completed
+    LOOP AT lt_mhio ASSIGNING FIELD-SYMBOL(<mh>)
+      WHERE warpl = <ls_head>-maintenance_plan
+        AND addat IS NOT INITIAL.
+      IF <mh>-aufnr > <ls_head>-lastorder.
+        <ls_head>-lastorder = <mh>-aufnr.
+      ENDIF.
+    ENDLOOP.
+
+    " Get open order
+    LOOP AT lt_mhio ASSIGNING <mh>
+      WHERE warpl = <ls_head>-maintenance_plan
+        AND addat IS INITIAL.
+      IF <mh>-aufnr > <ls_head>-openorder.
+        <ls_head>-openorder = <mh>-aufnr.
+      ENDIF.
+    ENDLOOP.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Prepare items  Object list and Long Text
+*&---------------------------------------------------------------------*
+
+FORM prepare_items.
+
+  CLEAR: gt_objlist, gt_longtext.
+
+  " Load Object List if selection screen YES
+  IF p_olist = gc_yes.
+    PERFORM load_object_list.
+  ENDIF.
+
+  " Load Long Text if selection screen YES
+  IF p_ltxt = gc_yes.
+    PERFORM load_long_text.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Load object list
+*&---------------------------------------------------------------------*
+FORM load_object_list.
+
+  CHECK gt_header IS NOT INITIAL.
+
+  CLEAR gt_objlist.
+
+  SELECT DISTINCT
+    a~warpl AS maintenance_plan,
+    a~iwerk AS maintenance_plant,
+    iflo~tplnr AS tplnr,
+    objk~equnr AS equnr
+    INTO TABLE @gt_objlist
+    FROM vimpla AS a
+    INNER JOIN objk ON a~obknr = objk~obknr
+    LEFT JOIN iflo ON objk~iloan = iflo~iloan
+    FOR ALL ENTRIES IN @gt_header
+    WHERE a~warpl = @gt_header-maintenance_plan.
+
+  IF sy-subrc <> 0.
+    MESSAGE i008.
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Load long text
+*&---------------------------------------------------------------------*
+
+FORM load_long_text.
+
+  DATA: lt_lines          TYPE TABLE OF tline,
+        lv_name           TYPE tdobname,
+        ls_header         TYPE thead,
+        lt_processed_item TYPE TABLE OF mpos-wapos.
+
+  CHECK gt_header IS NOT INITIAL.
+
+  CLEAR: gt_longtext.
+
+  LOOP AT gt_header ASSIGNING FIELD-SYMBOL(<ls_head>).
+
+    " Skip if already processed
+    READ TABLE lt_processed_item WITH KEY table_line = <ls_head>-maintenance_item TRANSPORTING NO FIELDS.
+    IF sy-subrc = 0.
+      CONTINUE.
+    ENDIF.
+
+    APPEND <ls_head>-maintenance_item TO lt_processed_item.
+
+    IF <ls_head>-ltknz = gc_x AND <ls_head>-maintenance_item IS NOT INITIAL.
+
+      CLEAR: lt_lines, lv_name.
+
+      DATA(lv_wapos) = <ls_head>-maintenance_item.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = lv_wapos
+        IMPORTING
+          output = lv_wapos
+        EXCEPTIONS
+          OTHERS = 1.
+
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+
+      lv_name = lv_wapos.
+
+      " Ensure 16-character text name
+      WHILE strlen( lv_name ) < 16.
+        lv_name = |0{ lv_name }|.
+      ENDWHILE.
+      IF strlen( lv_name ) > 16.
+        lv_name = lv_name+0(16).
+      ENDIF.
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          client    = sy-mandt
+          id        = 'LTXT'
+          language  = sy-langu
+          name      = lv_name
+          object    = 'MPOS'
+        IMPORTING
+          header    = ls_header
+        TABLES
+          lines     = lt_lines
+        EXCEPTIONS
+          not_found = 4
+          OTHERS    = 8.
+
+      IF sy-subrc = 0 AND lt_lines IS NOT INITIAL.
+
+        LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<ls_line>).
+
+          APPEND VALUE ty_longtext(
+            maintenance_plan = <ls_head>-maintenance_plan
+            maintenance_item = <ls_head>-maintenance_item
+           maintenance_plant = <ls_head>-maintenance_plant
+            tdformat         = <ls_line>-tdformat
+            tdline           = <ls_line>-tdline
+          ) TO gt_longtext.
+
+        ENDLOOP.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* FORM build_salv
+*---------------------------------------------------------------------*
+FORM build_salv CHANGING ct_display TYPE STANDARD TABLE.
+  DATA: ls_display    TYPE ty_display_salv,
+        lt_objlist    TYPE STANDARD TABLE OF ty_objlist,
+        lt_ltxt       TYPE STANDARD TABLE OF ty_longtext,
+        ls_color      TYPE lvc_s_scol,
+        lv_show_olist TYPE abap_bool,
+        lv_show_ltxt  TYPE abap_bool.
+
+  CLEAR ct_display.
+
+  READ TABLE gt_display_enh WITH KEY row_type = 'O' TRANSPORTING NO FIELDS.
+  lv_show_olist = COND #( WHEN sy-subrc = 0 THEN abap_true ELSE abap_false ).
+
+  READ TABLE gt_display_enh WITH KEY row_type = 'T' TRANSPORTING NO FIELDS.
+  lv_show_ltxt = COND #( WHEN sy-subrc = 0 THEN abap_true ELSE abap_false ).
+
+  LOOP AT gt_header ASSIGNING FIELD-SYMBOL(<header>).
+    CLEAR ls_display.
+
+    ls_display-row_type = 'H'.
+    MOVE-CORRESPONDING <header> TO ls_display.
+
+    ls_display-expand_icon = COND #( WHEN ( gv_show_olist = abap_true OR gv_show_ltxt = abap_true )
+                                     THEN icon_collapse
+                                     ELSE icon_expand ).
+
+    CLEAR ls_display-row_color.
+    APPEND ls_display TO ct_display.
+
+    IF gv_show_olist = abap_true AND gt_objlist IS NOT INITIAL.
+      lt_objlist = VALUE #( FOR <obj_tmp> IN gt_objlist
+                           WHERE ( maintenance_plan = <header>-maintenance_plan )
+                           ( <obj_tmp> ) ).
+
+        LOOP AT lt_objlist ASSIGNING FIELD-SYMBOL(<obj>).
+          CLEAR ls_display.
+
+        MOVE-CORRESPONDING <header> TO ls_display.
+
+        ls_display-row_type = 'O'.
+        ls_display-parent_plan = <header>-maintenance_plan.
+        ls_display-maintenance_plant = <obj>-maintenance_plant.
+        ls_display-tplnr = <obj>-tplnr.
+        ls_display-equnr = <obj>-equnr.
+
+        CLEAR ls_display-row_color.
+        ls_color-fname = gc_space.
+        ls_color-color-col = 1.
+        ls_color-color-int = 1.
+        ls_color-color-inv = 0.
+        APPEND ls_color TO ls_display-row_color.
+
+        APPEND ls_display TO ct_display.
+      ENDLOOP.
+    ENDIF.
+
+    IF gv_show_ltxt = abap_true AND gt_longtext IS NOT INITIAL.
+      lt_ltxt = VALUE #( FOR <txt_tmp> IN gt_longtext
+                        WHERE ( maintenance_plan = <header>-maintenance_plan )
+                        ( <txt_tmp> ) ).
+
+        LOOP AT lt_ltxt ASSIGNING FIELD-SYMBOL(<txt>).
+          CLEAR ls_display.
+
+        MOVE-CORRESPONDING <header> TO ls_display.
+
+        ls_display-row_type = 'T'.
+        ls_display-parent_plan = <header>-maintenance_plan.
+        ls_display-maintenance_plant = <txt>-maintenance_plant.
+        ls_display-maintenance_item = <txt>-maintenance_item.
+        ls_display-tdformat = <txt>-tdformat.
+        ls_display-tdline = <txt>-tdline.
+
+        CLEAR ls_display-row_color.
+        ls_color-fname = gc_space.
+        ls_color-color-col = 3.
+        ls_color-color-int = 1.
+        ls_color-color-inv = 0.
+        APPEND ls_color TO ls_display-row_color.
+
+        APPEND ls_display TO ct_display.
+      ENDLOOP.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* FORM set_columns_enhanced
+*---------------------------------------------------------------------*
+FORM set_columns_enhanced USING io_columns TYPE REF TO cl_salv_columns_table.
+  DATA: lo_column TYPE REF TO cl_salv_column_table,
+        lt_column_name TYPE TABLE OF lvc_fname,
+        lv_col_name TYPE lvc_fname.
+
+  TRY.
+    CLEAR lt_column_name.
+    APPEND 'ROW_TYPE' TO lt_column_name.
+    APPEND 'PARENT_PLAN' TO lt_column_name.
+    APPEND 'ICON' TO lt_column_name.
+    APPEND 'OBJNR' TO lt_column_name.
+    APPEND 'LTKNZ' TO lt_column_name.
+    APPEND 'IS_EXPANDED_OBJ' TO lt_column_name.
+    APPEND 'IS_EXPANDED_TXT' TO lt_column_name.
+    APPEND 'ROW_COLOR' TO lt_column_name.
+
+    LOOP AT lt_column_name INTO lv_col_name.
+      TRY.
+        lo_column ?= io_columns->get_column( lv_col_name ).
+        lo_column->set_technical( abap_true ).
+        lo_column->set_visible( abap_false ).
+      CATCH cx_salv_not_found.
+     ENDTRY.
+     ENDLOOP.
+
+     CATCH cx_salv_not_found.
+   ENDTRY.
+
+   TRY.
+
+      lo_column ?= io_columns->get_column( 'EXPAND_ICON' ).
+      lo_column->set_short_text( '+/-' ).
+      lo_column->set_medium_text( 'Expand' ).
+      lo_column->set_long_text( 'Expand/Collapse' ).
+      lo_column->set_icon( abap_true ).
+      lo_column->set_output_length( 3 ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+
+      " === DEFAULT FIELDS ===
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_PLANT' ).
+      lo_column->set_long_text( 'Maintenance Plant' ).
+      lo_column->set_medium_text( 'Maint Plant' ).
+      lo_column->set_short_text( 'Plant' ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_PLAN' ).
+      lo_column->set_long_text( 'Maintenance Plan' ).
+      lo_column->set_medium_text( 'Maint Plan' ).
+      lo_column->set_short_text( 'Plan' ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_STRAT' ).
+      lo_column->set_long_text( 'Maintenance Strategy' ).
+      lo_column->set_medium_text( 'Maint Strat' ).
+      lo_column->set_short_text( 'Strategy' ).
+
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_PCAT' ).
+      lo_column->set_long_text( 'Maintenance Category' ).
+      lo_column->set_medium_text( 'Maint Cat' ).
+      lo_column->set_short_text( 'Category' ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_AUTH' ).
+      lo_column->set_long_text( 'Authorization Group' ).
+      lo_column->set_medium_text( 'Auth Group' ).
+      lo_column->set_short_text( 'Auth' ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_SORT' ).
+      lo_column->set_long_text( 'Maintenance Sort Field' ).
+      lo_column->set_medium_text( 'Sort Field' ).
+      lo_column->set_short_text( 'Sort' ).
+
+      lo_column ?= io_columns->get_column( 'START_CYCLE' ).
+      lo_column->set_long_text( 'Start Cycle' ).
+      lo_column->set_medium_text( 'Start Cycle' ).
+      lo_column->set_short_text( 'Cycle' ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_PTEXT' ).
+      lo_column->set_long_text( 'Maintenance Plan Text' ).
+      lo_column->set_medium_text( 'Plan Text' ).
+      lo_column->set_short_text( 'Plan Text' ).
+
+      lo_column ?= io_columns->get_column( 'PLANNER_GROUP' ).
+      lo_column->set_long_text( 'Planner Group' ).
+      lo_column->set_medium_text( 'Planner Grp' ).
+      lo_column->set_short_text( 'Planner' ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_STAT' ).
+      lo_column->set_long_text( 'Maintenance Status' ).
+      lo_column->set_medium_text( 'Maint Status' ).
+      lo_column->set_short_text( 'Status' ).
+      lo_column->set_output_length( 12 ).
+
+      lo_column ?= io_columns->get_column( 'CREATED_BY' ).
+      lo_column->set_short_text( 'Created By' ).
+      lo_column->set_medium_text( 'Created By' ).
+      lo_column->set_long_text( 'Created By User' ).
+
+      lo_column ?= io_columns->get_column( 'CREATED_ON' ).
+      lo_column->set_short_text( 'Created On' ).
+      lo_column->set_medium_text( 'Created On' ).
+      lo_column->set_long_text( 'Creation Date' ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_ITEM' ).
+      lo_column->set_long_text( 'Maintenance Item' ).
+      lo_column->set_medium_text( 'Maint Item' ).
+      lo_column->set_short_text( 'Item' ).
+
+      lo_column ?= io_columns->get_column( 'FUNCTIONAL_LOC' ).
+      lo_column->set_long_text( 'Functional Location' ).
+      lo_column->set_medium_text( 'Functional Loc' ).
+      lo_column->set_short_text( 'Func Loc' ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+
+      lo_column ?= io_columns->get_column( 'EQUIPMENT_NO' ).
+      lo_column->set_long_text( 'Equipment Number' ).
+      lo_column->set_medium_text( 'Equipment No' ).
+      lo_column->set_short_text( 'Equipment' ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+
+      lo_column ?= io_columns->get_column( 'ORDER_TYPE' ).
+      lo_column->set_long_text( 'Order Type' ).
+      lo_column->set_medium_text( 'Order Type' ).
+      lo_column->set_short_text( 'Order Type' ).
+
+      lo_column ?= io_columns->get_column( 'WORK_CENTER' ).
+      lo_column->set_long_text( 'Work Center' ).
+      lo_column->set_medium_text( 'Work Center' ).
+      lo_column->set_short_text( 'Work Cntr' ).
+
+      lo_column ?= io_columns->get_column( 'PRIORITY' ).
+      lo_column->set_long_text( 'Priority' ).
+      lo_column->set_medium_text( 'Priority' ).
+      lo_column->set_short_text( 'Priority' ).
+
+      lo_column ?= io_columns->get_column( 'MAINTENANCE_ACTVT' ).
+      lo_column->set_long_text( 'Maintenance Activity' ).
+      lo_column->set_medium_text( 'Maint Act' ).
+      lo_column->set_short_text( 'Activity' ).
+
+      lo_column ?= io_columns->get_column( 'BUSINESS_AREA' ).
+      lo_column->set_long_text( 'Business Area' ).
+      lo_column->set_medium_text( 'Business Area' ).
+      lo_column->set_short_text( 'Bus Area' ).
+
+      lo_column ?= io_columns->get_column( 'PLANT_SECTION' ).
+      lo_column->set_long_text( 'Plant Section' ).
+      lo_column->set_medium_text( 'Plant Section' ).
+      lo_column->set_short_text( 'Plant Sec' ).
+
+      lo_column ?= io_columns->get_column( 'TASK_LIST_TYPE' ).
+      lo_column->set_long_text( 'Task List Type' ).
+      lo_column->set_medium_text( 'Task List Type' ).
+      lo_column->set_short_text( 'TL Type' ).
+
+      lo_column ?= io_columns->get_column( 'TASK_LIST_GRP' ).
+      lo_column->set_long_text( 'Task List Group' ).
+      lo_column->set_medium_text( 'Task List Grp' ).
+      lo_column->set_short_text( 'TL Group' ).
+
+      lo_column ?= io_columns->get_column( 'TASK_LIST_CNTR' ).
+      lo_column->set_long_text( 'Task List Counter' ).
+      lo_column->set_medium_text( 'Task List Ctr' ).
+      lo_column->set_short_text( 'TL Cntr' ).
+
+      lo_column ?= io_columns->get_column( 'ITEM_STATUS' ).
+      lo_column->set_long_text( 'Item Status' ).
+      lo_column->set_medium_text( 'Item Status' ).
+      lo_column->set_short_text( 'Status' ).
+
+      lo_column ?= io_columns->get_column( 'SHORT_TEXT' ).
+      lo_column->set_long_text( 'Short Text Description' ).
+      lo_column->set_medium_text( 'Short Text' ).
+      lo_column->set_short_text( 'Short Text' ).
+
+      " === ADDITIONAL FIELDS - Initially hidden ===
+      lo_column ?= io_columns->get_column( 'HORIZ' ).
+      lo_column->set_short_text( 'Horizon' ).
+      lo_column->set_medium_text( 'Horizon' ).
+      lo_column->set_long_text( 'Scheduling Horizon' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'HORIZ_DAYS' ).
+      lo_column->set_long_text( 'Horizon in Days' ).
+      lo_column->set_medium_text( 'Horizon Days' ).
+      lo_column->set_short_text( 'Days' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'HORIZ_QUALIFIER' ).
+      lo_column->set_long_text( 'Horizon Qualifier' ).
+      lo_column->set_medium_text( 'Horizon Qual' ).
+      lo_column->set_short_text( 'Qualifier' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'KOSTL' ).
+      lo_column->set_long_text( 'Cost Center' ).
+      lo_column->set_medium_text( 'Cost Center' ).
+      lo_column->set_short_text( 'Cost Cntr' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'SFAKT' ).
+      lo_column->set_long_text( 'Shift Factor' ).
+      lo_column->set_medium_text( 'Shift Factor' ).
+      lo_column->set_short_text( 'Shift' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'VSNEG' ).
+      lo_column->set_long_text( 'Early Completion %' ).
+      lo_column->set_medium_text( 'Early Compl %' ).
+      lo_column->set_short_text( 'Early %' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'TONEG' ).
+      lo_column->set_long_text( 'Late Completion %' ).
+      lo_column->set_medium_text( 'Late Compl %' ).
+      lo_column->set_short_text( 'Late %' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'FABKL' ).
+      lo_column->set_long_text( 'Factory Calendar' ).
+      lo_column->set_medium_text( 'Factory Cal' ).
+      lo_column->set_short_text( 'Factory' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'EQKTX' ).
+      lo_column->set_long_text( 'Equipment Description' ).
+      lo_column->set_medium_text( 'Equipment Text' ).
+      lo_column->set_short_text( 'Equip Text' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'PLTXT' ).
+      lo_column->set_long_text( 'Functional Location Text' ).
+      lo_column->set_medium_text( 'Func Loc Text' ).
+      lo_column->set_short_text( 'FuncL Text' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'LASTORDER' ).
+      lo_column->set_technical( abap_false ).
+      lo_column->set_output_length( 12 ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+      lo_column->set_short_text( 'Last Order' ).
+      lo_column->set_medium_text( 'Last Order' ).
+      lo_column->set_long_text( 'Last Completed Order' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'VSPOS' ).
+      lo_column->set_long_text( 'Early Completion Allowed' ).
+      lo_column->set_medium_text( 'Early Compl' ).
+      lo_column->set_short_text( 'Early Cmp' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'TOPOS' ).
+      lo_column->set_long_text( 'Late Completion Allowed' ).
+      lo_column->set_medium_text( 'Late Compl' ).
+      lo_column->set_short_text( 'Late Cmp' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'LAUFN' ).
+      lo_column->set_long_text( 'Execution Order' ).
+      lo_column->set_medium_text( 'Exec Order' ).
+      lo_column->set_short_text( 'Exec Ord' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'KTEXT' ).
+      lo_column->set_short_text( 'Order Text' ).
+      lo_column->set_medium_text( 'Order Text' ).
+      lo_column->set_long_text( 'Order Description' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'CALL_CONFIRM' ).
+      lo_column->set_long_text( 'Call Confirmation' ).
+      lo_column->set_medium_text( 'Call Confirm' ).
+      lo_column->set_short_text( 'Confirm' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'OPENORDER' ).
+      lo_column->set_technical( abap_false ).
+      lo_column->set_output_length( 12 ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+      lo_column->set_short_text( 'Open Order' ).
+      lo_column->set_medium_text( 'Open Order' ).
+      lo_column->set_long_text( 'Open Order' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'ANDOR' ).
+      lo_column->set_short_text( 'AND/OR' ).
+      lo_column->set_medium_text( 'AND/OR' ).
+      lo_column->set_long_text( 'AND/OR Indicator' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'HUNIT' ).
+      lo_column->set_long_text( 'Horizon Unit' ).
+      lo_column->set_medium_text( 'Horizon Unit' ).
+      lo_column->set_short_text( 'Unit' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'STICH' ).
+      lo_column->set_long_text( 'Scheduling Key Date' ).
+      lo_column->set_medium_text( 'Key Date' ).
+      lo_column->set_short_text( 'Key Date' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'ABRHO' ).
+      lo_column->set_long_text( 'Settlement Rule' ).
+      lo_column->set_medium_text( 'Settlement' ).
+      lo_column->set_short_text( 'Settl Rule' ).
+      lo_column->set_visible( abap_false ).
+
+      lo_column ?= io_columns->get_column( 'IAUFNR' ).
+      lo_column->set_long_text( 'Internal Order' ).
+      lo_column->set_medium_text( 'Internal Ord' ).
+      lo_column->set_short_text( 'Int Ord' ).
+      lo_column->set_visible( abap_false ).
+
+      " === OBJECT LIST FIELDS ===
+      lo_column ?= io_columns->get_column( 'TPLNR' ).
+      lo_column->set_long_text( 'Functional Location' ).
+      lo_column->set_medium_text( 'Functional Loc' ).
+      lo_column->set_short_text( 'Func Loc' ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+
+      lo_column ?= io_columns->get_column( 'EQUNR' ).
+      lo_column->set_short_text( 'Equipment' ).
+      lo_column->set_medium_text( 'Equipment No' ).
+      lo_column->set_long_text( 'Equipment Number' ).
+      lo_column->set_cell_type( if_salv_c_cell_type=>hotspot ).
+
+      " === LONG TEXT FIELDS ===
+      lo_column ?= io_columns->get_column( 'TDFORMAT' ).
+      lo_column->set_short_text( 'Format' ).
+      lo_column->set_medium_text( 'Format' ).
+      lo_column->set_long_text( 'Text Format' ).
+
+      lo_column ?= io_columns->get_column( 'TDLINE' ).
+      lo_column->set_short_text( 'Text Line' ).
+      lo_column->set_medium_text( 'Long Text' ).
+      lo_column->set_long_text( 'Long Text Line' ).
+      lo_column->set_output_length( 80 ).
+
+*      " === HIDE TECHNICAL AND ICON FIELDS ===
+*
+*      lo_column ?= io_columns->get_column( 'ROW_TYPE' ).
+*      lo_column->set_technical( abap_true ).
+*      lo_column->set_visible( abap_false ).
+*
+*      lo_column ?= io_columns->get_column( 'PARENT_PLAN' ).
+*      lo_column->set_technical( abap_true ).
+*      lo_column->set_visible( abap_false ).
+*
+*      lo_column ?= io_columns->get_column( 'ICON' ).
+*      lo_column->set_technical( abap_true ).
+*      lo_column->set_visible( abap_false ).
+*
+*      lo_column ?= io_columns->get_column( 'OBJNR' ).
+*      lo_column->set_technical( abap_true ).
+*
+*      lo_column ?= io_columns->get_column( 'LTKNZ' ).
+*      lo_column->set_technical( abap_true ).
+*      lo_column->set_visible( abap_false ).
+*
+*      lo_column ?= io_columns->get_column( 'IS_EXPANDED_OBJ' ).
+*      lo_column->set_technical( abap_true ).
+*      lo_column->set_visible( abap_false ).
+*
+*      lo_column ?= io_columns->get_column( 'IS_EXPANDED_TXT' ).
+*      lo_column->set_visible( abap_false ).
+*      lo_column->set_visible( abap_false ).
+*
+*      lo_column ?= io_columns->get_column( 'ROW_COLOR' ).
+*      lo_column->set_technical( abap_true ).
+*      lo_column->set_visible( abap_false ).
+
+
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  PERFORM show_additional_fields USING io_columns.
+
+ENDFORM.
+
+
+*---------------------------------------------------------------------*
+* FORM show_additional_fields
+*---------------------------------------------------------------------*
+FORM show_additional_fields USING io_columns TYPE REF TO cl_salv_columns_table.
+  DATA: lo_column   TYPE REF TO cl_salv_column_table,
+        lv_has_data TYPE abap_bool.
+
+  " Check each additional field and show if it has data
+  LOOP AT gt_header ASSIGNING FIELD-SYMBOL(<header>).
+    IF <header>-horiz IS NOT INITIAL OR
+       <header>-horiz_days IS NOT INITIAL OR
+       <header>-horiz_qualifier IS NOT INITIAL OR
+       <header>-kostl IS NOT INITIAL OR
+       <header>-sfakt IS NOT INITIAL OR
+       <header>-vsneg IS NOT INITIAL OR
+       <header>-toneg IS NOT INITIAL OR
+       <header>-fabkl IS NOT INITIAL OR
+       <header>-eqktx IS NOT INITIAL OR
+       <header>-pltxt IS NOT INITIAL OR
+       <header>-lastorder IS NOT INITIAL OR
+       <header>-vspos IS NOT INITIAL OR
+       <header>-topos IS NOT INITIAL OR
+       <header>-laufn IS NOT INITIAL OR
+       <header>-ktext IS NOT INITIAL OR
+       <header>-call_confirm IS NOT INITIAL OR
+       <header>-openorder IS NOT INITIAL OR
+       <header>-andor IS NOT INITIAL OR
+       <header>-hunit IS NOT INITIAL OR
+       <header>-stich IS NOT INITIAL OR
+       <header>-abrho IS NOT INITIAL OR
+       <header>-iaufnr IS NOT INITIAL.
+      lv_has_data = abap_true.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+
+  CHECK lv_has_data = abap_true.
+
+  TRY.
+      " Show each field that has data
+      LOOP AT gt_header ASSIGNING <header>.
+        IF <header>-horiz IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'HORIZ' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-horiz_days IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'HORIZ_DAYS' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-horiz_qualifier IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'HORIZ_QUALIFIER' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-kostl IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'KOSTL' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-sfakt IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'SFAKT' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-vsneg IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'VSNEG' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-toneg IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'TONEG' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-fabkl IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'FABKL' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-eqktx IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'EQKTX' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-pltxt IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'PLTXT' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-lastorder IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'LASTORDER' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-vspos IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'VSPOS' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-topos IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'TOPOS' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-laufn IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'LAUFN' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-ktext IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'KTEXT' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-call_confirm IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'CALL_CONFIRM' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-openorder IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'OPENORDER' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-andor IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'ANDOR' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-hunit IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'HUNIT' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-stich IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'STICH' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-abrho IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'ABRHO' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+        IF <header>-iaufnr IS NOT INITIAL.
+          lo_column ?= io_columns->get_column( 'IAUFNR' ).
+          lo_column->set_visible( abap_true ).
+        ENDIF.
+      ENDLOOP.
+    CATCH cx_salv_not_found.
+  ENDTRY.
+ENDFORM.
+
+
+*---------------------------------------------------------------------*
+* FORM display_salv_table
+*---------------------------------------------------------------------*
+FORM display_salv_table.
+  DATA:
+        lo_functions    TYPE REF TO cl_salv_functions_list,
+        lo_display      TYPE REF TO cl_salv_display_settings,
+        lo_columns      TYPE REF TO cl_salv_columns_table,
+        lo_selections   TYPE REF TO cl_salv_selections,
+        lo_layout       TYPE REF TO cl_salv_layout,
+        ls_layout_key   TYPE salv_s_layout_key,
+        lo_events       TYPE REF TO cl_salv_events_table,
+        lx_msg          TYPE REF TO cx_salv_msg,
+        lv_message      TYPE string,
+        lv_pfstatus     TYPE sypfkey,
+        lv_title        TYPE lvc_title.
+
+  IF gv_show_olist IS INITIAL AND gv_show_ltxt IS INITIAL.
+    IF p_olist = gc_yes.
+      gv_show_olist = abap_true.
+      gv_show_ltxt = abap_false.
+    ElSEIF p_ltxt = gc_yes.
+      gv_show_ltxt = abap_true.
+      gv_show_olist = abap_false.
+    ELSE.
+      gv_show_olist = abap_false.
+      gv_show_ltxt = abap_false.
+    ENDIF.
+  ENDIF.
+
+  PERFORM build_salv CHANGING gt_display_enh.
+
+  IF gt_display_enh IS INITIAL.
+    MESSAGE gc_msg_no_data TYPE 'I'.
+    RETURN.
+  ENDIF.
+
+  " Determine which PF-STATUS to use based on current state
+  IF gv_show_olist = abap_true.
+    lv_pfstatus = 'ZSALV_OLIST_SHOW'.
+  ELSEIF gv_show_ltxt = abap_true.
+    lv_pfstatus = 'ZSALV_LTXT_SHOW'.
+  ELSE.
+    lv_pfstatus = 'ZSALV_BOTH_HIDE'.
+  ENDIF.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING
+          r_salv_table = lo_alv
+        CHANGING
+          t_table      = gt_display_enh ).
+
+      lo_functions = lo_alv->get_functions( ).
+      lo_functions->set_all( abap_true ).
+
+      " Set DYNAMIC PF-STATUS based on current state
+      lo_alv->set_screen_status(
+        EXPORTING
+          pfstatus      = lv_pfstatus
+          report        = sy-repid
+          set_functions = lo_alv->c_functions_all ).
+
+      lo_display = lo_alv->get_display_settings( ).
+      lo_display->set_striped_pattern( abap_false ).
+
+      lv_title = 'Maintenance Plans and Items Report'.
+*      IF gv_show_olist = abap_true.
+*        CONCATENATE lv_title ' - Object List Active' INTO lv_title.
+*      ENDIF.
+*      IF gv_show_ltxt = abap_true.
+*        CONCATENATE lv_title ' - Long Text Active' INTO lv_title.
+*      ENDIF.
+      lo_display->set_list_header( lv_title ).
+
+      lo_selections = lo_alv->get_selections( ).
+      lo_selections->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+      lo_layout = lo_alv->get_layout( ).
+      ls_layout_key-report = sy-repid.
+      lo_layout->set_key( ls_layout_key ).
+      lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+      lo_layout->set_default( abap_true ).
+
+      lo_columns = lo_alv->get_columns( ).
+      lo_columns->set_optimize( abap_true ).
+
+      PERFORM set_columns_enhanced USING lo_columns.
+
+      TRY.
+          DATA(lo_cols) = lo_alv->get_columns( ).
+          lo_cols->set_color_column( 'ROW_COLOR' ).
+        CATCH cx_salv_data_error.
+      ENDTRY.
+
+      lo_events = lo_alv->get_event( ).
+      SET HANDLER lcl_event_handler_enh=>on_user_command FOR lo_events.
+      SET HANDLER lcl_event_handler_enh=>on_double_click FOR lo_events.
+
+      lo_alv->display( ).
+
+    CATCH cx_salv_msg INTO lx_msg.
+      lv_message = lx_msg->get_text( ).
+      MESSAGE lv_message TYPE 'E'.
+  ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form refresh_display_only
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_display_only .
+  CHECK lo_alv IS BOUND.
+  lo_alv->refresh( ).
+ENDFORM.
