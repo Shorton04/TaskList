@@ -1,1 +1,117 @@
+*&———————————————————————*
+*& Include ZRE_A2R_VALID_TASKLIST_SEL
+*&———————————————————————*
 
+TABLES: plko, plpo, plmk, tapl, eapl, crhd, tj02t.
+
+*–––––––––––––––––––––––––––––––––––*
+
+- Selection Screen
+  *–––––––––––––––––––––––––––––––––––*
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+
+“— Task List Type (At least one must be selected)
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(30) TEXT-t01.
+SELECTION-SCREEN END OF LINE.
+
+PARAMETERS: p_functloc AS CHECKBOX DEFAULT ‘X’ USER-COMMAND utype,
+p_equip    AS CHECKBOX USER-COMMAND utype,
+p_gen      AS CHECKBOX USER-COMMAND utype.
+
+SELECTION-SCREEN END OF BLOCK b1.
+
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-002.
+
+“— Task List Selection
+SELECT-OPTIONS: s_tplnr FOR tapl-tplnr,          “Functional Location
+s_equnr FOR eapl-equnr,          “Equipment
+s_plnnr FOR plko-plnnr,          “Group
+s_plnal FOR plko-plnal.          “Group Counter
+
+PARAMETERS:     p_datuv TYPE plko-datuv OBLIGATORY DEFAULT sy-datum. “Key Date
+
+SELECTION-SCREEN END OF BLOCK b2.
+
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE TEXT-003.
+
+“— Header Data
+SELECT-OPTIONS: s_ktext FOR plko-ktext,          “Header Text
+s_werks FOR plko-werks,          “Planning Plant
+s_arbplh FOR crhd-arbpl,         “Work Center (Header)
+s_vagrp FOR plko-vagrp,          “Planner Group
+s_verwe FOR plko-verwe,          “Usage
+s_statu FOR plko-statu,          “Status
+s_anlzuh FOR plko-anlzu,         “System Condition
+s_strat FOR plko-strat,          “Maintenance Strategy
+s_istruh FOR plko-istru,         “Assembly
+s_adpsp FOR plko-adpsp,          “Reference Element PM/PS
+s_slwbez FOR plko-slwbez,        “Inspection Points
+s_andat FOR plko-andat,          “Created On
+s_annam FOR plko-annam,          “Created By
+s_aedat FOR plko-aedat,          “Changed On
+s_aenam FOR plko-aenam.          “Changed By
+
+SELECTION-SCREEN END OF BLOCK b3.
+
+SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE TEXT-004.
+
+“— Operation Data
+SELECT-OPTIONS: s_vornr FOR plpo-vornr,          “Operation
+s_ltxa1 FOR plpo-ltxa1,          “Operation Short Text
+s_ltext TYPE c LENGTH 132,        “Operation Long Text (free text search)
+s_steus FOR plpo-steus,          “Control Key
+s_arbplo FOR crhd-arbpl,         “Work Center (Operation)
+s_ktsch FOR plpo-ktsch,          “Standard Text Key
+s_exstge FOR plpo-execution_stage, “Execution Stage
+s_anlzuo FOR plpo-anlzu,         “System Condition (Op)
+s_istruo FOR plpo-istru,         “Assembly (Op)
+s_larnt FOR plpo-larnt,          “Activity Type
+s_ebeln FOR plpo-ebeln,          “Outline Agreement
+s_ebelp FOR plpo-ebelp,          “Outline Agreement Item
+s_lifnr FOR plpo-lifnr.          “Supplier
+
+“— Long Text Indicator for Operations
+PARAMETERS: p_ltxtop AS CHECKBOX.                 “Long Text Indicator
+
+SELECTION-SCREEN END OF BLOCK b4.
+
+SELECTION-SCREEN BEGIN OF BLOCK b5 WITH FRAME TITLE TEXT-005.
+
+“— Characteristic Data
+SELECT-OPTIONS: s_merknr FOR plmk-merknr,        “Number
+s_verwmk FOR plmk-verwmerkm,     “Master Inspection Characteristic
+s_kurzxt FOR plmk-kurztext,      “Characteristic Short Text
+s_cltext TYPE c LENGTH 132,       “Characteristic Long Text (free text)
+s_tolun  FOR plmk-toleranzun,    “Lower Specific Limit
+s_tolob  FOR plmk-toleranzob,    “Upper Specific Limit
+s_metho  FOR plmk-methode,       “Inspection Method
+s_stichp FOR plmk-stichprver.    “Sampling Procedure
+
+“— Long Text Indicator for Characteristics
+PARAMETERS: p_ltxtch AS CHECKBOX.                 “Long Text Indicator
+
+SELECTION-SCREEN END OF BLOCK b5.
+
+SELECTION-SCREEN BEGIN OF BLOCK b6 WITH FRAME TITLE TEXT-006.
+
+“— Detailed View Options
+PARAMETERS: p_shchar TYPE c LENGTH 3 AS LISTBOX VISIBLE LENGTH 5
+DEFAULT ‘NO’ USER-COMMAND uchar,
+p_shltxt TYPE c LENGTH 3 AS LISTBOX VISIBLE LENGTH 5
+DEFAULT ‘NO’ USER-COMMAND ultxt.
+
+SELECTION-SCREEN END OF BLOCK b6.
+
+*–––––––––––––––––––––––––––––––––––*
+
+- Selection Texts
+  *–––––––––––––––––––––––––––––––––––*
+- TEXT-001: Task List Type
+- TEXT-t01: Task List Type (at least one required)
+- TEXT-002: Task List Selection
+- TEXT-003: Header Data
+- TEXT-004: Operation Data
+- TEXT-005: Characteristic Data
+- TEXT-006: Detailed View
