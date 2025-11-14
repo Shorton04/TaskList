@@ -111,7 +111,6 @@ valid_to      TYPE plko-valid_to,       “Valid To
      ci_process_char     TYPE qkzprocchar,   "CI: Process Characteristic
 
      "=== Technical Fields ===
-     objnr         TYPE plko-objnr,          "Object Number
      arbid_h       TYPE plko-arbid,          "Object ID (Header)
      arbty         TYPE plko-arbty,          "Object Type (Header)
      arbid_o       TYPE plpo-arbid,          "Object ID (Operation)
