@@ -1,78 +1,31 @@
-*&———————————————————————*
-*& Report ZRE_A2R_VALID_TASKLIST
-*&———————————————————————*
+*&---------------------------------------------------------------------*
+*& Report  ZRE_A2R_VALID_TASKLIST
+*&---------------------------------------------------------------------*
+*& Maintenance Task List Validation Report
+*&---------------------------------------------------------------------*
+REPORT zre_a2r_valid_tasklist MESSAGE-ID za2r_tasklist.
 
-- ====================================================================
-- RICEFW ID………: [To be assigned]
-- TR Number………: [To be assigned]
-- Version………..: 1.0
-- Program………..: ZRE_A2R_VALID_TASKLIST
-- Transaction Code..: [To be assigned]
-- Author…………: [Your ID]
-- Date…………..: [Current Date]
-- -----
-- Description…….: PM Task List with Operations, Characteristics
-- ```
-                  and Long Text Validation Report
-  ```
-- -----
-- Modification list.:
-- Date      Author    TR Number          Description
-- [Date]    [ID]      [TR]              Initialized program.
-- 
-- ====================================================================
-  REPORT zre_a2r_valid_tasklist MESSAGE-ID za2r_tasklist.
-
-*–––––––––––––––––––––––––––––––––––*
-
-- ```
-                        Includes                                   *
-  ```
-
-*–––––––––––––––––––––––––––––––––––*
+* Includes
 INCLUDE zre_a2r_valid_tasklist_top.
 INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
 
-*–––––––––––––––––––––––––––––––––––*
-
-- ```
-                  AT SELECTION-SCREEN OUTPUT                       *
-  ```
-
-*–––––––––––––––––––––––––––––––––––*
-AT SELECTION-SCREEN OUTPUT.
-PERFORM set_dropdown_values.
-PERFORM validate_tasklist_type.
-
-*–––––––––––––––––––––––––––––––––––*
-
-- ```
-                  AT SELECTION-SCREEN                              *
-  ```
-
-*–––––––––––––––––––––––––––––––––––*
+*---------------------------------------------------------------*
+* AT SELECTION-SCREEN                                            *
+*---------------------------------------------------------------*
 AT SELECTION-SCREEN.
-PERFORM validate_key_date.
+  PERFORM validate_selection.
 
-*–––––––––––––––––––––––––––––––––––*
+AT SELECTION-SCREEN OUTPUT.
+  " If you want dynamic enabling/disabling, do it here
+  " e.g. disable 'Show Long Text' checkbox when 'Show Characteristics' not set
+  " or vice versa – as per FDS behavior, if needed.
 
-- ```
-                  START-OF-SELECTION                               *
-  ```
-
-*–––––––––––––––––––––––––––––––––––*
+*---------------------------------------------------------------*
+* START-OF-SELECTION                                            *
+*---------------------------------------------------------------*
 START-OF-SELECTION.
 
-PERFORM get_tasklist_data.
-PERFORM prepare_items.
-PERFORM display_salv_table.
-
-*–––––––––––––––––––––––––––––––––––*
-
-- ```
-                  END-OF-SELECTION                                 *
-  ```
-
-*–––––––––––––––––––––––––––––––––––*
-END-OF-SELECTION.
+  PERFORM get_data.            " Reads PLKO/PLPO/PLMK and builds GT_TASK
+  PERFORM build_display.       " Builds GT_DISPLAY according to p_showc/p_showl
+  PERFORM display_alv.         " Creates SALV and shows ALV
