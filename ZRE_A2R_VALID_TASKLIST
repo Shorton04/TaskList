@@ -1,7 +1,7 @@
 *&---------------------------------------------------------------------*
 *& Report  ZRE_A2R_VALID_TASKLIST
 *&---------------------------------------------------------------------*
-*& Task List Validation Report (per FDS "TaskList.pdf")
+*& Maintenance Task List Validation Report (per TaskList FDS)
 *&---------------------------------------------------------------------*
 REPORT zre_a2r_valid_tasklist.
 
@@ -10,7 +10,7 @@ INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
 
 *---------------------------------------------------------------------*
-*  SELECTION-SCREEN EVENTS
+* SELECTION-SCREEN EVENTS
 *---------------------------------------------------------------------*
 AT SELECTION-SCREEN.
   PERFORM validate_selection.
@@ -19,10 +19,29 @@ AT SELECTION-SCREEN OUTPUT.
   PERFORM adjust_dynpro.
 
 *---------------------------------------------------------------------*
-*  START-OF-SELECTION
+* START-OF-SELECTION
 *---------------------------------------------------------------------*
 START-OF-SELECTION.
 
   PERFORM get_data.
-  PERFORM build_display_initial.
+  IF gt_base IS INITIAL.
+    MESSAGE s398(00) WITH 'No data found for entered selection'.
+    EXIT.
+  ENDIF.
+
+  IF p_showc = 'X'.
+    PERFORM build_display_with_char.
+  ELSE.
+    PERFORM build_display_initial.
+  ENDIF.
+
+  IF p_showl = 'X'.
+    gv_show_ltxt = abap_true.
+    IF gv_show_char = abap_true.
+      PERFORM add_longtext_for_chars.
+    ELSE.
+      PERFORM add_longtext_for_ops.
+    ENDIF.
+  ENDIF.
+
   PERFORM display_alv.
