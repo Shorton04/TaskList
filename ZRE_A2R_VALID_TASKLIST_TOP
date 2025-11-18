@@ -38,6 +38,7 @@ TYPES: BEGIN OF ty_task_base,
          ltxa1     TYPE plpo-ltxa1,
          steus     TYPE plpo-steus,
          arbpl_o   TYPE crhd-arbpl,
+         werks_o   TYPE crhd-werks,        " <-- added op. plant to match so_werop
          ktsch     TYPE plpo-ktsch,
          arbei     TYPE plpo-arbei,
          arbeh     TYPE plpo-arbeh,
@@ -68,7 +69,7 @@ TYPES: BEGIN OF ty_task_base,
          toleranzob  TYPE plmk-toleranzob,   " Upper limit
          pruefeinh   TYPE plmk-pruefeinh,    " Base sample quantity
          stichprver  TYPE plmk-stichprver,   " Sampling procedure
-         pmethode     TYPE plmk-pmethode,      " Inspection method
+         pmethode    TYPE plmk-pmethode,     " Inspection method (correct)
          katalgart1  TYPE plmk-katalgart1,   " Catalog type
          auswmenge1  TYPE plmk-auswmenge1,   " Code grp / Sel.set
          steuerkz    TYPE plmk-steuerkz,     " Control indicators
@@ -109,6 +110,7 @@ TYPES: BEGIN OF ty_task_disp,
          ltxa1     TYPE plpo-ltxa1,
          steus     TYPE plpo-steus,
          arbpl_o   TYPE crhd-arbpl,
+         werks_o   TYPE crhd-werks,        " keep in display as well
          ktsch     TYPE plpo-ktsch,
          arbei     TYPE plpo-arbei,
          arbeh     TYPE plpo-arbeh,
@@ -139,7 +141,7 @@ TYPES: BEGIN OF ty_task_disp,
          toleranzob  TYPE plmk-toleranzob,
          pruefeinh   TYPE plmk-pruefeinh,
          stichprver  TYPE plmk-stichprver,
-         pmethode     TYPE plmk-pmethode,
+         pmethode    TYPE plmk-pmethode,
          katalgart1  TYPE plmk-katalgart1,
          auswmenge1  TYPE plmk-auswmenge1,
          steuerkz    TYPE plmk-steuerkz,
