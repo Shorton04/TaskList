@@ -38,7 +38,7 @@ TYPES: BEGIN OF ty_task_base,
          ltxa1     TYPE plpo-ltxa1,
          steus     TYPE plpo-steus,
          arbpl_o   TYPE crhd-arbpl,
-         werks_o   TYPE crhd-werks,        " <-- added op. plant to match so_werop
+         werks_o   TYPE crhd-werks,
          ktsch     TYPE plpo-ktsch,
          arbei     TYPE plpo-arbei,
          arbeh     TYPE plpo-arbeh,
@@ -61,19 +61,19 @@ TYPES: BEGIN OF ty_task_base,
          loekz_o   TYPE plpo-loekz,
 
          "------------- Characteristic (5.3.3, 6.x) ----
-         merknr      TYPE plmk-merknr,       " Number
-         verwmerkm   TYPE plmk-verwmerkm,    " MIC
-         kurzt_char  TYPE plmk-kurztext,     " Short text
-         ltextkz     TYPE plmk-ltextkz,      " Long text exists
-         toleranzun  TYPE plmk-toleranzun,   " Lower limit
-         toleranzob  TYPE plmk-toleranzob,   " Upper limit
-         pruefeinh   TYPE plmk-pruefeinh,    " Base sample quantity
-         stichprver  TYPE plmk-stichprver,   " Sampling procedure
-         pmethode    TYPE plmk-pmethode,     " Inspection method (correct)
-         katalgart1  TYPE plmk-katalgart1,   " Catalog type
-         auswmenge1  TYPE plmk-auswmenge1,   " Code grp / Sel.set
-         steuerkz    TYPE plmk-steuerkz,     " Control indicators
-         loekz_c     TYPE plmk-loekz,        " Deletion flag (char)
+         merknr      TYPE plmk-merknr,
+         verwmerkm   TYPE plmk-verwmerkm,
+         kurzt_char  TYPE plmk-kurztext,
+         ltextkz     TYPE plmk-ltextkz,
+         toleranzun  TYPE plmk-toleranzun,
+         toleranzob  TYPE plmk-toleranzob,
+         pruefeinh   TYPE plmk-pruefeinh,
+         stichprver  TYPE plmk-stichprver,
+         pmethode    TYPE plmk-pmethode,
+         katalgart1  TYPE plmk-katalgart1,
+         auswmenge1  TYPE plmk-auswmenge1,
+         steuerkz    TYPE plmk-steuerkz,
+         loekz_c     TYPE plmk-loekz,
 
        END OF ty_task_base.
 
@@ -110,7 +110,7 @@ TYPES: BEGIN OF ty_task_disp,
          ltxa1     TYPE plpo-ltxa1,
          steus     TYPE plpo-steus,
          arbpl_o   TYPE crhd-arbpl,
-         werks_o   TYPE crhd-werks,        " keep in display as well
+         werks_o   TYPE crhd-werks,
          ktsch     TYPE plpo-ktsch,
          arbei     TYPE plpo-arbei,
          arbeh     TYPE plpo-arbeh,
@@ -147,7 +147,7 @@ TYPES: BEGIN OF ty_task_disp,
          steuerkz    TYPE plmk-steuerkz,
          loekz_c     TYPE plmk-loekz,
 
-         " CI flags (derived from STEUERKZ)
+         " CI flags (from STEUERKZ)
          ci_quant          TYPE c LENGTH 1,
          ci_meas_required  TYPE c LENGTH 1,
          ci_attr_ref       TYPE c LENGTH 1,
@@ -161,8 +161,8 @@ TYPES: BEGIN OF ty_task_disp,
          ci_doc_req        TYPE c LENGTH 1,
          ci_category       TYPE c LENGTH 1,
 
-         " Long text line
-         row_kind   TYPE c LENGTH 1,          " 'O','C','L'
+         " Long text
+         row_kind   TYPE c LENGTH 1,
          tdline     TYPE tline-tdline,
          tdformat   TYPE tline-tdformat,
 
@@ -201,7 +201,6 @@ DATA: gv_show_char TYPE abap_bool,
 CONSTANTS: gc_true  TYPE abap_bool VALUE abap_true,
            gc_false TYPE abap_bool VALUE abap_false.
 
-" SALV custom function codes (toolbar buttons)
 CONSTANTS:
   gc_func_char TYPE salv_de_function VALUE 'ZCHAR',
   gc_func_ltxt TYPE salv_de_function VALUE 'ZLTXT'.
