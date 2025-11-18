@@ -1,31 +1,28 @@
 *&---------------------------------------------------------------------*
 *& Report  ZRE_A2R_VALID_TASKLIST
 *&---------------------------------------------------------------------*
-*& Maintenance Task List Validation Report
+*& Task List Validation Report (per FDS "TaskList.pdf")
 *&---------------------------------------------------------------------*
-REPORT zre_a2r_valid_tasklist MESSAGE-ID za2r_tasklist.
+REPORT zre_a2r_valid_tasklist.
 
-* Includes
 INCLUDE zre_a2r_valid_tasklist_top.
 INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
 
-*---------------------------------------------------------------*
-* AT SELECTION-SCREEN                                            *
-*---------------------------------------------------------------*
+*---------------------------------------------------------------------*
+*  SELECTION-SCREEN EVENTS
+*---------------------------------------------------------------------*
 AT SELECTION-SCREEN.
   PERFORM validate_selection.
 
 AT SELECTION-SCREEN OUTPUT.
-  " If you want dynamic enabling/disabling, do it here
-  " e.g. disable 'Show Long Text' checkbox when 'Show Characteristics' not set
-  " or vice versa – as per FDS behavior, if needed.
+  PERFORM adjust_dynpro.
 
-*---------------------------------------------------------------*
-* START-OF-SELECTION                                            *
-*---------------------------------------------------------------*
+*---------------------------------------------------------------------*
+*  START-OF-SELECTION
+*---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  PERFORM get_data.            " Reads PLKO/PLPO/PLMK and builds GT_TASK
-  PERFORM build_display.       " Builds GT_DISPLAY according to p_showc/p_showl
-  PERFORM display_alv.         " Creates SALV and shows ALV
+  PERFORM get_data.
+  PERFORM build_display_initial.
+  PERFORM display_alv.
