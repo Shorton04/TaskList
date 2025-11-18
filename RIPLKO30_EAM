@@ -1,0 +1,365 @@
+*&---------------------------------------------------------------------*
+*& Report RIPLKO30_EAM
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT riplko30_eam.
+
+TABLES:
+  dieapl, diplko, iflos, plko, plpo, rihplko.
+DATA:
+  go_report TYPE REF TO cl_eam_tlwo_report,
+  go_model  TYPE REF TO cl_eam_tlwo_model,
+  go_view   TYPE REF TO cl_eam_tlwo_view,
+  gv_indicator TYPE xfeld.
+
+* Selection Screen
+INCLUDE riplko30_eam_sel.
+INCLUDE RIPLKO30_EAM_MOD.
+
+* --------------------------------------------------------------------------------
+INITIALIZATION.
+* --------------------------------------------------------------------------------
+  DATA: switch_active  TYPE xfeld,
+        lt_sel_options TYPE TABLE OF rsparams,
+        o_ref          TYPE REF TO cx_eam_tlwo_error,
+        lv_aktyp(2)    TYPE c,
+        lv_type_ind    TYPE xfeld.
+
+  "siwtch check
+  switch_active = cl_eamcc4_sw_ia30=>eam_sfws_cc4_ia30( ).
+  IF switch_active NE 'X'.
+    gv_indicator = 'X'.
+    LEAVE TO SCREEN 1001.
+  ENDIF.
+
+  "authorization check based on tcode
+  CASE sy-tcode.
+    WHEN 'IA38'.
+      lv_aktyp = '02'.
+    WHEN 'IA39'.
+      lv_aktyp = '03'.
+    WHEN OTHERS.
+      lv_aktyp = '03'.
+  ENDCASE.
+
+  AUTHORITY-CHECK OBJECT 'I_ROUT'
+                          ID 'ACTVT' FIELD lv_aktyp.
+  IF sy-subrc IS NOT INITIAL.
+    gv_indicator = ' '.
+    LEAVE TO SCREEN 1001.
+  ENDIF.
+
+"get the instances of the global classes
+  go_report = cl_eam_tlwo_report=>get_instance( ).
+  go_model = cl_eam_tlwo_model=>get_instance( ).
+  go_view = cl_eam_tlwo_view=>get_instance( ).
+
+  go_view->set_type_related_info( iv_tcode = sy-tcode ).
+
+  "set the title of the report
+  lv_type_ind = COND #( WHEN lv_aktyp EQ '02' THEN 'X' ELSE ' ' ).
+  go_report->set_title( iv_type = lv_type_ind ).
+
+  "load initial values to the select options buffer table
+  TRY.
+      go_report->gather_sel_options(
+        CHANGING
+           ct_sel_options = lt_sel_options
+         ).
+    CATCH cx_eam_tlwo_error INTO o_ref.
+      MESSAGE o_ref->get_text( ) TYPE o_ref->MSGTY.
+  ENDTRY.
+
+  go_model->set_sel_options(
+    EXPORTING
+      it_sel_options = lt_sel_options
+  ).
+  IF p_var IS INITIAL.
+    go_view->get_default_layout(
+      CHANGING
+        cv_layout = p_var
+    ).
+  ENDIF.
+
+  "handle default variants
+  go_view->set_default_variant( ).
+
+* --------------------------------------------------------------------------------
+AT SELECTION-SCREEN.
+* --------------------------------------------------------------------------------
+  DATA: lv_exist TYPE i.
+  TRY.
+      go_report->gather_sel_options(
+      CHANGING
+         ct_sel_options = lt_sel_options
+
+       ).
+    CATCH cx_eam_tlwo_error INTO o_ref.
+      MESSAGE o_ref->get_text( ) TYPE o_ref->MSGTY.
+  ENDTRY.
+  go_model->set_sel_options(
+  EXPORTING
+    it_sel_options = lt_sel_options
+   ).
+  go_model->select_objects_from_class(
+    CHANGING
+      ct_equnr = so_equnr[]
+      ct_strno = so_strno[]
+  ).
+  IF p_var IS INITIAL.
+    go_view->get_default_layout(
+      CHANGING
+        cv_layout = p_var
+    ).
+  ENDIF.
+
+  go_view->check_layout_existence(
+    EXPORTING
+      iv_var    = p_var
+    IMPORTING
+      ev_exist = lv_exist
+  ).
+  IF lv_exist <> 0.
+    MESSAGE e017(0k).
+  ENDIF.
+
+* --------------------------------------------------------------------------------
+AT SELECTION-SCREEN OUTPUT.
+* --------------------------------------------------------------------------------
+  DATA: ls_screen TYPE screen.
+
+  IF p_equi EQ 'X'.
+    CLEAR ls_screen.
+    LOOP AT SCREEN INTO ls_screen.
+      IF ls_screen-group1 EQ 'EBT'.
+        ls_screen-input = '1'.
+        MODIFY SCREEN FROM ls_screen.
+      ENDIF.
+    ENDLOOP.
+  ELSE.
+    CLEAR ls_screen.
+    LOOP AT SCREEN INTO ls_screen.
+      IF ls_screen-group1 EQ 'EBT'.
+        ls_screen-input = '0'.
+        MODIFY SCREEN FROM ls_screen.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  IF p_iflo EQ 'X'.
+    CLEAR ls_screen.
+    LOOP AT SCREEN INTO ls_screen.
+      IF ls_screen-group1 EQ 'FBT'.
+        ls_screen-input = '1'.
+        MODIFY SCREEN FROM ls_screen.
+      ENDIF.
+    ENDLOOP.
+  ELSE.
+    CLEAR ls_screen.
+    LOOP AT SCREEN INTO ls_screen.
+      IF ls_screen-group1 EQ 'FBT'.
+        ls_screen-input = 0.
+        MODIFY SCREEN FROM ls_screen.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  IF p_opero EQ 'X'.
+    CLEAR ls_screen.
+    "remove the operation selection criteria
+    LOOP AT SCREEN INTO ls_screen.
+      IF ls_screen-group1 EQ 'OPR'.
+        ls_screen-active = '0'.
+        MODIFY SCREEN FROM ls_screen.
+      ENDIF.
+    ENDLOOP.
+    "clear the hidden fields
+    CLEAR: so_vornr[], so_uvorn[], so_ltxa1[],
+           so_oprwc[], so_wc_op[], so_steus[],
+           so_tplnr[], so_equi[], so_istr[],
+           so_ktsch[], so_anlz[], so_ebeln[],
+           so_ebelp[].
+  ELSE.
+    CLEAR ls_screen.
+    "make every field visible
+    LOOP AT SCREEN INTO ls_screen.
+      ls_screen-invisible = '0'.
+      MODIFY SCREEN FROM ls_screen.
+    ENDLOOP.
+
+  ENDIF.
+
+* --------------------------------------------------------------------------------
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_var.
+* --------------------------------------------------------------------------------
+  go_view->set_layout(
+    CHANGING
+      cv_layout = p_var
+  ).
+* --------------------------------------------------------------------------------
+START-OF-SELECTION.
+* --------------------------------------------------------------------------------
+  "if no keydate is provided, use current date
+  IF p_datuv IS INITIAL.
+    p_datuv = sy-datum.
+  ENDIF.
+
+  "retrieve the default layout, if there is one
+  IF p_var IS INITIAL.
+    go_view->get_default_layout(
+      CHANGING
+        cv_layout = p_var
+    ).
+  ENDIF.
+
+  "no default layout, make a layout manually
+  IF p_var IS INITIAL.
+    go_view->set_columns_visibility( ).
+  ENDIF.
+  go_view->mo_alv_layout->set_initial_layout( value = p_var ).
+
+  "selection screen information collecting
+  TRY.
+      go_report->gather_sel_options(
+      CHANGING
+         ct_sel_options = lt_sel_options
+
+       ).
+    CATCH cx_eam_tlwo_error INTO o_ref.
+      MESSAGE o_ref->get_text( ) TYPE o_ref->MSGTY.
+  ENDTRY.
+  go_model->set_sel_options(
+  EXPORTING
+    it_sel_options = lt_sel_options
+   ).
+
+  go_report->main(
+    EXPORTING
+      io_model = go_model
+      io_view = go_view
+   ).
+
+
+
+*&---------------------------------------------------------------------*
+*& Include          RIPLKO30_EAM_SEL
+*&---------------------------------------------------------------------*
+
+* block1 - Task List Type
+SELECTION-SCREEN BEGIN OF BLOCK block1 WITH FRAME TITLE TEXT-b01.
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS p_iflo USER-COMMAND CBOX AS CHECKBOX DEFAULT 'X'.
+    SELECTION-SCREEN COMMENT 3(25) TEXT-t01 FOR FIELD p_iflo. " FunctLoc. Task List
+    PARAMETERS p_equi USER-COMMAND CBOX AS CHECKBOX DEFAULT 'X'.
+    SELECTION-SCREEN COMMENT 31(25) TEXT-t02 FOR FIELD p_equi. " Equip.Task List
+    PARAMETERS p_ihan AS CHECKBOX DEFAULT 'X'.
+    SELECTION-SCREEN COMMENT 59(20) TEXT-t03 FOR FIELD p_ihan. " Gen.Task List
+  SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN END OF BLOCK block1.
+
+* block2 - Task List Selection
+SELECTION-SCREEN BEGIN OF BLOCK block2 WITH FRAME TITLE TEXT-b02.
+  SELECT-OPTIONS:
+    so_strno  FOR  iflos-strno  MATCHCODE OBJECT iflm, " Functional Location
+    so_tpcnv  FOR  iflos-tplnr NO-DISPLAY,
+    so_equnr  FOR  dieapl-equnr  MATCHCODE OBJECT equi, " Equipment
+    so_plnnr  FOR  diplko-plnnr  MATCHCODE OBJECT plks, " Group
+    so_plnal  FOR  diplko-plnal. " Group Counter
+    "so_extid  FOR diplko-tl_extid. " External Ident.
+
+  PARAMETERS:
+    p_datuv  TYPE rc271-sttag DEFAULT sy-datum. " Key Date
+
+  SELECTION-SCREEN SKIP.
+  SELECTION-SCREEN COMMENT 01(25) TEXT-k00.
+  SELECTION-SCREEN PUSHBUTTON 33(18) TEXT-k01 USER-COMMAND tpcl MODIF ID FBT. " FunctLoc
+  SELECTION-SCREEN PUSHBUTTON 58(18) TEXT-k02 USER-COMMAND eqcl MODIF ID EBT. " Equipment
+
+* Operation
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 1(31) TEXT-n00 MODIF ID nor.
+
+    PARAMETERS p_operwo TYPE EAM_CC_RAD USER-COMMAND RBTNCHANGED RADIOBUTTON GROUP nore DEFAULT 'X' MODIF ID nor.
+    SELECTION-SCREEN COMMENT 35(22) TEXT-a01 FOR FIELD p_operwo MODIF ID nor.
+
+    PARAMETERS p_operw TYPE EAM_CC_RAD RADIOBUTTON GROUP nore MODIF ID nor .
+    SELECTION-SCREEN COMMENT 60(08) TEXT-a02 FOR FIELD p_operw MODIF ID nor.
+
+    PARAMETERS p_opero TYPE EAM_CC_RAD RADIOBUTTON GROUP nore MODIF ID nor .
+    SELECTION-SCREEN COMMENT 71(09) TEXT-a03 FOR FIELD p_opero MODIF ID nor.
+  SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK block2.
+
+* block3 - Operation
+SELECTION-SCREEN BEGIN OF BLOCK block3 WITH FRAME TITLE TEXT-b03.
+  SELECT-OPTIONS:
+     so_vornr FOR plpo-vornr MODIF ID OPR, " Operation number
+     so_uvorn FOR plpo-vornr MODIF ID OPR,  " search help for suboperation
+     so_ltxa1 FOR plpo-ltxa1 MODIF ID OPR, " Operation short text
+     so_oprwc FOR rihplko-arbpl MATCHCODE OBJECT cram MODIF ID OPR,"so_arbid FOR plpo-arbid, " Operation WorkCenter
+     so_wc_op FOR plpo-werks MODIF ID OPR, " Operation Plant
+     so_steus FOR plpo-steus MODIF ID OPR, " Control Key
+     so_tplnr FOR iflos-strno MODIF ID OPR MATCHCODE OBJECT iflm, " Operation Func. Loc.
+     so_equi  FOR plpo-equnr MODIF ID OPR, " Operation Equipment
+     so_istr  FOR plpo-istru MODIF ID OPR, " Operation assembly
+     so_ktsch FOR plpo-ktsch MODIF ID OPR, " Operation standard text key
+     so_anlz  FOR plpo-anlzu MODIF ID OPR, " Operation system condition
+     so_ebeln FOR plpo-ebeln MODIF ID OPR, " Purchasing Document Number
+     so_ebelp FOR plpo-ebelp MODIF ID OPR. " Item Number of Purchasing Document
+
+
+SELECTION-SCREEN END OF BLOCK block3.
+
+* block4 - Header Data
+SELECTION-SCREEN BEGIN OF BLOCK block4 WITH FRAME TITLE TEXT-b04.
+  SELECT-OPTIONS:
+    so_verwe      FOR       plko-verwe, " TL usage
+    so_werks      FOR       plko-werks, " Plant
+    so_arbpl      FOR    rihplko-arbpl      MATCHCODE OBJECT cram, " work center
+    so_statu      FOR       plko-statu, " Status
+    so_vagrp      FOR       plko-vagrp, " Responsible Planner Group or Department
+    so_strat      FOR       plko-strat, " Maintenance Strategy
+    so_istru      FOR       plko-istru      MATCHCODE OBJECT mat1, " Assembly
+    so_ktext      FOR       plko-ktext, " Description
+    so_anlzu      FOR       plko-anlzu, " System Condition
+    so_delkz      FOR       plko-delkz, " Deletion flag
+    so_adpsp      FOR       plko-adpsp. " Reference Element PM/PS
+
+
+SELECTION-SCREEN END OF BLOCK block4.
+
+* block5 - Admin. Data
+SELECTION-SCREEN BEGIN OF BLOCK block5 WITH FRAME TITLE TEXT-b05.
+  SELECT-OPTIONS:
+    so_aennr      FOR       plko-aennr,  " change number
+    so_andat      FOR       plko-andat, " Created on
+    so_annam      FOR       plko-annam      MATCHCODE OBJECT user_addr, " Created by
+    so_aedat      FOR       plko-aedat, " Last Changed On
+    so_aenam      FOR       plko-aenam      MATCHCODE OBJECT user_addr. " Changed by
+
+SELECTION-SCREEN END OF BLOCK block5.
+
+* block6 - Variant
+SELECTION-SCREEN BEGIN OF BLOCK block6 WITH FRAME TITLE TEXT-son.
+  PARAMETERS:
+    p_var TYPE disvariant-variant.
+
+SELECTION-SCREEN END OF BLOCK block6.
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Include          RIPLKO30_EAM_MOD
+*&---------------------------------------------------------------------*
+
+MODULE sw_missing OUTPUT.
+  CASE gv_indicator.
+    WHEN 'X'.
+      MESSAGE e555(ci).
+    WHEN ' '.
+      MESSAGE e559(ci).
+  ENDCASE.
+ENDMODULE.
