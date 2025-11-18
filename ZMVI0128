@@ -1,0 +1,157 @@
+*&---------------------------------------------------------------------*
+*& Report  ZMVI0128
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT zmvi0128.
+
+TABLES: dieapl, iflos, diplko, plko,crhd.
+
+SELECTION-SCREEN : BEGIN OF SCREEN 100 AS SUBSCREEN.
+SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE text-b00.
+PARAMETERS: p_ichar   TYPE flag AS CHECKBOX.
+SELECTION-SCREEN END OF BLOCK b0.
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-b01.
+SELECT-OPTIONS:
+  r_plnty  FOR  plko-plnty NO INTERVALS OBLIGATORY,
+  r_tplnr  FOR  dieapl-tplnr  NO-DISPLAY,
+  r_strno  FOR  dieapl-tplnr,
+  r_equnr  FOR  dieapl-equnr,
+  r_plnnr  FOR  dieapl-plnnr,
+  r_plnal  FOR  diplko-plnal,
+  r_verwe  FOR  plko-verwe,
+  r_werks  FOR  plko-werks,
+  r_arbpl  FOR  crhd-arbpl.
+*SELECTION-SCREEN:BEGIN OF BLOCK b2 WITH FRAME TITLE text-002.
+PARAMETER:v_flag TYPE flag  NO-DISPLAY ,"as checkbox USER-COMMAND sel ,
+          v_file TYPE localfile NO-DISPLAY.
+
+SELECTION-SCREEN END OF BLOCK b1.
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE text-b03.
+PARAMETERS: p_datuv   TYPE rc271-sttag  DEFAULT sy-datum.
+
+SELECTION-SCREEN END OF BLOCK b3.
+
+
+SELECTION-SCREEN : END OF SCREEN 100.
+
+DATA: go_controller     TYPE REF TO zcl_rfw_controller,
+      go_cbc_model_view TYPE REF TO zcl_tasklist_longtext,
+      gs_parameter      TYPE zcl_tasklist_longtext=>ts_parameter.
+
+
+INITIALIZATION.
+  CREATE OBJECT go_cbc_model_view.
+  CALL FUNCTION 'ZRFW_CONTROLLER_M01_V01_L02'
+    EXPORTING
+      iv_parameter_struct_name = 'ZCL_TASKLIST_LONGTEXT=>TS_PARAMETER'
+      iv_result_struct_name    = 'ZCL_TASKLIST_LONGTEXT=>TS_RESULT'
+      io_view_report           = go_cbc_model_view
+      io_view_alv              = go_cbc_model_view
+      io_model_selection       = go_cbc_model_view
+      iv_report_id             = sy-repid
+      iv_parameter_subscr_id   = '0100'
+    IMPORTING
+      eo_controller            = go_controller.
+  ASSERT go_controller IS BOUND.
+
+* dynpro call backs
+AT SELECTION-SCREEN OUTPUT.
+
+*Modify Screen based on selection
+**  PERFORM modify_screen.
+  IF go_controller IS BOUND.
+    go_controller->copy_option_to_parameter( CHANGING cs_parameter = gs_parameter ).
+    go_controller->on_selection_screen_output( CHANGING cs_parameter = gs_parameter ).
+    go_controller->copy_parameter_to_option( EXPORTING is_parameter = gs_parameter ).
+  ENDIF.
+
+AT SELECTION-SCREEN.
+***Validate Screen based on selection
+**  PERFORM validate_screen.
+
+  IF go_controller IS BOUND.
+    go_controller->copy_option_to_parameter( CHANGING cs_parameter = gs_parameter ).
+    go_controller->on_selection_screen( CHANGING cs_parameter = gs_parameter ).
+    go_controller->copy_parameter_to_option( EXPORTING is_parameter = gs_parameter ).
+  ENDIF.
+
+***AT SELECTION-SCREEN ON VALUE-REQUEST FOR v_file.
+****   Perform to Provide Input help for the File
+***  PERFORM get_file.
+
+**&---------------------------------------------------------------------*
+**&      Form  MODIFY_SCREEN
+**&---------------------------------------------------------------------*
+**       text
+**----------------------------------------------------------------------*
+**  -->  p1        text
+**  <--  p2        text
+**----------------------------------------------------------------------*
+*FORM modify_screen .
+*
+*  LOOP AT SCREEN.
+*    IF screen-name CP '*V_FILE*'.
+*      IF v_flag IS INITIAL.
+*        screen-active = 0.
+*      ENDIF.
+*    ENDIF.
+*    MODIFY SCREEN.
+*  ENDLOOP.
+*
+*
+*ENDFORM.
+**&---------------------------------------------------------------------*
+**&      Form  VALIDATE_SCREEN
+**&---------------------------------------------------------------------*
+**       text
+**----------------------------------------------------------------------*
+**  -->  p1        text
+**  <--  p2        text
+**----------------------------------------------------------------------*
+*FORM validate_screen .
+*
+*  IF sy-ucomm = 'EXECUTE'.
+**Filename
+*    IF NOT v_flag IS INITIAL AND v_file IS INITIAL.
+*      MESSAGE text-004 TYPE 'E'.
+*    ENDIF.
+*  ENDIF.
+*ENDFORM.
+**&---------------------------------------------------------------------*
+**&      Form  GET_FILE
+**&---------------------------------------------------------------------*
+**       text
+**----------------------------------------------------------------------*
+**  -->  p1        text
+**  <--  p2        text
+**----------------------------------------------------------------------*
+*FORM get_file .
+* DATA:lt_file TYPE filetable,
+*       lv_rc   TYPE i.
+*
+*  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+*    EXPORTING
+*      default_extension       = 'CSV'
+*    CHANGING
+*      file_table              = lt_file
+*      rc                      = lv_rc
+*    EXCEPTIONS
+*      file_open_dialog_failed = 1
+*      cntl_error              = 2
+*      error_no_gui            = 3
+*      not_supported_by_gui    = 4
+*      OTHERS                  = 5.
+*  IF sy-subrc NE 0.
+*    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+*               WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+*  ENDIF.
+*
+*  READ TABLE lt_file INTO DATA(ls_file) INDEX 1.
+*  IF sy-subrc = 0.
+*    v_file = ls_file-filename.
+*  ENDIF.
+**ENDFORM.
