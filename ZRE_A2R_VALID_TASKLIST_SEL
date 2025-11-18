@@ -61,7 +61,7 @@ SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE TEXT-003.
     so_lifnr FOR plpo-lifnr,
     so_loeko FOR plpo-loekz.
 
-  "Free text search for operation long text (DDIC element from FDS)
+  "Free text search for operation long text
   PARAMETERS so_opltx TYPE zde_a2r_free_text.
 
 SELECTION-SCREEN END OF BLOCK b_op.
@@ -109,8 +109,8 @@ SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE TEXT-005.
     so_loekc FOR plmk-loekz.
 
   PARAMETERS:
-    so_tolun TYPE char16,   " Lower Spec Limit (maps to PLMK-TOLERANZUN)
-    so_tolob TYPE char16.   " Upper Spec Limit (maps to PLMK-TOLERANZOB)
+    so_tolun TYPE char16,   " Lower Spec Limit (PLMK-TOLERANZUN)
+    so_tolob TYPE char16.   " Upper Spec Limit (PLMK-TOLERANZOB)
 
 SELECTION-SCREEN END OF BLOCK b_ch.
 
@@ -119,6 +119,8 @@ SELECTION-SCREEN END OF BLOCK b_ch.
 *---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE TEXT-006.
 
-  PARAMETERS p_showc TYPE c AS CHECKBOX.
+  PARAMETERS:
+    p_showc TYPE c AS CHECKBOX,   " Show Characteristics
+    p_showl TYPE c AS CHECKBOX.   " Show Long Text
 
 SELECTION-SCREEN END OF BLOCK b_det.
