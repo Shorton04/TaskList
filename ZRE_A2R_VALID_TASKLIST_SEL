@@ -2,7 +2,6 @@
 *& Include ZRE_A2R_VALID_TASKLIST_SEL
 *&---------------------------------------------------------------------*
 
-* Texts (example)
 * text-001  Task List Selection
 * text-002  Header Data
 * text-003  Operation Data
@@ -10,19 +9,19 @@
 * text-005  Detailed View
 
 *======================================================================*
-*  TASK LIST TYPE (check boxes – FTL / ETL / GTL)
+* TASK LIST TYPE (FTL / ETL / GTL)
 *======================================================================*
 SELECTION-SCREEN BEGIN OF BLOCK b_ttype WITH FRAME TITLE text-001.
 
 PARAMETERS:
-  p_ftl TYPE c AS CHECKBOX DEFAULT 'X',   " Functional Location TL
-  p_etl TYPE c AS CHECKBOX,              " Equipment TL
-  p_gtl TYPE c AS CHECKBOX.              " General TL
+  p_ftl TYPE c AS CHECKBOX DEFAULT 'X',  " Functional Location
+  p_etl TYPE c AS CHECKBOX,             " Equipment
+  p_gtl TYPE c AS CHECKBOX.             " General
 
 SELECTION-SCREEN END OF BLOCK b_ttype.
 
 *======================================================================*
-*  TASK LIST SELECTION
+* TASK LIST KEY SELECTION
 *======================================================================*
 SELECTION-SCREEN BEGIN OF BLOCK b_tl WITH FRAME TITLE text-001.
 
@@ -31,28 +30,27 @@ SELECT-OPTIONS:
   so_equnr FOR eapl-equnr,   " Equipment
   so_plnnr FOR plko-plnnr,   " Group
   so_plnal FOR plko-plnal,   " Group Counter
-  so_keydt FOR plko-datuv.   " Key Date (single; enforce in validation)
+  so_keydt FOR plko-datuv.   " Key Date (single)
 
 SELECTION-SCREEN END OF BLOCK b_tl.
 
 *======================================================================*
-*  HEADER DATA (per FDS “Header Data” table)
+* HEADER DATA
 *======================================================================*
 SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE text-002.
 
 SELECT-OPTIONS:
+  so_ktext FOR plko-ktext,   " Header Text
+  so_werks FOR plko-werks,   " Planning Plant
   so_verwe FOR plko-verwe,   " Usage
-  so_werks FOR plko-werks,   " Plant
-  so_arbph FOR crhd-arbpl,   " Work Center (header TL object list)
-  so_stath FOR plko-statu,   " Status
   so_vagrp FOR plko-vagrp,   " Planner Group
+  so_stath FOR plko-statu,   " Status
+  so_anlzh FOR plko-anlzu,   " System Condition
   so_strat FOR plko-strat,   " Maintenance Strategy
   so_istrh FOR plko-istru,   " Assembly
-  so_ktext FOR plko-ktext,   " Header Short Text
-  so_anlzh FOR plko-anlzu,   " System Condition
-  so_loekh FOR plko-loekz,   " Deletion Flag
-  so_adpsp FOR plko-adpsp,   " Ref Element PM/PS
+  so_adpsp FOR plko-adpsp,   " Ref. Element
   so_slwbe FOR plko-slwbez,  " Inspection Points
+  so_loekh FOR plko-loekz,   " Deletion Indicator (Header)
   so_andat FOR plko-andat,   " Created On
   so_annam FOR plko-annam,   " Created By
   so_aedat FOR plko-aedat,   " Changed On
@@ -61,59 +59,51 @@ SELECT-OPTIONS:
 SELECTION-SCREEN END OF BLOCK b_hd.
 
 *======================================================================*
-*  OPERATION DATA (per FDS “Operation” section)
+* OPERATION DATA
 *======================================================================*
 SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE text-003.
 
 SELECT-OPTIONS:
   so_vornr FOR plpo-vornr,        " Operation
-  so_uvorn FOR plpo-uvorn,        " Suboperation
   so_otext FOR plpo-ltxa1,        " Operation Short Text
-  so_arbpo FOR crhd-arbpl,        " Work Center
-  so_werkso FOR crhd-werks,       " Plant
+  so_arbpo FOR plpo-arbpl,        " Work Center (operation)
   so_steus FOR plpo-steus,        " Control Key
-  so_tplno FOR tapl-tplnr,        " FuncLoc at op (from assignment)
-  so_equno FOR eapl-equnr,        " Equipment at op
   so_exsta FOR plpo-execution_stage, " Execution Stage
-  so_anlzo FOR plpo-anlzu,        " System Condition (Op)
-  so_loeko FOR plpo-loekz,        " Deletion Flag (Op)
+  so_anlzo FOR plpo-anlzu,        " System Condition (op)
+  so_loeko FOR plpo-loekz,        " Deletion Indicator (op)
   so_ktsch FOR plpo-ktsch,        " Standard Text Key
   so_ebeln FOR plpo-ebeln,        " Outline Agreement
   so_ebelp FOR plpo-ebelp,        " Outline Agreement Item
   so_lifnr FOR plpo-lifnr.        " Supplier
 
 PARAMETERS:
-  p_opltx TYPE c AS CHECKBOX.     " Only operations with long text (PLPO-TXTSP <> space)
+  p_opltx TYPE c AS CHECKBOX.     " Only operations with long text
 
 SELECTION-SCREEN END OF BLOCK b_op.
 
 *======================================================================*
-*  CHARACTERISTIC DATA (per FDS “Characteristic” selection)
+* CHARACTERISTIC DATA
 *======================================================================*
 SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE text-004.
 
 SELECT-OPTIONS:
-  so_merkn FOR plmk-merknr,       " Characteristic Number
+  so_merkn FOR plmk-merknr,       " Number
   so_mic   FOR plmk-verwmerkm,    " MIC
-  so_cktxt FOR plmk-kurztext,     " Char Short Text
-  so_ltxtk FOR plmk-ltextkz,      " Char Long Text Indicator
-  so_sollw FOR plmk-sollwert,     " Target Value
-  so_tolun FOR plmk-toleranzun,   " Lower Limit
-  so_tolob FOR plmk-toleranzob,   " Upper Limit
-  so_msehi FOR plmk-msehi,        " UoM
-  so_dezan FOR plmk-dezanzahl,    " Decimal places
-  so_kat1  FOR plmk-katalogart1,  " Catalog
-  so_cgrp1 FOR plmk-codegruppe1,  " Code group
-  so_pruef FOR plmk-pruefeinh,    " Inspection scope
+  so_cktxt FOR plmk-kurztext,     " Char short text
+  so_ltxtk FOR plmk-ltextkz,      " Char long text flag
+  so_tolun FOR plmk-toleranzun,   " Lower spec limit
+  so_tolob FOR plmk-toleranzob,   " Upper spec limit
+  so_pruef FOR plmk-pruefeinh,    " Base sample quantity
   so_sproc FOR plmk-stichprver,   " Sampling procedure
   so_meth  FOR plmk-methode,      " Inspection method
-  so_pkl   FOR plmk-pruefkl,      " Valuation mode
-  so_loekc FOR plmk-loekz.        " Deletion Flag (Char)
+  so_kat1  FOR plmk-katalgart1,   " Catalog Type
+  so_ausw1 FOR plmk-auswmenge1,   " Code Group/Selected Set
+  so_loekc FOR plmk-loekz.        " Deletion Indicator (char)
 
 SELECTION-SCREEN END OF BLOCK b_ch.
 
 *======================================================================*
-*  DETAILED VIEW TOGGLES (initial state per FDS)
+* DETAILED VIEW
 *======================================================================*
 SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE text-005.
 
