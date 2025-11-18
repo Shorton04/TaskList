@@ -1,0 +1,4052 @@
+report AQ50PM==========ZPM_QM_TL=====
+   line-size 255 no standard page heading line-count 000(001).
+
+include <symbol>.
+include <icon>.
+data: %RTMODE type aqlimode,
+      %IQID   type aqliqid,
+      %gcprog type PROGRAMM.
+
+selection-screen: begin of block prog
+                           with frame title text-f58.
+
+tables PLKOD.
+data %count-PLKOD(4) type x.
+data %linr-PLKOD(2).
+tables PLFLD.
+data %count-PLFLD(4) type x.
+data %linr-PLFLD(2).
+tables PLPOD.
+data %count-PLPOD(4) type x.
+data %linr-PLPOD(2).
+tables PLMK.
+data %count-PLMK(4) type x.
+data %linr-PLMK(2).
+tables MAPL.
+
+data: lv_name type THEAD-TDname,
+      lv_part_1 TYPE string,
+      lv_part_2 TYPE string,
+      lv_plnnr TYPE c LENGTH 8,
+      lv_plnkn TYPE c LENGTH 8,
+      lv_plnnr_plnkn type c length 16,
+      lt_lines type standard TABLE OF tline.
+tables aqldb.
+
+include rsaqexcd.
+
+data: begin of %st_liste occurs 100,
+          head(1),
+          tab(3),
+          line(6) type n,
+          cont(1) type n,
+          fint(1),
+          finv(1),
+          fcol(1) type n,
+          text(0255),
+      end of %st_liste.
+
+data %data_selected(1).
+data %glframe(1)  value 'X' .
+data %uflag(1).
+data %ustflag(1).
+data %grst_text(255).
+data %glline type i.
+data %tabix like sy-tabix.
+data %prflag(1) type x value '02'.
+
+
+data: %textpool_read(1),
+      %textpool_langu type textpool occurs 0,
+      %textpool_langu_line type textpool.
+data: %txt1        type textpool-entry,
+       %txt2        type textpool-entry,
+       %txt3        type textpool-entry,
+       %txtkey      type textpool-key,
+       %txt_unknown type textpool-entry value 'UNKNOWN TEXT'.
+
+tables QPAM.
+
+data TEXT_PLFHD_AENNR like AENR-AEGRU.
+data TEXT_PLFHD_ATVOR like DD07D-DDTEXT.
+data TEXT_PLFHD_BASEH like T006A-MSEHL.
+data TEXT_PLFHD_BZOFFB like TCA55-BZTXT.
+data TEXT_PLFHD_BZOFFB_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_BZOFFE like TCA55-BZTXT.
+data TEXT_PLFHD_BZOFFE_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_CF_KZEVE like DD07D-DDTEXT.
+data TEXT_PLFHD_CF_KZEVS like DD07D-DDTEXT.
+data TEXT_PLFHD_CF_KZSVE like DD07D-DDTEXT.
+data TEXT_PLFHD_CF_KZSVS like DD07D-DDTEXT.
+data TEXT_PLFHD_DOKAR like TDWAT-DARTXT.
+data TEXT_PLFHD_DOKNR like DRAW-FILEP.
+data TEXT_PLFHD_EHOFFB like T006A-MSEHL.
+data TEXT_PLFHD_EHOFFE like T006A-MSEHL.
+data TEXT_PLFHD_EQPNT like IMPTT-DSTXT.
+data TEXT_PLFHD_EQUNR like EQKT-EQKTX.
+data TEXT_PLFHD_EQWPL like MPLA-WPTXT.
+data TEXT_PLFHD_EWEINH like T006A-MSEHL.
+data TEXT_PLFHD_EWFORM like TC25T-TXT.
+data TEXT_PLFHD_EWFORM_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_FGRU1 like TCF13-FGRTXT.
+data TEXT_PLFHD_FGRU2 like TCF13-FGRTXT.
+data TEXT_PLFHD_FHMAR like TCF03-FAKTX.
+data TEXT_PLFHD_FHWRK like T001W-NAME1.
+data TEXT_PLFHD_KTSCH like T435T-TXT.
+data TEXT_PLFHD_KTSCH_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_KZKBL like DD07D-DDTEXT.
+data TEXT_PLFHD_LOEKZ like DD07D-DDTEXT.
+data TEXT_PLFHD_MATNR like MAKT-MAKTX.
+data TEXT_PLFHD_MEINS like T006A-MSEHL.
+data TEXT_PLFHD_MGEINH like T006A-MSEHL.
+data TEXT_PLFHD_MGFORM like TC25T-TXT.
+data TEXT_PLFHD_MGFORM_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_MSEHI like T006A-MSEHL.
+data TEXT_PLFHD_OBJCT like DD07D-DDTEXT.
+data TEXT_PLFHD_OBJID like CRTX-KTEXT.
+data TEXT_PLFHD_OBJTY like DD07D-DDTEXT.
+data TEXT_PLFHD_OFFSTB_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_OFFSTE_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_PARKZ like DD07D-DDTEXT.
+data TEXT_PLFHD_PLNTY like TCA02-TXT.
+data TEXT_PLFHD_STEUF like TCF11-STFTXT.
+data TEXT_PLFHD_STEUF_REF like DD07D-DDTEXT.
+data TEXT_PLFHD_STORT like T499S-KTEXT.
+data TEXT_PLFHD_STOWK like T001W-NAME1.
+data TEXT_PLFHD_TXTKZ like DD07D-DDTEXT.
+data TEXT_PLFHD_TXTSP like T002T-SPTXT.
+data TEXT_PLFLD_AENNR like AENR-AEGRU.
+data TEXT_PLFLD_AENNR_AUS like AENR-AEGRU.
+data TEXT_PLFLD_AUSCHL like TCA53-AUSCH_LTXT.
+data TEXT_PLFLD_BSCHL1 like TCA51-TSCHL_LTXT.
+data TEXT_PLFLD_BSCHL2 like TCA51-TSCHL_LTXT.
+data TEXT_PLFLD_FLGAT like TCA08-FLG_LTXT.
+data TEXT_PLFLD_LOEKZ like DD07D-DDTEXT.
+data TEXT_PLFLD_NETSTUFE like DD07D-DDTEXT.
+data TEXT_PLFLD_PARKZ like DD07D-DDTEXT.
+data TEXT_PLFLD_PLNME like T006A-MSEHL.
+data TEXT_PLFLD_PLNTY like TCA02-TXT.
+data TEXT_PLFLD_TXTSP like T002T-SPTXT.
+data TEXT_PLKOD_ADPSP like ADCOMPT-BEZEI.
+data TEXT_PLKOD_AENNR like AENR-AEGRU.
+data TEXT_PLKOD_AENNR_AUS like AENR-AEGRU.
+data TEXT_PLKOD_ANLZU like T357M_T-ANLZUX.
+data TEXT_PLKOD_ARBTY like DD07D-DDTEXT.
+data TEXT_PLKOD_CCOAA like TCC14-CC14T.
+data TEXT_PLKOD_CHRULE like DD07D-DDTEXT.
+data TEXT_PLKOD_DELKZ like DD07D-DDTEXT.
+data TEXT_PLKOD_EXTNUM like TQ12T-KURZTEXT.
+data TEXT_PLKOD_FLG_CAPO like DD07D-DDTEXT.
+data TEXT_PLKOD_FLG_CHK like DD07D-DDTEXT.
+data TEXT_PLKOD_ISTRU like MAKT-MAKTX.
+data TEXT_PLKOD_IWERK like T001W-NAME1.
+data TEXT_PLKOD_KOKRS like TKA01-BEZEI.
+data TEXT_PLKOD_KZKFG like DD07D-DDTEXT.
+data TEXT_PLKOD_LOEKZ like DD07D-DDTEXT.
+data TEXT_PLKOD_MEINH like T006A-MSEHL.
+data TEXT_PLKOD_MS_FLAG like DD07D-DDTEXT.
+data TEXT_PLKOD_NETID like CRTX-KTEXT.
+data TEXT_PLKOD_PARKZ like DD07D-DDTEXT.
+data TEXT_PLKOD_PLNME like T006A-MSEHL.
+data TEXT_PLKOD_PLNTY like TCA02-TXT.
+data TEXT_PLKOD_PPKZTLZU like DD07D-DDTEXT.
+data TEXT_PLKOD_PRTYP like DD07D-DDTEXT.
+data TEXT_PLKOD_PSPNR like PRPSS-POST1.
+data TEXT_PLKOD_QDYNHEAD like TQ39L-KURZTEXT.
+data TEXT_PLKOD_QDYNREGEL like QDDRT-KURZTEXT.
+data TEXT_PLKOD_QKZRASTER like DD07D-DDTEXT.
+data TEXT_PLKOD_QPRZIEHVER like QPRVKT-KURZTEXT.
+data TEXT_PLKOD_QVEWERKS like T001W-NAME1.
+data TEXT_PLKOD_SLWBEZ like TQ79T-KURZTEXT.
+data TEXT_PLKOD_STATU like T412T-TXT.
+data TEXT_PLKOD_STAUFG like DD07D-DDTEXT.
+data TEXT_PLKOD_STLTY like DD07D-DDTEXT.
+data TEXT_PLKOD_STRAT like T351T-KTEXT.
+data TEXT_PLKOD_TXTSP like T002T-SPTXT.
+data TEXT_PLKOD_VAGRP like T024A-TXT.
+data TEXT_PLKOD_VERWE like T411T-TXT.
+data TEXT_PLKOD_WERKS like T001W-NAME1.
+data TEXT_PLKOD_XHIERTL like DD07D-DDTEXT.
+data LONGTEXT(999) type C .
+data LONGTEXT_1(255) type C .
+data LONGTEXT_2(255) type C .
+data LONGTEXT_3(255) type C .
+data LONGTEXT_4(255) type C .
+data LV_NAME_DISPLAY(070) type C .
+data QUAL_QUANT(005) type C .
+data STRLEN_LONGTEXT type I .
+data TEXT_PLMK_AENDERGNR like AENR-AEGRU.
+data TEXT_PLMK_AUSWMGWRK1 like T001W-NAME1.
+data TEXT_PLMK_AUSWMGWRK2 like T001W-NAME1.
+data TEXT_PLMK_AUSWMGWRK3 like T001W-NAME1.
+data TEXT_PLMK_AUSWMGWRK4 like T001W-NAME1.
+data TEXT_PLMK_AUSWMGWRK5 like T001W-NAME1.
+data TEXT_PLMK_CHAORIG like TQPC_CHAORIG_T-CHAORIG_TXT.
+data TEXT_PLMK_CTRMETH like TQPC_CTRMETH_T-CTRMETH_TXT.
+data TEXT_PLMK_EEANTVERF like TQ72T-KURZTEXT.
+data TEXT_PLMK_GRENZOB1NI like DD07D-DDTEXT.
+data TEXT_PLMK_GRENZOB2NI like DD07D-DDTEXT.
+data TEXT_PLMK_GRENZUN1NI like DD07D-DDTEXT.
+data TEXT_PLMK_GRENZUN2NI like DD07D-DDTEXT.
+data TEXT_PLMK_INPPROC like TQ71T-KURZTEXT.
+data TEXT_PLMK_KATALGART1 like TQ15T-KATALOGTXT.
+data TEXT_PLMK_KATALGART2 like TQ15T-KATALOGTXT.
+data TEXT_PLMK_KATALGART3 like TQ15T-KATALOGTXT.
+data TEXT_PLMK_KATALGART4 like TQ15T-KATALOGTXT.
+data TEXT_PLMK_KATALGART5 like TQ15T-KATALOGTXT.
+data TEXT_PLMK_KLASBRNI like DD07D-DDTEXT.
+data TEXT_PLMK_KLASMINI like DD07D-DDTEXT.
+data TEXT_PLMK_LOEKZ like DD07D-DDTEXT.
+data TEXT_PLMK_LTEXTKZ like DD07D-DDTEXT.
+data TEXT_PLMK_LTEXTSPR like T002T-SPTXT.
+data TEXT_PLMK_LTXTENTSPR like T002T-SPTXT.
+data TEXT_PLMK_MASSEINHSW like T006A-MSEHL.
+data TEXT_PLMK_MERKGEW like TQ17U-KURZTEXT.
+data TEXT_PLMK_NO_INSPECTION like DD07D-DDTEXT.
+data TEXT_PLMK_PARKZ like DD07D-DDTEXT.
+data TEXT_PLMK_PLAUSIOBNI like DD07D-DDTEXT.
+data TEXT_PLMK_PLAUSIUNNI like DD07D-DDTEXT.
+data TEXT_PLMK_PLNTY like TCA02-TXT.
+data TEXT_PLMK_PMETHODE like QMTT-KURZTEXT.
+data TEXT_PLMK_PROBEMGEH like T006A-MSEHL.
+data TEXT_PLMK_PRUEFQUALI like TQ11T-PQTXT.
+data TEXT_PLMK_QDYNREGEL like QDDRT-KURZTEXT.
+data TEXT_PLMK_QERGDATH like TQ73T-ERDATHETXT.
+data TEXT_PLMK_QMTB_WERKS like T001W-NAME1.
+data TEXT_PLMK_QPMK_REF like DD07D-DDTEXT.
+data TEXT_PLMK_RES_PLAN like TQPC_RESPLAN_T-RES_PLAN_TXT.
+data TEXT_PLMK_SOLLWNI like DD07D-DDTEXT.
+data TEXT_PLMK_SPCKRIT like QPSPT-SPCTXT.
+data TEXT_PLMK_STELLEN like DD07D-DDTEXT.
+data TEXT_PLMK_STICHPRVER like QDSVT-KURZTEXT.
+data TEXT_PLMK_TOLERANZSL like TQ29T-KURZTEXT.
+data TEXT_PLMK_TOLOBNI like DD07D-DDTEXT.
+data TEXT_PLMK_TOLUNNI like DD07D-DDTEXT.
+data TEXT_PLMK_TOLWOBNI like DD07D-DDTEXT.
+data TEXT_PLMK_TOLWUNNI like DD07D-DDTEXT.
+data TEXT_PLMK_VERWMERKM like QPMT-KURZTEXT.
+data TEXT_PLMZD_AENNR like AENR-AEGRU.
+data TEXT_PLMZD_BEIKZ like T417T-BTEXT.
+data TEXT_PLMZD_BOMAT like MAKT-MAKTX.
+data TEXT_PLMZD_DBSKZ like DD07D-DDTEXT.
+data TEXT_PLMZD_DISP like DD07D-DDTEXT.
+data TEXT_PLMZD_DUMPS like DD07D-DDTEXT.
+data TEXT_PLMZD_FLGEX like DD07D-DDTEXT.
+data TEXT_PLMZD_GP_MATNR like MAKT-MAKTX.
+data TEXT_PLMZD_GP_WERKS like T001W-NAME1.
+data TEXT_PLMZD_IMEIN like T006A-MSEHL.
+data TEXT_PLMZD_KNTTP like T163I-KNTTX.
+data TEXT_PLMZD_LGORT like T001L-MESBS.
+data TEXT_PLMZD_LOEKZ like DD07D-DDTEXT.
+data TEXT_PLMZD_MATNR like MAKT-MAKTX.
+data TEXT_PLMZD_MEINS like T006A-MSEHL.
+data TEXT_PLMZD_PARKZ like DD07D-DDTEXT.
+data TEXT_PLMZD_PLNTY like TCA02-TXT.
+data TEXT_PLMZD_PRODFLOWID like DD07D-DDTEXT.
+data TEXT_PLMZD_RGEKZ like DD07D-DDTEXT.
+data TEXT_PLMZD_STLTY like DD07D-DDTEXT.
+data TEXT_PLMZD_STLTY_W like DD07D-DDTEXT.
+data TEXT_PLMZD_STRECKE like DD07D-DDTEXT.
+data TEXT_PLMZD_VORAB like DD07D-DDTEXT.
+data TEXT_PLMZD_WERKS like T001W-NAME1.
+data TEXT_PLMZD_ZEINH like T006A-MSEHL.
+data TEXT_PLMZD_ZUMEI like T006A-MSEHL.
+data TEXT_PLPOD_AAUFG like DD07D-DDTEXT.
+data TEXT_PLPOD_ABLIPKZ like DD07D-DDTEXT.
+data TEXT_PLPOD_ADPSP like ADCOMPT-BEZEI.
+data TEXT_PLPOD_AENNR like AENR-AEGRU.
+data TEXT_PLPOD_AENNR_AUS like AENR-AEGRU.
+data TEXT_PLPOD_ANFKO like CSKT-LTEXT.
+data TEXT_PLPOD_ANFKOKRS like TKA01-BEZEI.
+data TEXT_PLPOD_ANLZU like T357M_T-ANLZUX.
+data TEXT_PLPOD_ARBEH like T006A-MSEHL.
+data TEXT_PLPOD_BEZKZ like DD07D-DDTEXT.
+data TEXT_PLPOD_BMEIH like T006A-MSEHL.
+data TEXT_PLPOD_BUKRS like T001-BUTXT.
+data TEXT_PLPOD_BZOFFB like TCA55-BZTXT.
+data TEXT_PLPOD_BZOFFE like TCA55-BZTXT.
+data TEXT_PLPOD_CAPOC like DD07D-DDTEXT.
+data TEXT_PLPOD_CKSELKZ like TCK09-STEXT.
+data TEXT_PLPOD_CLASSCAT like TCLAT-ARTXT.
+data TEXT_PLPOD_CLASSID like KLAH-NORMB.
+data TEXT_PLPOD_DAUME like T006A-MSEHL.
+data TEXT_PLPOD_DAUNE like T006A-MSEHL.
+data TEXT_PLPOD_DDEHN like DD07D-DDTEXT.
+data TEXT_PLPOD_EBELN like EKKO-INCO2_L.
+data TEXT_PLPOD_EBELP like EKPO-INCO2_L.
+data TEXT_PLPOD_EHOFFB like T006A-MSEHL.
+data TEXT_PLPOD_EHOFFE like T006A-MSEHL.
+data TEXT_PLPOD_EINSA like DD07D-DDTEXT.
+data TEXT_PLPOD_EINSE like DD07D-DDTEXT.
+data TEXT_PLPOD_EKGRP like T024-SMTP_ADDR.
+data TEXT_PLPOD_EKORG like T024E-EKOTX.
+data TEXT_PLPOD_EQUNR like EQKT-EQKTX.
+data TEXT_PLPOD_ERFSICHT like DD07D-DDTEXT.
+data TEXT_PLPOD_ESOKZ like DD07D-DDTEXT.
+data TEXT_PLPOD_FLG_CAPTXT like DD07D-DDTEXT.
+data TEXT_PLPOD_FLG_TSK_GROUP like DD07D-DDTEXT.
+data TEXT_PLPOD_FLIES like DD07D-DDTEXT.
+data TEXT_PLPOD_FRSP like DD07D-DDTEXT.
+data TEXT_PLPOD_HERKUNFT like DD07D-DDTEXT.
+data TEXT_PLPOD_INDET like DD07D-DDTEXT.
+data TEXT_PLPOD_INFNR like EINA-TXZ01.
+data TEXT_PLPOD_ISTRU like MAKT-MAKTX.
+data TEXT_PLPOD_ISTTY like DD07D-DDTEXT.
+data TEXT_PLPOD_KALID like TFACT-LTEXT.
+data TEXT_PLPOD_KALKZ like DD07D-DDTEXT.
+data TEXT_PLPOD_KAPAR like TC26T-TXT.
+data TEXT_PLPOD_KOKRS like TKA01-BEZEI.
+data TEXT_PLPOD_KTSCH like T435T-TXT.
+data TEXT_PLPOD_KZLGF like DD07D-DDTEXT.
+data TEXT_PLPOD_LAR01 like CSLT-LTEXT.
+data TEXT_PLPOD_LAR02 like CSLT-LTEXT.
+data TEXT_PLPOD_LAR03 like CSLT-LTEXT.
+data TEXT_PLPOD_LAR04 like CSLT-LTEXT.
+data TEXT_PLPOD_LAR05 like CSLT-LTEXT.
+data TEXT_PLPOD_LAR06 like CSLT-LTEXT.
+data TEXT_PLPOD_LARNT like CSLT-LTEXT.
+data TEXT_PLPOD_LIFNR like LFA1-NAME1.
+data TEXT_PLPOD_LOEKZ like DD07D-DDTEXT.
+data TEXT_PLPOD_LOGRP like T421T-TXT.
+data TEXT_PLPOD_MANU_PROC like RTG_MANU_PROC_T-MANU_DESC.
+data TEXT_PLPOD_MATKL like T023T-WGBEZ60.
+data TEXT_PLPOD_MEINH like T006A-MSEHL.
+data TEXT_PLPOD_MLSTN like T433T-MSTXT.
+data TEXT_PLPOD_NPRIO like TCN7T-KTEXT.
+data TEXT_PLPOD_NVADD like DD07D-DDTEXT.
+data TEXT_PLPOD_OBJTY like DD07D-DDTEXT.
+data TEXT_PLPOD_PARKZ like DD07D-DDTEXT.
+data TEXT_PLPOD_PDEST like TSP03-PAMSG.
+data TEXT_PLPOD_PHFLG like DD07D-DDTEXT.
+data TEXT_PLPOD_PHSEQ like TC52-SEBEZ.
+data TEXT_PLPOD_PLNME like T006A-MSEHL.
+data TEXT_PLPOD_PLNTY like TCA02-TXT.
+data TEXT_PLPOD_PSPNR like PRPSS-POST1.
+data TEXT_PLPOD_QKZPRFREI like DD07D-DDTEXT.
+data TEXT_PLPOD_QKZPRINI like DD07D-DDTEXT.
+data TEXT_PLPOD_QKZPRMENG like DD07D-DDTEXT.
+data TEXT_PLPOD_QKZPRZEIT like DD07D-DDTEXT.
+data TEXT_PLPOD_QKZTLSBEST like DD07D-DDTEXT.
+data TEXT_PLPOD_QKZZTMG1 like DD07D-DDTEXT.
+data TEXT_PLPOD_QLKAPAR like TC26T-TXT.
+data TEXT_PLPOD_QLOTYPE like T777O-OTEXT.
+data TEXT_PLPOD_QPART like TQ30T-KURZTEXT.
+data TEXT_PLPOD_QPPKTABS like DD07D-DDTEXT.
+data TEXT_PLPOD_QRASTEREH like T006A-MSEHL.
+data TEXT_PLPOD_QRASTZEHT like T006A-MSEHL.
+data TEXT_PLPOD_QUALF like T423T-TXT.
+data TEXT_PLPOD_RASCH like T428T-TXT.
+data TEXT_PLPOD_RFGRP like T426T-TXT.
+data TEXT_PLPOD_RFPNT like TCNRFPT-KTEXT.
+data TEXT_PLPOD_RFSCH like T425T-TXT.
+data TEXT_PLPOD_RSTRA like T499P-TXT.
+data TEXT_PLPOD_RUZUS like TCERT-KTEX1.
+data TEXT_PLPOD_SLWID like TCN01-KTEXT.
+data TEXT_PLPOD_SPMUS like DD07D-DDTEXT.
+data TEXT_PLPOD_SUBPLNTY like TCA02-TXT.
+data TEXT_PLPOD_TPLNR like IFLOTX-PLTXT.
+data TEXT_PLPOD_TXTSP like T002T-SPTXT.
+data TEXT_PLPOD_UAVO_AUFL like DD07D-DDTEXT.
+data TEXT_PLPOD_UEKAN like DD07D-DDTEXT.
+data TEXT_PLPOD_UEMUS like DD07D-DDTEXT.
+data TEXT_PLPOD_UENICHT like DD07D-DDTEXT.
+data TEXT_PLPOD_USE04 like T006A-MSEHL.
+data TEXT_PLPOD_USE05 like T006A-MSEHL.
+data TEXT_PLPOD_USE06 like TCURT-LTEXT.
+data TEXT_PLPOD_USE07 like TCURT-LTEXT.
+data TEXT_PLPOD_USR10 like DD07D-DDTEXT.
+data TEXT_PLPOD_USR11 like DD07D-DDTEXT.
+data TEXT_PLPOD_VERDART like DD07D-DDTEXT.
+data TEXT_PLPOD_VERTN like TC29L-KTEXT.
+data TEXT_PLPOD_VGE01 like T006A-MSEHL.
+data TEXT_PLPOD_VGE02 like T006A-MSEHL.
+data TEXT_PLPOD_VGE03 like T006A-MSEHL.
+data TEXT_PLPOD_VGE04 like T006A-MSEHL.
+data TEXT_PLPOD_VGE05 like T006A-MSEHL.
+data TEXT_PLPOD_VGE06 like T006A-MSEHL.
+data TEXT_PLPOD_VPLTY like TCA02-TXT.
+data TEXT_PLPOD_WAERS like TCURT-LTEXT.
+data TEXT_PLPOD_WC_ZEIWM like T006A-MSEHL.
+data TEXT_PLPOD_WC_ZEIWN like T006A-MSEHL.
+data TEXT_PLPOD_WERKS like T001W-NAME1.
+data TEXT_PLPOD_XEXCLTL like DD07D-DDTEXT.
+data TEXT_PLPOD_ZEIER like T006A-MSEHL.
+data TEXT_PLPOD_ZEILM like T006A-MSEHL.
+data TEXT_PLPOD_ZEILP like T006A-MSEHL.
+data TEXT_PLPOD_ZEIMB like T006A-MSEHL.
+data TEXT_PLPOD_ZEIMU like T006A-MSEHL.
+data TEXT_PLPOD_ZEITM like T006A-MSEHL.
+data TEXT_PLPOD_ZEITN like T006A-MSEHL.
+data TEXT_PLPOD_ZEIWM like T006A-MSEHL.
+data TEXT_PLPOD_ZEIWN like T006A-MSEHL.
+data TEXT_PLPOD_ZERMA like T429T-TXT.
+data TEXT_PLPOD_ZGR01 like TC31T-TXT.
+data TEXT_PLPOD_ZGR02 like TC31T-TXT.
+data TEXT_PLPOD_ZGR03 like TC31T-TXT.
+data TEXT_PLPOD_ZGR04 like TC31T-TXT.
+data TEXT_PLPOD_ZGR05 like TC31T-TXT.
+data TEXT_PLPOD_ZGR06 like TC31T-TXT.
+data TEXT_RCR01_ACTXY1 like DD07D-DDTEXT.
+data TEXT_RCR01_ACTXY2 like DD07D-DDTEXT.
+data TEXT_RCR01_ACTXY3 like DD07D-DDTEXT.
+data TEXT_RCR01_ACTXY4 like DD07D-DDTEXT.
+data TEXT_RCR01_ACTXY5 like DD07D-DDTEXT.
+data TEXT_RCR01_ACTXY6 like DD07D-DDTEXT.
+data TEXT_RCR01_BDE1 like DD07D-DDTEXT.
+data TEXT_RCR01_BDE2 like DD07D-DDTEXT.
+data TEXT_RCR01_BDE3 like DD07D-DDTEXT.
+data TEXT_RCR01_BDE4 like DD07D-DDTEXT.
+data TEXT_RCR01_BDE5 like DD07D-DDTEXT.
+data TEXT_RCR01_BDE6 like DD07D-DDTEXT.
+data TEXT_RCR01_BDEGR like T705X-GTEXT.
+data TEXT_RCR01_BDEP like DD07D-DDTEXT.
+data TEXT_RCR01_CPLGR like T024C-CPLTX.
+data TEXT_RCR01_FLG_AFR like DD07D-DDTEXT.
+data TEXT_RCR01_HR like DD07D-DDTEXT.
+data TEXT_RCR01_ISTBED_KZ like DD07D-DDTEXT.
+data TEXT_RCR01_KAPID like KAKO-SORT.
+data TEXT_RCR01_KOKRS like TKA01-BEZEI.
+data TEXT_RCR01_KOSTL like CSKT-LTEXT.
+data TEXT_RCR01_KTSCH like T435T-TXT.
+data TEXT_RCR01_KTSCH_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LAR01_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LAR02_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LAR03_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LAR04_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LAR05_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LAR06_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LARN1_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LEINH1 like T006A-MSEHL.
+data TEXT_RCR01_LEINH2 like T006A-MSEHL.
+data TEXT_RCR01_LEINH3 like T006A-MSEHL.
+data TEXT_RCR01_LEINH4 like T006A-MSEHL.
+data TEXT_RCR01_LEINH5 like T006A-MSEHL.
+data TEXT_RCR01_LEINH6 like T006A-MSEHL.
+data TEXT_RCR01_LIFNR like LFA1-NAME1.
+data TEXT_RCR01_LIFNR_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LOANZ_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LOART_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LOGRP like T421T-TXT.
+data TEXT_RCR01_LOGRP_REF like DD07D-DDTEXT.
+data TEXT_RCR01_LVORM like DD07D-DDTEXT.
+data TEXT_RCR01_MATYP like TMATT-MATYT.
+data TEXT_RCR01_MOLGA like T500T-LTEXT.
+data TEXT_RCR01_ORTGR like TC28T-TXT.
+data TEXT_RCR01_PAR01 like TC20T-TXTLG.
+data TEXT_RCR01_PAR02 like TC20T-TXTLG.
+data TEXT_RCR01_PAR03 like TC20T-TXTLG.
+data TEXT_RCR01_PAR04 like TC20T-TXTLG.
+data TEXT_RCR01_PAR05 like TC20T-TXTLG.
+data TEXT_RCR01_PAR06 like TC20T-TXTLG.
+data TEXT_RCR01_PDEST like TSP03-PAMSG.
+data TEXT_RCR01_PLANV like TC23T-TXT.
+data TEXT_RCR01_PRVBE like PVKT-PVBTX.
+data TEXT_RCR01_PRZ01_REF like DD07D-DDTEXT.
+data TEXT_RCR01_QUALF like T423T-TXT.
+data TEXT_RCR01_QUALF_REF like DD07D-DDTEXT.
+data TEXT_RCR01_RASCH like T428T-TXT.
+data TEXT_RCR01_RASCH_REF like DD07D-DDTEXT.
+data TEXT_RCR01_RGEKZ like DD07D-DDTEXT.
+data TEXT_RCR01_RSANZ_REF like DD07D-DDTEXT.
+data TEXT_RCR01_RUZUS like TCERT-KTEX1.
+data TEXT_RCR01_SAKL1 like DD07D-DDTEXT.
+data TEXT_RCR01_SAKL2 like DD07D-DDTEXT.
+data TEXT_RCR01_SAKL3 like DD07D-DDTEXT.
+data TEXT_RCR01_SAKL4 like DD07D-DDTEXT.
+data TEXT_RCR01_SAKL5 like DD07D-DDTEXT.
+data TEXT_RCR01_SAKL6 like DD07D-DDTEXT.
+data TEXT_RCR01_SAKLP like DD07D-DDTEXT.
+data TEXT_RCR01_SLWID like TCN01-KTEXT.
+data TEXT_RCR01_SLWID_REF like DD07D-DDTEXT.
+data TEXT_RCR01_SORTB like TSRTT-SORTT.
+data TEXT_RCR01_STATUS like DD07D-DDTEXT.
+data TEXT_RCR01_STEUS like T430T-TXT.
+data TEXT_RCR01_STEUS_REF like DD07D-DDTEXT.
+data TEXT_RCR01_SUBSYS like QISUBT-KURZTEXT.
+data TEXT_RCR01_VGARB like T006A-MSEHL.
+data TEXT_RCR01_VGD01 like T006T-TXDIM.
+data TEXT_RCR01_VGD02 like T006T-TXDIM.
+data TEXT_RCR01_VGD03 like T006T-TXDIM.
+data TEXT_RCR01_VGD04 like T006T-TXDIM.
+data TEXT_RCR01_VGD05 like T006T-TXDIM.
+data TEXT_RCR01_VGD06 like T006T-TXDIM.
+data TEXT_RCR01_VGDAU like T006A-MSEHL.
+data TEXT_RCR01_VGDIM like T006T-TXDIM.
+data TEXT_RCR01_VGE01 like T006A-MSEHL.
+data TEXT_RCR01_VGE02 like T006A-MSEHL.
+data TEXT_RCR01_VGE03 like T006A-MSEHL.
+data TEXT_RCR01_VGE04 like T006A-MSEHL.
+data TEXT_RCR01_VGE05 like T006A-MSEHL.
+data TEXT_RCR01_VGE06 like T006A-MSEHL.
+data TEXT_RCR01_VGM01 like DD07D-DDTEXT.
+data TEXT_RCR01_VGM02 like DD07D-DDTEXT.
+data TEXT_RCR01_VGM03 like DD07D-DDTEXT.
+data TEXT_RCR01_VGM04 like DD07D-DDTEXT.
+data TEXT_RCR01_VGM05 like DD07D-DDTEXT.
+data TEXT_RCR01_VGM06 like DD07D-DDTEXT.
+data TEXT_RCR01_VGWTS like TC21T-TXT.
+data TEXT_RCR01_WERKS like T001W-NAME1.
+data TEXT_RCR01_XSPRR like DD07D-DDTEXT.
+data TEXT_RCR01_XTERM like DD07D-DDTEXT.
+data TEXT_RCR01_ZEIWM like T006A-MSEHL.
+data TEXT_RCR01_ZEIWN like T006A-MSEHL.
+data TEXT_RCR01_ZGR01 like TC31T-TXT.
+data TEXT_RCR01_ZGR01_REF like DD07D-DDTEXT.
+data TEXT_RCR01_ZGR02 like TC31T-TXT.
+data TEXT_RCR01_ZGR02_REF like DD07D-DDTEXT.
+data TEXT_RCR01_ZGR03 like TC31T-TXT.
+data TEXT_RCR01_ZGR03_REF like DD07D-DDTEXT.
+data TEXT_RCR01_ZGR04 like TC31T-TXT.
+data TEXT_RCR01_ZGR04_REF like DD07D-DDTEXT.
+data TEXT_RCR01_ZGR05 like TC31T-TXT.
+data TEXT_RCR01_ZGR05_REF like DD07D-DDTEXT.
+data TEXT_RCR01_ZGR06 like TC31T-TXT.
+data TEXT_RCR01_ZGR06_REF like DD07D-DDTEXT.
+data %perc(4) type p decimals 3.
+data %p100(4) type p decimals 3 value '100.000'.
+data %rangct type i.
+data %rangcc(8).
+select-options SP$00001 for PLKOD-IWERK memory id IWK.
+select-options SP$00002 for PLKOD-SLWBEZ memory id QBK.
+select-options SP$00003 for PLFLD-PLNNR memory id PLN.
+select-options SP$00004 for PLFLD-PLNAL memory id PAL.
+select-options SP$00005 for PLMK-LTEXTKZ.
+selection-screen skip 1.
+selection-screen: begin of block direct
+                  with frame title text-f59.
+selection-screen: begin of line.
+*selection-screen: comment 1(12) text-f57.
+selection-screen: pushbutton 75(18) pb%exco user-command expcol
+                                   modif id new.
+selection-screen: end of line.
+selection-screen: begin of line.
+parameters:       %alv radiobutton group func user-command outbut
+                                modif id new  default 'X' .
+selection-screen: comment 4(26) text-f72 for field %alv
+                                modif id new.
+parameters:       %alvl type slis_vari modif id new.
+selection-screen: end of line.
+selection-screen: begin of line.
+parameters:       %nofunc radiobutton group func modif id old.
+selection-screen: comment 4(26) text-f66 for field %nofunc
+                                         modif id old.
+parameters:       %tview radiobutton group func modif id old.
+selection-screen: comment 34(26) text-f68 for field %tview
+                                          modif id old,
+                  end of line.
+selection-screen: begin of line.
+parameters:       %graph radiobutton group func modif id old.
+selection-screen: comment 4(26) text-f61 for field %graph
+                                         modif id old.
+parameters:       %text radiobutton group func modif id old.
+selection-screen: comment 34(26) text-f69 for field %text
+                                          modif id old,
+                  end of line.
+selection-screen: begin of line.
+parameters:       %abc radiobutton group func modif id old.
+selection-screen: comment 4(26) text-f70 for field %abc
+                                         modif id old.
+parameters:       %excel radiobutton group func modif id old.
+selection-screen: comment 34(26) text-f60 for field %excel
+                                         modif id old,
+                  end of line.
+selection-screen: begin of line.
+parameters:       %priv radiobutton group func modif id old.
+selection-screen: comment 4(26) text-f65 for field %priv
+                                             modif id old.
+selection-screen: end of line.
+selection-screen: begin of line.
+parameters:       %xint radiobutton group func modif id xin.
+selection-screen: comment 4(26) text-f73 for field %xint
+                                         modif id xin.
+parameters:       %xintk like AQXINT-XIKEY lower case modif id xin.
+selection-screen: end of line.
+selection-screen: begin of line.
+parameters:       %down radiobutton group func modif id old.
+selection-screen: comment 4(26) text-f64 for field %down
+                                         modif id old.
+parameters:       %path type AQ_FILENAME lower case modif id old.
+selection-screen: end of line.
+selection-screen: begin of line.
+parameters:       %save radiobutton group func modif id lis.
+selection-screen: comment 4(26) text-f62 for field %save
+                                         modif id lis.
+parameters:       %listid like AQCAQL-TEXT visible length 40
+                  lower case modif id lis.
+selection-screen: end of line.
+selection-screen: end of block direct.
+selection-screen: end of block prog.
+
+data: begin of %g00 occurs 100,
+            PLKOD-IWERK like PLKOD-IWERK,
+            PLFLD-PLNTY like PLFLD-PLNTY,
+            PLFLD-PLNNR like PLFLD-PLNNR,
+            PLFLD-PLNAL like PLFLD-PLNAL,
+            PLKOD-ANLZU like PLKOD-ANLZU,
+            PLKOD-LOEKZ like PLKOD-LOEKZ,
+            PLKOD-QKZRASTER like PLKOD-QKZRASTER,
+            PLKOD-STRAT like PLKOD-STRAT,
+            PLKOD-SLWBEZ like PLKOD-SLWBEZ,
+            PLPOD-VORNR like PLPOD-VORNR,
+            PLPOD-STEUS like PLPOD-STEUS,
+            PLPOD-KTSCH like PLPOD-KTSCH,
+            PLPOD-LTXA1 like PLPOD-LTXA1,
+            PLPOD-TXTSP like PLPOD-TXTSP,
+            PLPOD-DAUNO like PLPOD-DAUNO,
+            PLPOD-DAUNE-0115 like PLPOD-DAUNE,
+            PLPOD-DAUNE like PLPOD-DAUNE,
+            PLPOD-ARBEI like PLPOD-ARBEI,
+            PLPOD-ARBEH-0117 like PLPOD-ARBEH,
+            PLPOD-ARBEH like PLPOD-ARBEH,
+            PLPOD-ANZZL like PLPOD-ANZZL,
+            PLPOD-ARBPL like PLPOD-ARBPL,
+            PLMK-MERKNR like PLMK-MERKNR,
+            PLMK-QMTB_WERKS like PLMK-QMTB_WERKS,
+            PLMK-PMETHODE like PLMK-PMETHODE,
+            PLMK-KURZTEXT like PLMK-KURZTEXT,
+            PLMK-LTEXTKZ like PLMK-LTEXTKZ,
+            PLMK-LTEXTSPR like PLMK-LTEXTSPR,
+            PLMK-STELLEN like PLMK-STELLEN,
+            PLMK-MASSEINHSW like PLMK-MASSEINHSW,
+            PLMK-SOLLWERT like PLMK-SOLLWERT,
+            PLMK-TOLERANZOB like PLMK-TOLERANZOB,
+            PLMK-TOLERANZUN like PLMK-TOLERANZUN,
+            PLMK-STICHPRVER like PLMK-STICHPRVER,
+            PLMK-AUSWMENGE1 like PLMK-AUSWMENGE1,
+            PLMK-AUSWMGWRK1 like PLMK-AUSWMGWRK1,
+            QPAM-KTX01 like QPAM-KTX01,
+            QUAL_QUANT like QUAL_QUANT,
+            LONGTEXT_1 like LONGTEXT_1,
+            LONGTEXT_2 like LONGTEXT_2,
+            LONGTEXT_3 like LONGTEXT_3,
+            LONGTEXT_4 like LONGTEXT_4,
+            PLKOD-STLNR like PLKOD-STLNR,
+            PLKOD-DATUV like PLKOD-DATUV,
+            PLKOD-AENNR like PLKOD-AENNR,
+            PLKOD-ANDAT like PLKOD-ANDAT,
+            PLKOD-ANNAM like PLKOD-ANNAM,
+            PLKOD-AEDAT like PLKOD-AEDAT,
+            PLKOD-AENAM like PLKOD-AENAM,
+            LV_NAME_DISPLAY like LV_NAME_DISPLAY,
+            LONGTEXT like LONGTEXT,
+            STRLEN_LONGTEXT like STRLEN_LONGTEXT,
+            %alvcount type i,
+      end of %g00.
+data: begin of %%g00,
+            PLKOD-IWERK(004),
+            PLFLD-PLNTY(001),
+            PLFLD-PLNNR(008),
+            PLFLD-PLNAL(002),
+            PLKOD-ANLZU(001),
+            PLKOD-LOEKZ(001),
+            PLKOD-QKZRASTER(001),
+            PLKOD-STRAT(006),
+            PLKOD-SLWBEZ(003),
+            PLPOD-VORNR(004),
+            PLPOD-STEUS(004),
+            PLPOD-KTSCH(007),
+            PLPOD-LTXA1(018),
+            PLPOD-TXTSP(002),
+            PLPOD-DAUNO(007),
+            PLPOD-DAUNE-0115 like PLPOD-DAUNE,
+            PLPOD-DAUNE(003),
+            PLPOD-ARBEI(009),
+            PLPOD-ARBEH-0117 like PLPOD-ARBEH,
+            PLPOD-ARBEH(003),
+            PLPOD-ANZZL(003),
+            PLPOD-ARBPL(008),
+            PLMK-MERKNR(004),
+            PLMK-QMTB_WERKS(004),
+            PLMK-PMETHODE(008),
+            PLMK-KURZTEXT(040),
+            PLMK-LTEXTKZ(001),
+            PLMK-LTEXTSPR(002),
+            PLMK-STELLEN(002),
+            PLMK-MASSEINHSW(003),
+            PLMK-SOLLWERT(023),
+            PLMK-TOLERANZOB(023),
+            PLMK-TOLERANZUN(023),
+            PLMK-STICHPRVER(008),
+            PLMK-AUSWMENGE1(008),
+            PLMK-AUSWMGWRK1(004),
+            QPAM-KTX01(017),
+            QUAL_QUANT(005),
+            LONGTEXT_1(017),
+            LONGTEXT_2(015),
+            LONGTEXT_3(012),
+            LONGTEXT_4(013),
+            PLKOD-STLNR(008),
+            PLKOD-DATUV(010),
+            PLKOD-AENNR(012),
+            PLKOD-ANDAT(010),
+            PLKOD-ANNAM(012),
+            PLKOD-AEDAT(010),
+            PLKOD-AENAM(012),
+            LV_NAME_DISPLAY(070),
+            LONGTEXT(255),
+            STRLEN_LONGTEXT(004),
+      end of %%g00.
+data %znr type i.
+data %lznr type i value 99999.
+field-groups header.
+field-groups %fg01.
+data %any-01.
+
+controls tview100 type tableview using screen 100.
+
+AT SELECTION-SCREEN.
+perform alvl_check(rsaqexce) using %alvl 'G00'.
+perform testmode(rsaqexce).
+perform check_expcol(rsaqexce) using %alv.
+
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR %ALVL.
+perform alvl_value_request(rsaqexce) using %alvl 'G00'.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR %XINTK.
+perform xint_value_request(rsaqexce).
+
+AT SELECTION-SCREEN OUTPUT.
+
+perform save_initial_sscr(rsaqexce).
+perform rinit(rsaqbrst).
+perform set_expcol(rsaqexce) using %alv pb%exco.
+perform alvl_set_invisible(rsaqexce).
+perform set_xint_params(rsaqexce).
+
+INITIALIZATION.
+perform init_xint(rsaqexce).
+%gcprog = sy-cprog.
+if %gcprog(1) = '!' or
+   %gcprog(1) = 'Y' or
+   %gcprog(1) = 'Z'.
+  %gcprog(1) = 'A'.
+endif.
+call function  'RSAQ_DECODE_REPORT_NAME'
+     exporting reportname = %gcprog
+     importing WORKSPACE  = %IQID-workspace
+               USERGROUP  = %IQID-USERGROUP
+               QUERY      = %IQID-QUERY.
+call function  'RSAQRT_SET_IDENTIFICATION'
+     exporting iqid        = %IQID
+               sscr_report = %gcprog
+     changing  rtmode      = %RTMODE.
+perform set_www_flags(rsaqexce).
+perform init_print_params(rsaqexce).
+
+if %textpool_read is initial.
+  read textpool sy-repid into %textpool_langu language sy-langu.
+  %textpool_read = 'X'.
+endif.
+
+START-OF-SELECTION.
+insert %count-PLKOD into header.
+insert %linr-PLKOD into header.
+insert %count-PLFLD into header.
+insert %linr-PLFLD into header.
+insert %count-PLPOD into header.
+insert %linr-PLPOD into header.
+insert %count-PLMK into header.
+insert %linr-PLMK into header.
+insert PLKOD-IWERK into %fg01.
+insert PLFLD-PLNTY into %fg01.
+insert PLFLD-PLNNR into %fg01.
+insert PLFLD-PLNAL into %fg01.
+insert PLKOD-ANLZU into %fg01.
+insert PLKOD-LOEKZ into %fg01.
+insert PLKOD-QKZRASTER into %fg01.
+insert PLKOD-STRAT into %fg01.
+insert PLKOD-SLWBEZ into %fg01.
+insert PLPOD-VORNR into %fg01.
+insert PLPOD-STEUS into %fg01.
+insert PLPOD-KTSCH into %fg01.
+insert PLPOD-LTXA1 into %fg01.
+insert PLPOD-TXTSP into %fg01.
+insert PLPOD-DAUNO into %fg01.
+insert PLPOD-DAUNE into %fg01.
+insert PLPOD-DAUNE into %fg01.
+insert PLPOD-ARBEI into %fg01.
+insert PLPOD-ARBEH into %fg01.
+insert PLPOD-ARBEH into %fg01.
+insert PLPOD-ANZZL into %fg01.
+insert PLPOD-ARBPL into %fg01.
+insert PLMK-MERKNR into %fg01.
+insert PLMK-QMTB_WERKS into %fg01.
+insert PLMK-PMETHODE into %fg01.
+insert PLMK-KURZTEXT into %fg01.
+insert PLMK-LTEXTKZ into %fg01.
+insert PLMK-LTEXTSPR into %fg01.
+insert PLMK-STELLEN into %fg01.
+insert PLMK-MASSEINHSW into %fg01.
+insert PLMK-SOLLWERT into %fg01.
+insert PLMK-TOLERANZOB into %fg01.
+insert PLMK-TOLERANZUN into %fg01.
+insert PLMK-STICHPRVER into %fg01.
+insert PLMK-AUSWMENGE1 into %fg01.
+insert PLMK-AUSWMGWRK1 into %fg01.
+insert QPAM-KTX01 into %fg01.
+insert QUAL_QUANT into %fg01.
+insert LONGTEXT_1 into %fg01.
+insert LONGTEXT_2 into %fg01.
+insert LONGTEXT_3 into %fg01.
+insert LONGTEXT_4 into %fg01.
+insert PLKOD-STLNR into %fg01.
+insert PLKOD-DATUV into %fg01.
+insert PLKOD-AENNR into %fg01.
+insert PLKOD-ANDAT into %fg01.
+insert PLKOD-ANNAM into %fg01.
+insert PLKOD-AEDAT into %fg01.
+insert PLKOD-AENAM into %fg01.
+insert LV_NAME_DISPLAY into %fg01.
+insert LONGTEXT into %fg01.
+insert STRLEN_LONGTEXT into %fg01.
+perform init_texthandling(rsaqexce) using 'CL_TEXT_IDENTIFIER' ' ' 'ZPM_QM_TL'.
+"webgui
+data: %ret type i.
+  if sy-batch is initial and %excel is not initial.
+    perform check_wingui(rsaqsyst) using %ret.
+    if %ret <> 0.
+      message e842(aq).
+    endif.
+  endif.
+"webgui
+perform authority_begin(rsaqexce) using 'CL_QUERY_TAB_ACCESS_AUTHORITY'.
+perform authority(rsaqexce) using 'QPAM' 'CL_QUERY_TAB_ACCESS_AUTHORITY'.
+perform authority_end(rsaqexce) using 'CL_QUERY_TAB_ACCESS_AUTHORITY'.
+perform %comp_ldesc.
+if %RTMODE is initial.
+  %gcprog = sy-cprog.
+  if %gcprog(1) = '!' or
+     %gcprog(1) = 'Y' or
+     %gcprog(1) = 'Z'.
+    %gcprog(1) = 'A'.
+  endif.
+  call function  'RSAQ_DECODE_REPORT_NAME'
+       exporting reportname = %gcprog
+       importing WORKSPACE  = %IQID-workspace
+                 USERGROUP  = %IQID-USERGROUP
+                 QUERY      = %IQID-QUERY.
+  call function  'RSAQRT_SET_IDENTIFICATION'
+       exporting iqid        = %IQID
+                 sscr_report = %gcprog
+       changing  rtmode      = %RTMODE.
+endif.
+
+GET MAPL .
+  %dbacc = %dbacc - 1.
+  if %dbacc = 0.
+    stop.
+  endif.
+
+GET PLFLD .
+  %dbacc = %dbacc - 1.
+  if %dbacc = 0.
+    perform %_get_PLKOD_late in program (sy-cprog) if found
+            using %selected PLKOD.
+    stop.
+  endif.
+  check SP$00004.
+  check SP$00003.
+  add 1 to %count-PLFLD.
+  %linr-PLFLD = '99'.
+
+GET PLKOD .
+  %dbacc = %dbacc - 1.
+  if %dbacc = 0.
+    stop.
+  endif.
+  check SP$00001.
+  check SP$00002.
+  add 1 to %count-PLKOD.
+  %linr-PLKOD = '99'.
+
+GET PLMK .
+  %dbacc = %dbacc - 1.
+  if %dbacc = 0.
+    perform %_get_PLPOD_late in program (sy-cprog) if found
+            using %selected PLPOD.
+    perform %_get_PLFLD_late in program (sy-cprog) if found
+            using %selected PLFLD.
+    perform %_get_PLKOD_late in program (sy-cprog) if found
+            using %selected PLKOD.
+    stop.
+  endif.
+  check SP$00005.
+  clear QUAL_QUANT.
+  IF PLMK-STEUERKZ+0(2) = 'XX'.
+      QUAL_QUANT = 'Quant'.
+  ELSE.
+     QUAL_QUANT = 'Qual'.
+  ENDIF.
+  lv_plnnr = plmk-plnnr.
+  lv_plnkn = plmk-plnkn.
+  "SHIFT lv_plnnr RIGHT DELETING TRAILING SPACE.
+  "SHIFT lv_plnkn RIGHT DELETING TRAILING SPACE.
+  IF strlen( lv_plnnr ) < 8.
+    IF strlen( lv_plnnr ) = 7.
+      concatenate lv_plnnr lv_plnkn
+      into lv_plnnr_plnkn
+      separated by ' '.
+    ENDIF.
+    IF strlen( lv_plnnr ) = 6.
+      concatenate lv_plnnr lv_plnkn
+      into lv_plnnr_plnkn
+      separated by '  '.
+    ENDIF.
+  ELSE.
+  concatenate lv_plnnr lv_plnkn
+      into lv_plnnr_plnkn.
+  ENDIF.
+  CONCATENATE
+  PLMK-MANDT
+  PLMK-PLNTY
+  "lv_plnnr
+  "space
+  "space
+  "PLMK-PLNKN
+  lv_plnnr_plnkn
+  INTO lv_part_1.
+  CONCATENATE
+  PLMK-MERKNR
+  PLMK-ZAEHL
+  INTO lv_part_2.
+  CONCATENATE
+  lv_part_1
+  lv_part_2
+  INTO lv_name
+  SEPARATED BY space.
+  clear longtext.
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      CLIENT                        = SY-MANDT
+      ID                            = 'QM'
+      LANGUAGE                      = PLMK-LTEXTSPR
+      NAME                          = lv_name
+      OBJECT                        = 'QSS'
+*   ARCHIVE_HANDLE                = 0
+*   LOCAL_CAT                     = ' '
+* IMPORTING
+*   HEADER                        =
+*   OLD_LINE_COUNTER              =
+    TABLES
+      LINES                         = lt_lines
+   EXCEPTIONS
+     ID                            = 1
+     LANGUAGE                      = 2
+     NAME                          = 3
+     NOT_FOUND                     = 4
+     OBJECT                        = 5
+    REFERENCE_CHECK               = 6
+     WRONG_ACCESS_TO_ARCHIVE       = 7
+    OTHERS                        = 8.
+  IF SY-SUBRC <> 0.
+* implement error handling if needed
+  else.
+    loop at lt_lines ASSIGNING FIELD-SYMBOL(<fs_lines>).
+    longtext = longtext && <fs_lines>-tdline.
+    endloop.
+  ENDIF.
+  " Ensure that the length of longtext does not exceed 255 characters
+      "IF strlen( longtext ) > 255.
+      "  longtext_2 = longtext+255(255).
+     "   longtext_3 = longtext+510(255).
+    "    longtext_4 = longtext+765(234).
+  "    longtext = longtext+0(255).  " Truncate to first 255 characters if necessary
+   "     EXIT.                " Exit loop if truncated
+  "    ENDIF.
+  if QPAM-WERKS <> PLPOD-WERKS
+     or QPAM-KATALOGART <> PLMK-KATALGART1
+     or QPAM-AUSWAHLMGE <> PLMK-AUSWMENGE1.
+    select single KTX01 WERKS KATALOGART AUSWAHLMGE
+                  into corresponding fields of QPAM
+                  from QPAM
+            where WERKS = PLPOD-WERKS
+              and KATALOGART = PLMK-KATALGART1
+              and AUSWAHLMGE = PLMK-AUSWMENGE1.
+    if sy-subrc <> 0.
+      clear QPAM.
+      QPAM-WERKS = PLPOD-WERKS.
+      QPAM-KATALOGART = PLMK-KATALGART1.
+      QPAM-AUSWAHLMGE = PLMK-AUSWMENGE1.
+    endif.
+  endif.
+  clear longtext_4.
+  IF strlen( longtext ) > 765.
+        longtext_4 = longtext+765(234).
+  ENDIF.
+  clear LV_NAME_DISPLAY.
+  clear LV_NAME_DISPLAY.
+  LV_NAME_DISPLAY = LV_NAME.
+  clear longtext_3.
+  IF strlen( longtext ) > 510.
+        longtext_3 = longtext+510(255).
+  ENDIF.
+  clear longtext_2.
+  IF strlen( longtext ) > 255.
+        longtext_2 = longtext+255(255).
+  ENDIF.
+  clear longtext_1.
+  longtext_1 = longtext+0(255).
+  clear STRLEN_LONGTEXT.
+  STRLEN_LONGTEXT = strlen( longtext ).
+  add 1 to %count-PLMK.
+  %linr-PLMK = '01'.
+  extract %fg01.
+  %linr-PLMK = '99'.
+
+GET PLPOD .
+  %dbacc = %dbacc - 1.
+  if %dbacc = 0.
+    perform %_get_PLFLD_late in program (sy-cprog) if found
+            using %selected PLFLD.
+    perform %_get_PLKOD_late in program (sy-cprog) if found
+            using %selected PLKOD.
+    stop.
+  endif.
+  add 1 to %count-PLPOD.
+  %linr-PLPOD = '99'.
+
+END-OF-SELECTION.
+sort as text.
+%diact = space.
+%printon = space.
+%batch = sy-batch.
+if %batch <> space.
+  if %priv <> space.
+    %diact = 'P'.
+    %printon = 'X'.
+    new-page print on destination 'NULL' no dialog
+             line-size 0255 line-count 0065.
+  endif.
+  if %alv <> space.
+    %diact = 'V'.
+    %printon = 'X'.
+    %alv_layout = %alvl.
+    new-page print on destination 'NULL' no dialog
+             line-size 0255 line-count 0065.
+  endif.
+  if %save <> space.
+    %diact = 'S'.
+    %printon = 'X'.
+    new-page print on destination 'NULL' no dialog
+             line-size 0255 line-count 0065.
+  endif.
+elseif %called_by_www <> space.
+  %diact = space.
+elseif %called_by_www_alv <> space.
+  %diact = 'V'.
+else.
+  perform init_print_params(rsaqexce).
+  if %save  <> space. %diact = 'S'. endif.
+  if %priv  <> space. %diact = 'P'. endif.
+  if %xint  <> space. %diact = 'I'. endif.
+  if %tview <> space. %diact = 'T'. endif.
+  if %alv   <> space. %diact = 'V'. endif.
+  if %down  <> space. %diact = 'D'. endif.
+  if %graph <> space. %diact = 'G'. endif.
+  if %excel <> space. %diact = 'X'. endif.
+  if %text  <> space. %diact = 'W'. endif.
+  if %abc   <> space. %diact = 'A'. endif.
+  if %diact <> space and %diact <> 'S' and %diact <> 'W'.
+    %printon = 'X'.
+    new-page print on destination 'NULL' no dialog
+             line-size 0255 line-count 0065.
+  endif.
+  %pathname = %path.
+  if %diact = 'I'.
+    %functionkey = %xintk.
+  endif.
+  if %diact = 'V'.
+    %alv_layout = %alvl.
+  endif.
+endif.
+free memory id 'AQLISTDATA'.
+if %memmode <> space.
+  if %batch <> space and %printon = space.
+    %printon = 'X'.
+    new-page print on destination 'NULL' no dialog
+             line-size 0255 line-count 0065.
+  endif.
+  %diact = '1'.
+endif.
+%titel = ' '.
+if sy-subty o %prflag and %titel = space.
+  new-page with-title.
+endif.
+%tvsize = 0200.
+%pline = 1.
+%pzgr  = 1.
+%first = 'X'.
+perform %output.
+%first = space.
+if %diact <> space and %diact <> 'S'.
+  if %batch = space.
+    new-page print off.
+    if not ( %diact = 'V' and %ucomm = 'PRIN' ).
+      new-page no-heading no-title.
+      write space.
+    endif.
+  endif.
+else.
+  perform pf-status(rsaqexce) using 'XX    '.
+endif.
+clear: %tab, %line, %cont.
+if %data_selected = space.
+  if %diact = '1'.
+    export empty from %empty to memory id 'AQLISTDATA'.
+    leave.
+  else.
+    if %batch = space and
+       %called_by_www = space and
+       %called_by_www_alv = space.
+      message s260(aq).
+      leave list-processing.
+    else.
+      if %called_by_www_alv = space.
+        %diact = space.
+      endif.
+    endif.
+  endif.
+endif.
+if %diact = 'S'.
+  perform %save_list.
+  leave list-processing.
+endif.
+if %diact = 'V' and %batch <> space.
+  new-page print off.
+  perform set_print_params(rsaqexce).
+  perform %download using 'ALV'.
+  leave.
+endif.
+if %diact = 'V' and %called_by_www_alv <> space.
+  perform %download using 'ALV'.
+  leave.
+endif.
+*if %diact = 'V' and ( %ucomm = 'PRIN' or sy-subty = '07' ).
+data %is_submit_to_spool type c.
+if %diact = 'V'.
+  CALL FUNCTION 'IS_SUBMIT_TO_SPOOL'
+    IMPORTING FLAG = %is_submit_to_spool.
+  if ( %ucomm = 'PRIN' or %is_submit_to_spool = 'X' ).
+    perform set_print_params(rsaqexce).
+    perform %download using 'ALV'.
+    set parameter id 'SPI' field sy-spono.
+    leave list-processing.
+  endif.
+endif.
+if %diact = 'P' and %batch <> space.
+  perform %download using '+DAT'.
+  leave list-processing.
+endif.
+if %diact = 'E' and %batch <> space.
+  perform %download using 'EIS'.
+  leave list-processing.
+endif.
+if %diact = '1'.
+  perform %download using '+MEM'.
+  leave.
+endif.
+if %diact = 'X'.
+  set user-command 'XXL'.
+elseif %diact = 'W'.
+  set user-command 'TEXT'.
+elseif %diact = 'V'.
+  set user-command 'ALV'.
+elseif %diact = 'T'.
+  set user-command 'VIEW'.
+elseif %diact = 'G'.
+  set user-command 'GRAF'.
+elseif %diact = 'A'.
+  set user-command 'ABCA'.
+elseif %diact = 'E'.
+  set user-command 'EIS'.
+elseif %diact = 'D'.
+  set user-command 'DOWN'.
+elseif %diact = 'I'.
+  set user-command 'XINT'.
+elseif %diact = 'P'.
+  set user-command '+DAT'.
+endif.
+
+TOP-OF-PAGE.
+perform %top-of-page.
+
+END-OF-PAGE.
+perform page_foot(rsaqexce).
+perform %save_page.
+
+TOP-OF-PAGE DURING LINE-SELECTION.
+perform %top-of-page.
+
+AT USER-COMMAND.
+case sy-ucomm.
+when 'EXIT'.
+  leave program.
+when 'RETN'.
+  perform return(rsaqexce).
+when 'CANC'.
+  perform return(rsaqexce).
+when 'WEIT'.
+  perform return(rsaqexce).
+when 'INHA'.
+  perform catalogue(rsaqexce).
+when 'AUSL'.
+  perform pickup(rsaqexce).
+when 'AUSW'.
+  perform pickup(rsaqexce).
+when 'RCAA'.
+  perform rchain(rsaqbrst).
+when 'RCAL'.
+  perform rcall(rsaqbrst).
+when 'VGLI'.
+  perform change(rsaqexce).
+when 'VGLE'.
+  perform change(rsaqexce).
+when 'TOTO'.
+  perform change(rsaqexce).
+when 'VSTA'.
+  perform change(rsaqexce).
+when 'VSTE'.
+  perform return(rsaqexce).
+when 'SAVL'.
+  perform %save_list.
+when 'ODRU'.
+  perform print_list(rsaqexce).
+when 'COPA'.
+  perform print_cover_page(rsaqexce).
+when 'TEXT'.
+  perform %download using 'TEXT'.
+when 'ALV'.
+  perform %download using 'ALV'.
+when 'VIEW'.
+  perform %view.
+when 'XXL'.
+  perform %download using 'XXL'.
+when 'GRAF'.
+  perform %download using 'GRAF'.
+when 'ABCA'.
+  perform %download using 'ABCA'.
+when 'DOWN'.
+  perform %download using 'DOWN'.
+when 'XINT'.
+  perform %download using 'XINT'.
+when '+DAT'.
+  perform %download using '+DAT'.
+endcase.
+clear: %cline, %zgr.
+clear: %tab, %line, %cont.
+if %diact <> space.
+  leave list-processing.
+endif.
+
+
+form %comp_ldesc.
+
+*... textpool required (API calls %comp_ldesc directly)
+  if %textpool_read is initial.
+    read textpool sy-repid into %textpool_langu language sy-langu.
+    %textpool_read = 'X'.
+  endif.
+
+  refresh %ldesc.
+  refresh %gdesc.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A00'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B00'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00010000X004       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-IWERK' PLKOD-IWERK 'PLKOD-IWERK'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A01'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B01'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H01'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00020000X001       00  03'
+    %txt1 %txt2 %txt3 'PLFLD-PLNTY' PLFLD-PLNTY 'PLFLD-PLNTY'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A02'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B02'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H01'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00030000X008       00  03'
+    %txt1 %txt2 %txt3 'PLFLD-PLNNR' PLFLD-PLNNR 'PLFLD-PLNNR'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A03'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B03'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H01'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00040000X002       00  03'
+    %txt1 %txt2 %txt3 'PLFLD-PLNAL' PLFLD-PLNAL 'PLFLD-PLNAL'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A04'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B04'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00050000X001       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-ANLZU' PLKOD-ANLZU 'PLKOD-ANLZU'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A05'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B05'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00060000X001       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-LOEKZ' PLKOD-LOEKZ 'PLKOD-LOEKZ'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A06'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B06'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00070000X001       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-QKZRASTER' PLKOD-QKZRASTER 'PLKOD-QKZRASTER'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A07'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B07'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00080000X006       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-STRAT' PLKOD-STRAT 'PLKOD-STRAT'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A08'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B08'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00090000X003       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-SLWBEZ' PLKOD-SLWBEZ 'PLKOD-SLWBEZ'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A09'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B09'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00100000X004       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-VORNR' PLPOD-VORNR 'PLPOD-VORNR'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A10'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B10'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00110000X004       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-STEUS' PLPOD-STEUS 'PLPOD-STEUS'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A11'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B11'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00120000X007       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-KTSCH' PLPOD-KTSCH 'PLPOD-KTSCH'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A12'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B12'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00130000X018       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-LTXA1' PLPOD-LTXA1 'PLPOD-LTXA1'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A13'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B13'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00140000X002       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-TXTSP' PLPOD-TXTSP 'PLPOD-TXTSP'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A14'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B14'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00150078 007M      00  04'
+    %txt1 %txt2 %txt3 'PLPOD-DAUNO' PLPOD-DAUNO 'PLPOD-DAUNO'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A15'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B15'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00160000 003E      00  04'
+    %txt1 %txt2 %txt3 'PLPOD-DAUNE' PLPOD-DAUNE 'PLPOD-DAUNE-0115'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A16'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B16'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00170000X003       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-DAUNE' PLPOD-DAUNE 'PLPOD-DAUNE'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A17'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B17'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00180094 009M      00  04'
+    %txt1 %txt2 %txt3 'PLPOD-ARBEI' PLPOD-ARBEI 'PLPOD-ARBEI'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A18'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B18'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00190000 003E      00  04'
+    %txt1 %txt2 %txt3 'PLPOD-ARBEH' PLPOD-ARBEH 'PLPOD-ARBEH-0117'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A19'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B19'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00200000X003       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-ARBEH' PLPOD-ARBEH 'PLPOD-ARBEH'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A20'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B20'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00210112 003       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-ANZZL' PLPOD-ANZZL 'PLPOD-ANZZL'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A21'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B21'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H02'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00220000X008       00  04'
+    %txt1 %txt2 %txt3 'PLPOD-ARBPL' PLPOD-ARBPL 'PLPOD-ARBPL'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A22'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B22'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00230000X004       00  09'
+    %txt1 %txt2 %txt3 'PLMK-MERKNR' PLMK-MERKNR 'PLMK-MERKNR'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A23'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B23'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00240000X004       00  09'
+    %txt1 %txt2 %txt3 'PLMK-QMTB_WERKS' PLMK-QMTB_WERKS 'PLMK-QMTB_WERKS'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A24'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B24'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00250000X008       00  09'
+    %txt1 %txt2 %txt3 'PLMK-PMETHODE' PLMK-PMETHODE 'PLMK-PMETHODE'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A25'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B25'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00260000X040       00  09'
+    %txt1 %txt2 %txt3 'PLMK-KURZTEXT' PLMK-KURZTEXT 'PLMK-KURZTEXT'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A26'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B26'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00270000X001       00  09'
+    %txt1 %txt2 %txt3 'PLMK-LTEXTKZ' PLMK-LTEXTKZ 'PLMK-LTEXTKZ'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A27'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B27'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00280000X002       00  09'
+    %txt1 %txt2 %txt3 'PLMK-LTEXTSPR' PLMK-LTEXTSPR 'PLMK-LTEXTSPR'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A28'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B28'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00290190 002       00  09'
+    %txt1 %txt2 %txt3 'PLMK-STELLEN' PLMK-STELLEN 'PLMK-STELLEN'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A29'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B29'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00300000X003       00  09'
+    %txt1 %txt2 %txt3 'PLMK-MASSEINHSW' PLMK-MASSEINHSW 'PLMK-MASSEINHSW'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A30'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B30'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00310197 023       00  09'
+    %txt1 %txt2 %txt3 'PLMK-SOLLWERT' PLMK-SOLLWERT 'PLMK-SOLLWERT'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A31'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B31'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00320221 023       00  09'
+    %txt1 %txt2 %txt3 'PLMK-TOLERANZOB' PLMK-TOLERANZOB 'PLMK-TOLERANZOB'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A32'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B32'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00331002 023       00  09'
+    %txt1 %txt2 %txt3 'PLMK-TOLERANZUN' PLMK-TOLERANZUN 'PLMK-TOLERANZUN'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A33'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B33'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00341000X008       00  09'
+    %txt1 %txt2 %txt3 'PLMK-STICHPRVER' PLMK-STICHPRVER 'PLMK-STICHPRVER'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A34'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B34'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00351000X008       00  09'
+    %txt1 %txt2 %txt3 'PLMK-AUSWMENGE1' PLMK-AUSWMENGE1 'PLMK-AUSWMENGE1'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A35'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B35'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H05'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00361000X004       00  09'
+    %txt1 %txt2 %txt3 'PLMK-AUSWMGWRK1' PLMK-AUSWMGWRK1 'PLMK-AUSWMGWRK1'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A36'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B36'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00371000X017       00  99'
+    %txt1 %txt2 %txt3 'QPAM-KTX01' QPAM-KTX01 'QPAM-KTX01'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A37'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B37'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00381000X005       00  99'
+    %txt1 %txt2 %txt3 'QUAL_QUANT' QUAL_QUANT 'QUAL_QUANT'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A38'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B38'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00391000X017       00  99'
+    %txt1 %txt2 %txt3 'LONGTEXT_1' LONGTEXT_1 'LONGTEXT_1'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A39'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B39'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00401000X015       00  99'
+    %txt1 %txt2 %txt3 'LONGTEXT_2' LONGTEXT_2 'LONGTEXT_2'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A40'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B40'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00411000X012       00  99'
+    %txt1 %txt2 %txt3 'LONGTEXT_3' LONGTEXT_3 'LONGTEXT_3'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A41'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B41'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00421000X013       00  99'
+    %txt1 %txt2 %txt3 'LONGTEXT_4' LONGTEXT_4 'LONGTEXT_4'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A42'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B42'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00431000X008       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-STLNR' PLKOD-STLNR 'PLKOD-STLNR'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A43'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B43'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00441000X010       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-DATUV' PLKOD-DATUV 'PLKOD-DATUV'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A44'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B44'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00451000X012       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-AENNR' PLKOD-AENNR 'PLKOD-AENNR'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A45'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B45'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00461000X010       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-ANDAT' PLKOD-ANDAT 'PLKOD-ANDAT'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A46'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B46'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00471000X012       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-ANNAM' PLKOD-ANNAM 'PLKOD-ANNAM'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A47'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B47'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00481000X010       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-AEDAT' PLKOD-AEDAT 'PLKOD-AEDAT'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A48'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B48'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H00'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00491000X012       00  01'
+    %txt1 %txt2 %txt3 'PLKOD-AENAM' PLKOD-AENAM 'PLKOD-AENAM'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A49'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B49'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00502000X070       00  99'
+    %txt1 %txt2 %txt3 'LV_NAME_DISPLAY' LV_NAME_DISPLAY 'LV_NAME_DISPLAY'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A50'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B50'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00513000X255       00  99'
+    %txt1 %txt2 %txt3 'LONGTEXT' LONGTEXT 'LONGTEXT'.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'A51'.
+  if sy-subrc is initial. %txt1 = %textpool_langu_line-entry.
+  else. %txt1 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'B51'.
+  if sy-subrc is initial. %txt2 = %textpool_langu_line-entry.
+  else. %txt2 = %txt_unknown.
+  endif.
+  read table %textpool_langu into %textpool_langu_line
+                             with key key = 'H07'.
+  if sy-subrc is initial. %txt3 = %textpool_langu_line-entry.
+  else. %txt3 = %txt_unknown.
+  endif.
+  perform ldesc(rsaqexce) using 'G00524002 004       00  99'
+    %txt1 %txt2 %txt3 'STRLEN_LONGTEXT' STRLEN_LONGTEXT 'STRLEN_LONGTEXT'.
+  perform gdesc(rsaqexce) using 'G00' 1 20 ' ' ' ' 'X'.
+  perform complete_ldesc(rsaqexce) tables %ldesc.
+
+endform.
+
+form %read_ldesc using p_lid   type aql_lid
+                       p_ldesc type rsaqtldesc.
+
+  p_lid = 'G00'.
+  perform %comp_ldesc.
+  p_ldesc[] = %ldesc[].
+
+endform.
+
+
+form %output.
+
+describe table %prlist lines %max_prlist.
+%head = 'AAA'.
+%keyempty = space.
+new-page.
+perform %output_gl.
+perform complete_page(rsaqexce).
+%head = 'ZZZ'.
+perform last_ptab_entry(rsaqexce).
+new-page.
+if %keyempty <> space.
+  message s894(aq).
+endif.
+
+endform.
+
+
+form %top-of-page.
+
+if sy-ucomm = 'INHA'. exit. endif.
+if sy-ucomm = 'COPA'. exit. endif.
+if %head    = space.  exit. endif.
+if %head = 'DDD'.
+  perform tviewpage(rsaqexce).
+  exit.
+endif.
+if %head = 'GGG'.
+  perform page(rsaqexce) using 'G00' text-grl 254 %glframe 001.
+  set left scroll-boundary column 002.
+  perform set_scroll_boundary(rsaqexce) using 002.
+  if %toto <> space. exit. endif.
+else.
+  case %head.
+  when others.
+  endcase.
+endif.
+
+endform.
+
+
+form %newline.
+
+data: %llen type i.
+  %llen = 254.
+  %uflag = space.
+  new-line.
+  write: '|', 254 '|'.
+  position 2.
+
+endform.
+
+form %skip using count.
+
+  if sy-linno > 1.
+    %uflag = space.
+    do count times.
+      new-line.
+      format reset.
+      write: '|', 254 '|'.
+    enddo.
+  endif.
+
+endform.
+
+form %uline.
+
+  if %uflag = space.
+    if sy-linno > 1.
+      uline /1(254).
+    endif.
+    %uflag = 'X'.
+  endif.
+
+endform.
+
+form %hide.
+
+  if %batch <> space and %diact = 'S'.
+    perform hide(rsaqexce).
+  else.
+    hide: %tab, %line, %cont.
+  endif.
+
+endform.
+
+form %hide_color.
+
+  if %batch <> space and %diact = 'S'.
+    perform hide_color(rsaqexce).
+  else.
+    hide: %fint, %fcol.
+  endif.
+
+endform.
+
+form %rcall using name value.
+
+field-symbols <field>.
+
+  assign (name) to <field>.
+  if sy-subrc <> 0.
+    value = space.
+    exit.
+  endif.
+  read current line field value <field> into value.
+  if value = space and %tab = 'G00' and %ldesc-fcur na 'FM'.
+    read table %g00 index %line.
+    if sy-subrc = 0.
+      assign component %ldesc-fnameint of structure %g00
+                                       to <field>.
+      if sy-subrc = 0.
+        write <field> to value(%ldesc-folen).
+      endif.
+    endif.
+  endif.
+
+endform.
+
+form %save_page.
+
+  if %batch <> space and %diact = 'S'.
+    perform save_page(rsaqexce) tables %st_liste.
+  endif.
+
+endform.
+
+form %replace_var using text.
+
+field-symbols <var>.
+
+  assign text+1(*) to <var>.
+
+endform.
+
+form %save_list.
+
+data: %sflag,
+      qreport like sy-repid.
+
+  if %diact = 'S'. %sflag = 'X'. endif.
+  qreport = sy-repid.
+  perform save_list(rsaqexce) tables %st_liste
+                              using qreport %sflag %listid.
+  if %ql_id <> space.
+    %dlflag = 'X'.
+    %listsize = 0255.
+    perform comp_selection_screen(rsaqexce).
+    export %st_liste %ptab %ldesc %gdesc %dlflag %listsize
+           %selections
+           %g00
+           to database aqldb(aq) id %ql_id.
+  endif.
+
+endform.
+
+form %refresh.
+
+  case %tab.
+  when 'G00'.
+    import %g00 from database aqldb(aq) id %ql_id.
+  endcase.
+
+endform.
+
+form %download using code.
+
+data: qreport like sy-repid.
+
+  perform init_download(rsaqexce).
+  qreport = sy-repid.
+  case %tab.
+  when 'G00'.
+    perform download(rsaqexce)
+            tables %g00 using code qreport text-grl.
+  when others.
+    message s860(aq).
+  endcase.
+
+endform.
+
+form %set_data changing l_lines type i.
+
+  import ldata to %g00 from memory id 'AQLISTDATA'.
+  describe table %g00 lines l_lines.
+  free memory id 'AQLISTDATA'.
+
+endform.
+
+form %get_data tables datatab structure %g00
+               using  first type i
+                      last  type i.
+
+  append lines of %g00 from first to last to datatab.
+
+endform.
+
+form %get_ref_to_table using lid         like rsaqldesc-lid
+                             ref_to_itab type ref to data
+                             subrc       like sy-subrc.
+
+  subrc = 0.
+  case lid.
+  when 'G00'.
+    create data ref_to_itab like %g00[].
+  when others.
+    subrc = 4.
+    message s860(aq).
+  endcase.
+
+endform.
+
+form %view.
+
+data: ret type i.
+
+  perform check_wingui(rsaqsyst) using ret.
+  if ret <> 0.
+    message s841(aq).
+    perform %download using 'ALV'.
+    exit.
+  endif.
+
+data: anz type i,
+      prog like sy-repid.
+
+  prog = sy-repid.
+  perform init_download(rsaqexce).
+  case %tab.
+  when 'G00'.
+    perform generate_view_dynpro(rsaqexce)
+            using prog text-grl.
+    describe table %g00 lines anz.
+    tview100-lines = anz.
+    perform init_view(rsaqexce) tables %g00 using tview100.
+    call screen 100.
+    perform reset_view_dynpro(rsaqexce).
+  when others.
+    message s860(aq).
+  endcase.
+
+endform.
+
+form %colhead_print changing lines like sy-linno
+                             hflag type c.
+data: l_text(255),
+      l_size type i.
+  if %textpool_read is initial.
+    read textpool sy-cprog into %textpool_langu language sy-langu.
+    %textpool_read = 'X'.
+  endif.
+  lines = lines +  5.
+  if  5 = 0. clear hflag. else. hflag = 'X'. endif.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B001'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 004
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 004.
+  endif.
+  write at 000(004) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B011'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 001
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 001.
+  endif.
+  write at 000(001) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B021'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 008
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 008.
+  endif.
+  write at 000(008) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B031'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 002
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 002.
+  endif.
+  write at 000(002) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B041'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 001
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 001.
+  endif.
+  write at 000(001) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B051'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 001
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 001.
+  endif.
+  write at 000(001) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B061'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 001
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 001.
+  endif.
+  write at 000(001) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B071'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 006
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 006.
+  endif.
+  write at 000(006) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B081'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 003
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 003.
+  endif.
+  write at 000(003) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B091'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 004
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 004.
+  endif.
+  write at 000(004) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B101'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 004
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 004.
+  endif.
+  write at 000(004) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B111'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 007
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 007.
+  endif.
+  write at 000(007) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B121'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 018
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 018.
+  endif.
+  write at 000(018) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B131'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 002
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 002.
+  endif.
+  write at 000(002) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B141'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 007
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 007.
+  endif.
+  write at 000(007) l_text(l_size)  right-justified  no-gap.
+  write at (1) ' ' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B151'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 003
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 003.
+  endif.
+  write at 000(003) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B151'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 003
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 003.
+  endif.
+  write at 000(003) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B171'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 009
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 009.
+  endif.
+  write at 000(009) l_text(l_size)  right-justified  no-gap.
+  write at (1) ' ' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B181'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 003
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 003.
+  endif.
+  write at 000(003) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B181'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 003
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 003.
+  endif.
+  write at 000(003) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B201'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 003
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 003.
+  endif.
+  write at 000(003) l_text(l_size)  right-justified  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B211'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 008
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 008.
+  endif.
+  write at 000(008) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B221'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 004
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 004.
+  endif.
+  write at 000(004) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B231'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 004
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 004.
+  endif.
+  write at 000(004) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B241'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 008
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 008.
+  endif.
+  write at 000(008) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B251'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 040
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 040.
+  endif.
+  write at 000(040) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B261'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 001
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 001.
+  endif.
+  write at 000(001) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B271'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 002
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 002.
+  endif.
+  write at 000(002) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B281'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 002
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 002.
+  endif.
+  write at 000(002) l_text(l_size)  right-justified  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B291'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 003
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 003.
+  endif.
+  write at 000(003) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B301'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 023
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 023.
+  endif.
+  write at 000(023) l_text(l_size)  right-justified  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B311'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 023
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 023.
+  endif.
+  write at 000(023) l_text(l_size)  right-justified  no-gap.
+  write at (1) ' ' no-gap.
+  write at 254(1) '|' no-gap.
+  new-line.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B321'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 023
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 023.
+  endif.
+  write at 000(023) l_text(l_size)  right-justified  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B331'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 008
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 008.
+  endif.
+  write at 000(008) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B341'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 008
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 008.
+  endif.
+  write at 000(008) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B351'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 004
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 004.
+  endif.
+  write at 000(004) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B361'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 017
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 017.
+  endif.
+  write at 000(017) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B371'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 005
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 005.
+  endif.
+  write at 000(005) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B381'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 017
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 017.
+  endif.
+  write at 000(017) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B391'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 015
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 015.
+  endif.
+  write at 000(015) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B401'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 012
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 012.
+  endif.
+  write at 000(012) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B411'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 013
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 013.
+  endif.
+  write at 000(013) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B421'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 008
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 008.
+  endif.
+  write at 000(008) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B431'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 010
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 010.
+  endif.
+  write at 000(010) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B441'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 012
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 012.
+  endif.
+  write at 000(012) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B451'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 010
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 010.
+  endif.
+  write at 000(010) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B461'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 012
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 012.
+  endif.
+  write at 000(012) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B471'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 010
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 010.
+  endif.
+  write at 000(010) l_text(l_size)  no-gap.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B481'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 012
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 012.
+  endif.
+  write at 000(012) l_text(l_size)  no-gap.
+  write at (1) ' ' no-gap.
+  write at 254(1) '|' no-gap.
+  new-line.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B491'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 070
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 070.
+  endif.
+  write at 000(070) l_text(l_size)  no-gap.
+  write at (1) ' ' no-gap.
+  write at 254(1) '|' no-gap.
+  new-line.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B501'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 252
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 252.
+  endif.
+  write at 000(252) l_text(l_size)  no-gap.
+  write at (1) ' ' no-gap.
+  write at 254(1) '|' no-gap.
+  new-line.
+  write at (1) '|' no-gap.
+  read table %textpool_langu into %textpool_langu_line
+                             with key ID = 'I' key = 'B511'.
+  if sy-subrc is initial.
+    l_text = %textpool_langu_line-entry.
+  else.
+    clear l_text.
+  endif.
+  perform replace_vars(rsaqexce) using l_text 'X'.
+  call method cl_abap_list_utilities=>memory_offset
+    exporting
+      field          = l_text
+      display_offset = 004
+    importing
+      memory_offset  = l_size.
+  if l_size = 0.
+    l_size = 004.
+  endif.
+  write at 000(004) l_text(l_size)  right-justified  no-gap.
+  write at (1) ' ' no-gap.
+  write at 254(1) '|' no-gap.
+  new-line.
+endform.
+
+
+form %output_gl.
+
+if %max_prlist <> 0.
+  read table %prlist with key tab = 'GGG'.
+  if sy-subrc <> 0.
+    exit.
+  endif.
+endif.
+set margin 00.
+perform complete_page(rsaqexce).
+%nochange = space.
+new-page.
+%glline   = 0.
+%tab      = 'G00'.
+%line     = 0.
+%cont     = '0'.
+%fint     = space.
+%fcol     = '0'.
+%head     = 'GGG'.
+%cline    = 0.
+%outflag  = space.
+%outcomp  = space.
+%outtotal = space.
+%rflag    = 'AA'.
+if %diact <> space and %diact na 'SWE'. write space. endif.
+format reset.
+loop.
+  %data_selected = 'X'.
+  at %fg01.
+    %znr = '01'.
+    %zgr = '01'.
+    %cline = %cline + 1.
+    %g00-PLKOD-IWERK = PLKOD-IWERK.
+    %g00-PLFLD-PLNTY = PLFLD-PLNTY.
+    %g00-PLFLD-PLNNR = PLFLD-PLNNR.
+    %g00-PLFLD-PLNAL = PLFLD-PLNAL.
+    %g00-PLKOD-ANLZU = PLKOD-ANLZU.
+    %g00-PLKOD-LOEKZ = PLKOD-LOEKZ.
+    %g00-PLKOD-QKZRASTER = PLKOD-QKZRASTER.
+    %g00-PLKOD-STRAT = PLKOD-STRAT.
+    %g00-PLKOD-SLWBEZ = PLKOD-SLWBEZ.
+    %g00-PLPOD-VORNR = PLPOD-VORNR.
+    %g00-PLPOD-STEUS = PLPOD-STEUS.
+    %g00-PLPOD-KTSCH = PLPOD-KTSCH.
+    %g00-PLPOD-LTXA1 = PLPOD-LTXA1.
+    %g00-PLPOD-TXTSP = PLPOD-TXTSP.
+    %g00-PLPOD-DAUNO = PLPOD-DAUNO.
+    %g00-PLPOD-DAUNE-0115 = PLPOD-DAUNE.
+    %g00-PLPOD-DAUNE = PLPOD-DAUNE.
+    %g00-PLPOD-ARBEI = PLPOD-ARBEI.
+    %g00-PLPOD-ARBEH-0117 = PLPOD-ARBEH.
+    %g00-PLPOD-ARBEH = PLPOD-ARBEH.
+    %g00-PLPOD-ANZZL = PLPOD-ANZZL.
+    %g00-PLPOD-ARBPL = PLPOD-ARBPL.
+    %g00-PLMK-MERKNR = PLMK-MERKNR.
+    %g00-PLMK-QMTB_WERKS = PLMK-QMTB_WERKS.
+    %g00-PLMK-PMETHODE = PLMK-PMETHODE.
+    %g00-PLMK-KURZTEXT = PLMK-KURZTEXT.
+    %g00-PLMK-LTEXTKZ = PLMK-LTEXTKZ.
+    %g00-PLMK-LTEXTSPR = PLMK-LTEXTSPR.
+    %g00-PLMK-STELLEN = PLMK-STELLEN.
+    %g00-PLMK-MASSEINHSW = PLMK-MASSEINHSW.
+    %g00-PLMK-SOLLWERT = PLMK-SOLLWERT.
+    %g00-PLMK-TOLERANZOB = PLMK-TOLERANZOB.
+    %g00-PLMK-TOLERANZUN = PLMK-TOLERANZUN.
+    %g00-PLMK-STICHPRVER = PLMK-STICHPRVER.
+    %g00-PLMK-AUSWMENGE1 = PLMK-AUSWMENGE1.
+    %g00-PLMK-AUSWMGWRK1 = PLMK-AUSWMGWRK1.
+    %g00-QPAM-KTX01 = QPAM-KTX01.
+    %g00-QUAL_QUANT = QUAL_QUANT.
+    %g00-LONGTEXT_1 = LONGTEXT_1.
+    %g00-LONGTEXT_2 = LONGTEXT_2.
+    %g00-LONGTEXT_3 = LONGTEXT_3.
+    %g00-LONGTEXT_4 = LONGTEXT_4.
+    %g00-PLKOD-STLNR = PLKOD-STLNR.
+    %g00-PLKOD-DATUV = PLKOD-DATUV.
+    %g00-PLKOD-AENNR = PLKOD-AENNR.
+    %g00-PLKOD-ANDAT = PLKOD-ANDAT.
+    %g00-PLKOD-ANNAM = PLKOD-ANNAM.
+    %g00-PLKOD-AEDAT = PLKOD-AEDAT.
+    %g00-PLKOD-AENAM = PLKOD-AENAM.
+    %g00-LV_NAME_DISPLAY = LV_NAME_DISPLAY.
+    %g00-LONGTEXT = LONGTEXT.
+    %g00-STRLEN_LONGTEXT = STRLEN_LONGTEXT.
+    if %first <> space. append %g00. endif.
+    %glline = %glline + 1.
+    %lznr = %znr.
+    if %diact <> space and %diact na 'SWE'. continue. endif.
+    perform check(rsaqexce) using ' '.
+    if %rflag = 'E'. exit. endif.
+    if %rflag(1) = 'A'.
+    format reset.
+    %fint = 'F'. %fcol = '0'.
+    format color 2. %fcol = '2'.
+    perform %newline.
+    write 002(004) PLKOD-IWERK   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    %line = %glline.
+    perform %hide.
+    %line = 0.
+    perform %hide_color.
+    write 007(001) PLFLD-PLNTY   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 009(008) PLFLD-PLNNR   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 018(002) PLFLD-PLNAL   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 021(001) PLKOD-ANLZU   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 023(001) PLKOD-LOEKZ   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 025(001) PLKOD-QKZRASTER   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 027(006) PLKOD-STRAT   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 034(003) PLKOD-SLWBEZ   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 038(004) PLPOD-VORNR   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 043(004) PLPOD-STEUS   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 048(007) PLPOD-KTSCH   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 056(018) PLPOD-LTXA1   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 075(002) PLPOD-TXTSP   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 078(007) PLPOD-DAUNO
+      unit PLPOD-DAUNE
+      intensified off
+      color 2 on.
+    write 086(003) PLPOD-DAUNE   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 090(003) PLPOD-DAUNE   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 094(009) PLPOD-ARBEI
+      unit PLPOD-ARBEH
+      intensified off
+      color 2 on.
+    write 104(003) PLPOD-ARBEH   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 108(003) PLPOD-ARBEH   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 112(003) PLPOD-ANZZL   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 116(008) PLPOD-ARBPL   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 125(004) PLMK-MERKNR   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 130(004) PLMK-QMTB_WERKS   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 135(008) PLMK-PMETHODE   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 144(040) PLMK-KURZTEXT   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 185(001) PLMK-LTEXTKZ   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 187(002) PLMK-LTEXTSPR   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 190(002) PLMK-STELLEN   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 193(003) PLMK-MASSEINHSW   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 197(023) PLMK-SOLLWERT   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 221(023) PLMK-TOLERANZOB
+      intensified off
+      color 2 on.
+    perform %newline.
+    write 002(023) PLMK-TOLERANZUN   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    %line = %glline.  %cont = '1'.
+    perform %hide.
+    %line = 0.  %cont = '0'.
+    perform %hide_color.
+    write 026(008) PLMK-STICHPRVER   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 035(008) PLMK-AUSWMENGE1   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 044(004) PLMK-AUSWMGWRK1   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 049(017) QPAM-KTX01   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 067(005) QUAL_QUANT   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 073(017) LONGTEXT_1   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 091(015) LONGTEXT_2   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 107(012) LONGTEXT_3   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 120(013) LONGTEXT_4   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 134(008) PLKOD-STLNR   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 143(010) PLKOD-DATUV   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 154(012) PLKOD-AENNR   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 167(010) PLKOD-ANDAT   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 178(012) PLKOD-ANNAM   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 191(010) PLKOD-AEDAT   no-gap
+      intensified off
+      color 2 on.
+    write '|' no-gap.
+    write 202(012) PLKOD-AENAM
+      intensified off
+      color 2 on.
+    perform %newline.
+    write 002(070) LV_NAME_DISPLAY
+      intensified off
+      color 2 on.
+    %line = %glline.  %cont = '2'.
+    perform %hide.
+    %line = 0.  %cont = '0'.
+    perform %hide_color.
+    perform %newline.
+    write 002(252) LONGTEXT
+      intensified off
+      color 2 on.
+    %line = %glline.  %cont = '3'.
+    perform %hide.
+    %line = 0.  %cont = '0'.
+    perform %hide_color.
+    perform %newline.
+    write 002(004) STRLEN_LONGTEXT
+      intensified off
+      color 2 on.
+    %line = %glline.  %cont = '4'.
+    perform %hide.
+    %line = 0.  %cont = '0'.
+    perform %hide_color.
+    endif.
+  endat.
+endloop.
+%rflag = 'AA'.
+perform %uline.
+clear: %cline, %zgr.
+
+endform.
+
+
+
+module %init_view output.
+
+  case %tab.
+  when 'G00'.
+    perform init_pbo(rsaqexce) tables %g00 using tview100 ' '.
+  when others.
+    message s860(aq).
+  endcase.
+
+endmodule.
+
+module %pbo_view output.
+
+  case %tab.
+  when 'G00'.
+    perform loop_pbo(rsaqexce) tables %g00 using %%g00 tview100.
+  endcase.
+
+endmodule.
+
+module %pai_view input.
+
+  case %tab.
+  when 'G00'.
+    perform loop_pai(rsaqexce) tables %g00 using %%g00 tview100.
+  endcase.
+
+endmodule.
+
+module %okcode_view input.
+
+  case %tab.
+  when 'G00'.
+    perform okcode(rsaqexce) tables %g00 using tview100.
+  endcase.
+
+endmodule.
+
+
+
+*----------------------------------------------------------------------*
+*        ABAP/4 - Query : INCLUDE RSAQEXCD                             *
+*----------------------------------------------------------------------*
+*        Common-Bereich für Query-Reports und Laufzeitroutinen         *
+*----------------------------------------------------------------------*
+
+data: begin of common part %_aq.
+
+* Listenbeschreibung
+
+data: %diact,                          " Schalter direkte Interaktion
+                                       " space - keine Interaktion
+                                       " 1 - Ablage ins ABAP Memory
+                                       " A - ABC-Analyse
+                                       " D - Dateiablage
+                                       " E - EIS
+                                       " G - Grafik
+                                       " I - Erweiterte Ablage
+                                       " P - Private Anlage
+                                       " S - Sichern
+                                       " T - TableView Control
+                                       " V - ABAP List Viewer
+                                       " W - Textverarbeitung (WORD)
+                                       " X - Excel, Tabellenkalkulation
+      %curr(5),                        " dynamische Bezugswährung
+      %head(3),                        " aktueller Listentyp für Ausgabe
+                                       " von Überschriften
+                                       " DDD - Drucken aus Tablecontrol
+                                       " AAA - END-OF-SELECTION
+                                       "       (vor Listausgabe)
+                                       " GGG - Ausgabe Grundliste
+                                       " Txx - Ausgabe Statistik xx
+                                       " Rxx - Ausgabe Rangliste xx
+                                       " WWW - Ausgabe Konvertierungstab
+                                       " ZZZ - END-OF-SELECTION
+                                       "       (nach Listausgabe)
+      %listsize(3) type n,             " Listenbreite
+      %dlflag,                         " X = Download oder Grafik aktiv
+      %keyempty(1),                    " X = Einheitenfeld SPACE gefund.
+      %convflag,                       " X = Konvertierungsfehler aufge-
+                                       "     treten (global)
+      %errflag,                        " X = Konvertierungsfehler aufge-
+                                       "     treten (lokal)
+      %batch like sy-batch,            " Kopie von SY-BATCH
+      %called_by_www,                  " X = Aufruf vom Web-Reporting
+      %called_by_www_alv.              " X = Aufruf über Web-ALV
+
+constants: %empty value 'X'.           " keine Daten gefunden bei
+                                       " Download über Memory
+* Layoutvariante für ALV
+
+data: %alv_layout type slis_vari.
+
+* HIDE-Felder
+
+data: %tab like rsaqldesc-lid,         " Listentyp (G00, Txx, Rxx)
+      %line type i,                    " Tabellenzeile
+      %cont(1),                        " Folgezeilenflag
+      %fint(1),                        " INTENSIFIED-Flag
+                                       " space = Standardannahmen (alt)
+                                       " N = oN
+                                       " F = oFf
+      %fcol(1).                        " Zeilenfarbe
+
+* Steuerung des Aufbaus der Tabelle %G00
+
+data: %first(1).                       " X - erster Durchlauf durch
+                                       "     Extrakt
+
+* Felder zum Verdichten/Aufreißen
+* %RFLAG = E- LOOP abbrechen
+*          AA- Zeile komplett ausgeben (einschl. Gruppenwechsel, Summen)
+*              und HIDE
+*          AZ- Zeile ausgeben (ohne Gruppenwechsel, Summen) ohne HIDE
+*          N - Zeile nicht ausgeben
+
+data: %drill value ' ',                " X = verdichtete Darstellung
+      %toto value ' ',                 " X = nur Summen ausgeben
+      %vlevel type i,                  " Verdichtungsstufe Statistik
+      %vlevelmax type i,               " maximale Verdichtungsstufe
+                                       " einer Statistik
+      %vtab like %tab,                 " Kopie von %TAB bei %VLEVEL > 0
+      %rflag(2),                       " E, AA, AZ, N
+      %outflag,                        " beim LOOP wurde eine Zeile
+                                       " ausgegeben
+      %outcomp,                        " X = beim LOOP wurde eine Zeile
+                                       " der Verdichtungsstufe ausgegeb.
+      %outtotal,                       " X = beim LOOP wurde eine
+                                       " Summenzeile ausgegeben
+      %cline type i,                   " Zeilenzähler für Zeilengruppen
+      %zgr type i,                     " Zeilengruppe
+      %pline type i,                   " Parameter Zeilenzähler
+      %pzgr  type i.                   " Parameter Zeilengruppe
+
+* Drucksteuerung
+
+data: %init_pri_params like pri_params," initale Druckparameter
+      %init_arc_params like arc_params." initiale Archivparameter
+
+data: %eisprotocol(1) value 'X'.       " X = Liste bei EIS im Batch ausgeben
+
+data: %printon(1).                     " X = NEW-PAGE PRINT ON abgesetzt
+
+data: %ucomm like sy-ucomm.            " Ausführungskommando
+
+data: %titel(1),                       " space = Standardtitel
+                                       " N     = ohne Titel
+      begin of %prlist occurs 10,      " zu druckende Teillisten
+            tab like %tab,
+      end of %prlist,
+      %max_prlist type i.              " Anzahl Einträge in %PRLIST
+                                       " 0 = alle Teillisten drucken
+
+* Tabelle der Ausgabeform des Selektionsbildes
+
+data: begin of %selections occurs 24,
+          z(2),
+          line like raldb-infoline,    " Zeile des Selektionsbildes
+      end of %selections.
+
+* Steuerung der Ersetzung von Variablen im Seitenkopf und Seitenfuß
+
+data: %nochange(1).                    " X = keine Ersetzung auf der
+                                       "     aktuellen Seite
+
+* maximale Zahl der Datenbankzugriffe
+
+data: %dbacc type i,                   " maximale Zugriffszahl beim Test
+      %selected.                       " Hilfsvariable für GET LATE
+
+* Speichermodus für Remote-Aufruf
+
+data: %memmode(1).                     " <> space: keine Präsentation
+
+* RSAQ_REMOTE_QUERY_CALL
+* M = Daten ins ABAP Memory MOVE
+* W = Daten ins ABAP Memory WRITE (ohne Berücksichtigung von Einheiten)
+* E = Daten ins ABAP Memory WRITE (mit Berücksichtigung von Einheiten)
+* S = Daten ins ABAP Memory
+*     D,T MOVE
+*     I,P WRITE ohne 1000-Punkte (ohne Berücksichtigung von Einheiten)
+*     sonst WRITE (ohne Berücksichtigung von Einheiten)
+* Z = Daten ins ABAP Memory
+*     D,T MOVE
+*     I,P WRITE ohne 1000-Punkte (mit Berücksichtigung von Einheiten)
+*     sonst WRITE (mit Berücksichtigung von Einheiten)
+*
+* generische BW Extraktoren
+* D = Daten und Beschreibung direkt exportieren
+*     keine Berechtigungsprüfung
+*
+* RSAQ_QUERY_CALL
+* C = Daten und Beschreibung direkt exportieren
+*
+* IQAPI_QUERY_CALL
+* T = Daten direkt exportieren
+*
+* InfoSet Query
+* B = Standardbelegung des Selektionsbildes in Memory ablegen und
+*     Report abbrechen
+
+
+* Seitenbeschreibungstabelle
+
+data: begin of %ptab occurs 5,
+          type(3),                     " Listentyp
+                                       " (GRL, G00, Txx, Rxx, WWW)
+                                       " (AAA, ZZZ, GGG, DDD)
+          page type i,                 " erste Seite
+          hlines type i,               " Anzahl Überschriftszeilen
+          text(50),                    " Tabellentext
+          frame(1),                    " X = Seite hat Rahmen
+          dummy(1),
+          linsz type i,                " Breite der Teilliste
+          flines type i,               " Anzahl der Fußzeilen
+          leftbd type i,               " linke Scrollgrenze
+      end of %ptab.
+
+* Vorschlagswert für Dateinamen bei DOWNLOAD
+
+data: %pathname(132).                 " Pfad
+
+* Funktion bei erweiterter Ablage
+
+data: %functionkey like aqxint-xikey.  " Key der eingestellten Funktion
+
+* Kennung für Listensicherung
+
+data: begin of %ql_id.
+          include structure rsaqqlid.
+data: end of %ql_id.
+
+* Daten für Anzeige mit TableView Control
+
+data: %tvsize type i value 200,        " Breite des TableView Control
+      %okcode(4),                      " Ok-Code
+      %mark,                           " Markierspalte
+      %state(20).                      " Status der Tabellenanzeige
+
+* Steuerung der Ausgabe von Spaltenüberschriften für XXL
+
+data: %xxlshort(1) value 'X'.          " X = Spaltenüberschriften
+                                       " sonst Langtext
+
+* Feldbeschreibung der Listen
+
+data: begin of %ldesc occurs 20.
+            include structure rsaqldesc.
+*           LID(3),                    " Id der Teilliste
+*                                      " G00 = Grundliste
+*                                      " Txx = Statistik xx (01,02,...)
+*                                      " Rxx = Rangliste xx (01,02,...)
+*           FPOS(2) TYPE N,            " Feldposition in Teilliste
+*           FCONT(1) TYPE N,           " Nummer der Folgezeile
+*           FCURPOS(3) TYPE N,         " Cursorposition Feldanfang in
+*                                      " Listenzeile bei numerischen
+*                                      " Feldern
+*           FGRAF(1),                  " X = Erläuterungstext für Grafik
+*           FTYP(1),                   " Typ des Feldes (ABAP-Typ)
+*           FLEN(3) TYPE N,            " Länge des Feldes
+*           FDEC(2) TYPE N,            " Dezimalstellenzahl des Feldes
+*           FOLEN(3) TYPE N,           " Ausgabelänge des Feldes
+*           FCUR(1),                   " Währungskennzeichen
+*                                      " F = Währungsbetragsfeld
+*                                      " W = Währungsfeld
+*                                      " M = Mengenfeld
+*                                      " E = Einheitenfeld
+*           FADD(1),                   " internes Feld
+*                                      " R = Rangangabe (Rangliste)
+*                                      " C = Zähler (Statistik)
+*                                      " P = Prozent (Statistik)
+*                                      " M = Mittelwert (Statistik)
+*           FDESC(40),                 " Feldbeschreibung
+*           FNAME(30),                 " Feldname (Orginalfeld) alt
+*           FCOL(30),                  " Überschrift einzeilig
+*           FNAMENEW(70),              " Feldname (Orginalfeld) neu
+*           FNAMEINT(30),              " Feldname intern
+*           FKEY(1),                   " X = Schlüsselspalte
+*           FGTYPE(1),                 " Grafiktyp bei Ausgabe
+*                                      " S = Symbol
+*                                      " I = Ikone
+*           FNZERO(1),                 " X = Ausgabe mit NO-ZERO
+*           FSUM(1),                   " X = über Feld wird summiert
+*           FSONLY(1),                 " X = Sortierfeld ohne Ausgabe
+*           FSORT(2) TYPE N,           " Sortierstufe
+*           FSODS(1),                  " X = Sortierung absteigend
+*           FSUBT(1),                  " X = Zwischensummen bilden
+*           FLPOS(4) TYPE N,           " Feldposition in Teilliste(lang)
+*           FNUMB(2),                  " Sachgruppe
+*           FNUMBT(24),                " Sachgruppentext
+*           FNOSUM(1),                 " X = nicht summierbares
+*                                      "     numerisches Feld
+*           FSONP(1),                  " X = Sortierstufe bei Seitenwechsel
+data: end of %ldesc.
+
+* Grafikbeschreibungstabelle
+
+data: begin of %gdesc occurs 5,
+            lid(3),                    " Listen-Id (G00, Txx, Rxx)
+            gtyp(2),                   " Grafiktyp zweistellig
+            gsize(2),                  " Grafikgröße (6 bis 32)
+            gcolor(1),                 " X = alternative Farbdarstellung
+            gtext(1),                  " X = alternative Textdarstellung
+            gdyn(1),                   " X = Grafikgröße dynamisch
+            grem(1),                   " X = Restwerte zusammenfassen
+      end of %gdesc.
+
+data: end of common part.
+
