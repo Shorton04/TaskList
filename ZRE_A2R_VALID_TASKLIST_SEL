@@ -12,114 +12,111 @@
 *---------------------------------------------------------------------*
 * TASK LIST TYPE
 *---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b_ttype WITH FRAME TITLE text-001.
+SELECTION-SCREEN BEGIN OF BLOCK b_ttype WITH FRAME TITLE TEXT-001.
 
-PARAMETERS:
-  p_ftl TYPE c AS CHECKBOX DEFAULT 'X',
-  p_etl TYPE c AS CHECKBOX,
-  p_gtl TYPE c AS CHECKBOX.
+  PARAMETERS:
+    p_ftl TYPE c AS CHECKBOX DEFAULT 'X',
+    p_etl TYPE c AS CHECKBOX,
+    p_gtl TYPE c AS CHECKBOX.
 
 SELECTION-SCREEN END OF BLOCK b_ttype.
 
 *---------------------------------------------------------------------*
 * TASK LIST SELECTION
 *---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b_tl WITH FRAME TITLE text-002.
+SELECTION-SCREEN BEGIN OF BLOCK b_tl WITH FRAME TITLE TEXT-002.
 
-SELECT-OPTIONS:
-  so_tplnr FOR tapl-tplnr,
-  so_equnr FOR eapl-equnr,
-  so_plnnr FOR plko-plnnr,
-  so_plnal FOR plko-plnal,
-  so_keydt FOR plko-datuv.
+  SELECT-OPTIONS:
+    so_tplnr FOR tapl-tplnr,
+    so_equnr FOR eapl-equnr,
+    so_plnnr FOR plko-plnnr,
+    so_plnal FOR plko-plnal,
+    so_keydt FOR plko-datuv OBLIGATORY.
 
 SELECTION-SCREEN END OF BLOCK b_tl.
 
 *---------------------------------------------------------------------*
 * OPERATION DATA
 *---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE text-003.
+SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE TEXT-003.
 
-SELECT-OPTIONS:
-  so_vornr FOR plpo-vornr,
-  so_uvorn FOR plpo-vornr,
-  so_otext FOR plpo-ltxa1,
+  SELECT-OPTIONS:
+    so_vornr FOR plpo-vornr,
+    so_uvorn FOR plpo-vornr,
+    so_otext FOR plpo-ltxa1,
 
-  so_arbpo FOR crhd-arbpl,
-  so_werop FOR crhd-werks,
-  so_steus FOR plpo-steus,
+    so_arbpo FOR crhd-arbpl,
+    so_werop FOR crhd-werks,
+    so_steus FOR plpo-steus,
 
-  so_optpl FOR tapl-tplnr,
-  so_opequ FOR eapl-equnr,
+    so_optpl FOR tapl-tplnr,
+    so_opequ FOR eapl-equnr,
 
-  so_istru FOR plpo-istru,
-  so_exsta FOR plpo-execution_stage,
-  so_anlzo FOR plpo-anlzu,
-  so_ktsch FOR plpo-ktsch,
-  so_ebeln FOR plpo-ebeln,
-  so_ebelp FOR plpo-ebelp,
-  so_lifnr FOR plpo-lifnr,
-  so_loeko FOR plpo-loekz.
+    so_istru FOR plpo-istru,
+    so_exsta FOR plpo-execution_stage,
+    so_anlzo FOR plpo-anlzu,
+    so_ktsch FOR plpo-ktsch,
+    so_ebeln FOR plpo-ebeln,
+    so_ebelp FOR plpo-ebelp,
+    so_lifnr FOR plpo-lifnr,
+    so_loeko FOR plpo-loekz.
 
-"Free text search for operation long text
-SELECT-OPTIONS so_opltx TYPE c LENGTH 132.
+  "Free text search for operation long text
+  PARAMETERS so_opltx TYPE zde_a2r_free_text.
 
 SELECTION-SCREEN END OF BLOCK b_op.
 
 *---------------------------------------------------------------------*
 * HEADER DATA
 *---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE text-004.
+SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE TEXT-004.
 
-SELECT-OPTIONS:
-  so_ktext FOR plko-ktext,
-  so_werks FOR plko-werks,
-  so_arbph FOR crhd-arbpl,
-  so_vagrp FOR plko-vagrp,
-  so_verwe FOR plko-verwe,
-  so_stath FOR plko-statu,
-  so_anlzh FOR plko-anlzu,
-  so_strat FOR plko-strat,
-  so_istrh FOR plko-istru,
-  so_adpsp FOR plko-adpsp,
-  so_slwbe FOR plko-slwbez,
-  so_loekh FOR plko-loekz,
-  so_andat FOR plko-andat,
-  so_annam FOR plko-annam,
-  so_aedat FOR plko-aedat,
-  so_aenam FOR plko-aenam.
+  SELECT-OPTIONS:
+    so_ktext FOR plko-ktext,
+    so_werks FOR plko-werks,
+    so_arbph FOR crhd-arbpl,
+    so_vagrp FOR plko-vagrp,
+    so_verwe FOR plko-verwe,
+    so_stath FOR plko-statu,
+    so_anlzh FOR plko-anlzu,
+    so_strat FOR plko-strat,
+    so_istrh FOR plko-istru,
+    so_adpsp FOR plko-adpsp,
+    so_slwbe FOR plko-slwbez,
+    so_loekh FOR plko-loekz,
+    so_andat FOR plko-andat,
+    so_annam FOR plko-annam,
+    so_aedat FOR plko-aedat,
+    so_aenam FOR plko-aenam.
 
 SELECTION-SCREEN END OF BLOCK b_hd.
 
 *---------------------------------------------------------------------*
 * CHARACTERISTIC DATA
 *---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE text-005.
+SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE TEXT-005.
 
-SELECT-OPTIONS:
-  so_merkn FOR plmk-merknr,
-  so_mic   FOR plmk-verwmerkm,
-  so_cktxt FOR plmk-kurztext,
-  so_ltxtk FOR plmk-ltextkz,
-
-  " FLTP ranges – VALID and syntactically correct
-  so_tolun FOR plmk-toleranzun,
-  so_tolob FOR plmk-toleranzob,
-
-  so_pruef FOR plmk-pruefeinh,
-  so_sproc FOR plmk-stichprver,
-  so_meth  FOR plmk-methode,
-  so_kat1  FOR plmk-katalogart1,
-  so_ausw1 FOR plmk-auswmenge1,
-  so_loekc FOR plmk-loekz.
-
+  SELECT-OPTIONS:
+    so_merkn FOR plmk-merknr,
+    so_mic   FOR plmk-verwmerkm,
+    so_cktxt FOR plmk-kurztext,
+    so_ltxtk FOR plmk-ltextkz,
+    so_pruef FOR plmk-pruefeinh,
+    so_sproc FOR plmk-stichprver,
+    so_meth  FOR plmk-pmethode,
+    so_kat1  FOR plmk-katalgart1,
+    so_ausw1 FOR plmk-auswmenge1,
+    so_loekc FOR plmk-loekz.
+  PARAMETERS:
+    so_tolun TYPE char16,
+    s_tolob TYPE char16.
 SELECTION-SCREEN END OF BLOCK b_ch.
 
 *---------------------------------------------------------------------*
 * DETAILED VIEW
 *---------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE text-006.
+SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE TEXT-006.
 
-PARAMETERS p_showc TYPE c AS CHECKBOX.
+  PARAMETERS p_showc TYPE c AS CHECKBOX.
 
 SELECTION-SCREEN END OF BLOCK b_det.
