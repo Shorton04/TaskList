@@ -2,113 +2,124 @@
 *& Include ZRE_A2R_VALID_TASKLIST_SEL
 *&---------------------------------------------------------------------*
 
-* text-001  Task List Selection
-* text-002  Header Data
-* text-003  Operation Data
-* text-004  Characteristic Data
-* text-005  Detailed View
+* text-001 Task List Type
+* text-002 Task List Selection
+* text-003 Operation Data
+* text-004 Header Data
+* text-005 Characteristic Data
+* text-006 Detailed View
 
-*======================================================================*
-* TASK LIST TYPE (FTL / ETL / GTL)
-*======================================================================*
+*---------------------------------------------------------------------*
+* TASK LIST TYPE
+*---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b_ttype WITH FRAME TITLE text-001.
 
 PARAMETERS:
-  p_ftl TYPE c AS CHECKBOX DEFAULT 'X',  " Functional Location
-  p_etl TYPE c AS CHECKBOX,             " Equipment
-  p_gtl TYPE c AS CHECKBOX.             " General
+  p_ftl TYPE c AS CHECKBOX DEFAULT 'X',
+  p_etl TYPE c AS CHECKBOX,
+  p_gtl TYPE c AS CHECKBOX.
 
 SELECTION-SCREEN END OF BLOCK b_ttype.
 
-*======================================================================*
-* TASK LIST KEY SELECTION
-*======================================================================*
-SELECTION-SCREEN BEGIN OF BLOCK b_tl WITH FRAME TITLE text-001.
+*---------------------------------------------------------------------*
+* TASK LIST SELECTION
+*---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_tl WITH FRAME TITLE text-002.
 
 SELECT-OPTIONS:
-  so_tplnr FOR tapl-tplnr,   " Functional Location
-  so_equnr FOR eapl-equnr,   " Equipment
-  so_plnnr FOR plko-plnnr,   " Group
-  so_plnal FOR plko-plnal,   " Group Counter
-  so_keydt FOR plko-datuv.   " Key Date (single)
+  so_tplnr FOR tapl-tplnr,
+  so_equnr FOR eapl-equnr,
+  so_plnnr FOR plko-plnnr,
+  so_plnal FOR plko-plnal,
+  so_keydt FOR plko-datuv.
 
 SELECTION-SCREEN END OF BLOCK b_tl.
 
-*======================================================================*
-* HEADER DATA
-*======================================================================*
-SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE text-002.
-
-SELECT-OPTIONS:
-  so_ktext FOR plko-ktext,   " Header Text
-  so_werks FOR plko-werks,   " Planning Plant
-  so_verwe FOR plko-verwe,   " Usage
-  so_vagrp FOR plko-vagrp,   " Planner Group
-  so_stath FOR plko-statu,   " Status
-  so_anlzh FOR plko-anlzu,   " System Condition
-  so_strat FOR plko-strat,   " Maintenance Strategy
-  so_istrh FOR plko-istru,   " Assembly
-  so_adpsp FOR plko-adpsp,   " Ref. Element
-  so_slwbe FOR plko-slwbez,  " Inspection Points
-  so_loekh FOR plko-loekz,   " Deletion Indicator (Header)
-  so_andat FOR plko-andat,   " Created On
-  so_annam FOR plko-annam,   " Created By
-  so_aedat FOR plko-aedat,   " Changed On
-  so_aenam FOR plko-aenam.   " Changed By
-
-SELECTION-SCREEN END OF BLOCK b_hd.
-
-*======================================================================*
+*---------------------------------------------------------------------*
 * OPERATION DATA
-*======================================================================*
+*---------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE text-003.
 
 SELECT-OPTIONS:
-  so_vornr FOR plpo-vornr,        " Operation
-  so_otext FOR plpo-ltxa1,        " Operation Short Text
-  so_arbpo FOR plpo-arbpl,        " Work Center (operation)
-  so_steus FOR plpo-steus,        " Control Key
-  so_exsta FOR plpo-execution_stage, " Execution Stage
-  so_anlzo FOR plpo-anlzu,        " System Condition (op)
-  so_loeko FOR plpo-loekz,        " Deletion Indicator (op)
-  so_ktsch FOR plpo-ktsch,        " Standard Text Key
-  so_ebeln FOR plpo-ebeln,        " Outline Agreement
-  so_ebelp FOR plpo-ebelp,        " Outline Agreement Item
-  so_lifnr FOR plpo-lifnr.        " Supplier
+  so_vornr FOR plpo-vornr,
+  so_uvorn FOR plpo-vornr,
+  so_otext FOR plpo-ltxa1,
 
-PARAMETERS:
-  p_opltx TYPE c AS CHECKBOX.     " Only operations with long text
+  so_arbpo FOR crhd-arbpl,
+  so_werop FOR crhd-werks,
+  so_steus FOR plpo-steus,
+
+  so_optpl FOR tapl-tplnr,
+  so_opequ FOR eapl-equnr,
+
+  so_istru FOR plpo-istru,
+  so_exsta FOR plpo-execution_stage,
+  so_anlzo FOR plpo-anlzu,
+  so_ktsch FOR plpo-ktsch,
+  so_ebeln FOR plpo-ebeln,
+  so_ebelp FOR plpo-ebelp,
+  so_lifnr FOR plpo-lifnr,
+  so_loeko FOR plpo-loekz.
+
+"Free text search for operation long text
+SELECT-OPTIONS so_opltx TYPE c LENGTH 132.
 
 SELECTION-SCREEN END OF BLOCK b_op.
 
-*======================================================================*
-* CHARACTERISTIC DATA
-*======================================================================*
-SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE text-004.
+*---------------------------------------------------------------------*
+* HEADER DATA
+*---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE text-004.
 
 SELECT-OPTIONS:
-  so_merkn FOR plmk-merknr,       " Number
-  so_mic   FOR plmk-verwmerkm,    " MIC
-  so_cktxt FOR plmk-kurztext,     " Char short text
-  so_ltxtk FOR plmk-ltextkz,      " Char long text flag
-  so_tolun FOR plmk-toleranzun,   " Lower spec limit
-  so_tolob FOR plmk-toleranzob,   " Upper spec limit
-  so_pruef FOR plmk-pruefeinh,    " Base sample quantity
-  so_sproc FOR plmk-stichprver,   " Sampling procedure
-  so_meth  FOR plmk-methode,      " Inspection method
-  so_kat1  FOR plmk-katalgart1,   " Catalog Type
-  so_ausw1 FOR plmk-auswmenge1,   " Code Group/Selected Set
-  so_loekc FOR plmk-loekz.        " Deletion Indicator (char)
+  so_ktext FOR plko-ktext,
+  so_werks FOR plko-werks,
+  so_arbph FOR crhd-arbpl,
+  so_vagrp FOR plko-vagrp,
+  so_verwe FOR plko-verwe,
+  so_stath FOR plko-statu,
+  so_anlzh FOR plko-anlzu,
+  so_strat FOR plko-strat,
+  so_istrh FOR plko-istru,
+  so_adpsp FOR plko-adpsp,
+  so_slwbe FOR plko-slwbez,
+  so_loekh FOR plko-loekz,
+  so_andat FOR plko-andat,
+  so_annam FOR plko-annam,
+  so_aedat FOR plko-aedat,
+  so_aenam FOR plko-aenam.
+
+SELECTION-SCREEN END OF BLOCK b_hd.
+
+*---------------------------------------------------------------------*
+* CHARACTERISTIC DATA
+*---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE text-005.
+
+SELECT-OPTIONS:
+  so_merkn FOR plmk-merknr,
+  so_mic   FOR plmk-verwmerkm,
+  so_cktxt FOR plmk-kurztext,
+  so_ltxtk FOR plmk-ltextkz,
+
+  " FLTP ranges – VALID and syntactically correct
+  so_tolun FOR plmk-toleranzun,
+  so_tolob FOR plmk-toleranzob,
+
+  so_pruef FOR plmk-pruefeinh,
+  so_sproc FOR plmk-stichprver,
+  so_meth  FOR plmk-methode,
+  so_kat1  FOR plmk-katalogart1,
+  so_ausw1 FOR plmk-auswmenge1,
+  so_loekc FOR plmk-loekz.
 
 SELECTION-SCREEN END OF BLOCK b_ch.
 
-*======================================================================*
+*---------------------------------------------------------------------*
 * DETAILED VIEW
-*======================================================================*
-SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE text-005.
+*---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE text-006.
 
-PARAMETERS:
-  p_showc TYPE c AS CHECKBOX DEFAULT space, " Show Characteristics
-  p_showl TYPE c AS CHECKBOX DEFAULT space. " Show Long Text
+PARAMETERS p_showc TYPE c AS CHECKBOX.
 
 SELECTION-SCREEN END OF BLOCK b_det.
