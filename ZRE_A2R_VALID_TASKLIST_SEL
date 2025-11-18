@@ -1,117 +1,114 @@
-*&———————————————————————*
+*&---------------------------------------------------------------------*
 *& Include ZRE_A2R_VALID_TASKLIST_SEL
-*&———————————————————————*
+*&---------------------------------------------------------------------*
 
-TABLES: plko, plpo, plmk, tapl, eapl, crhd, tj02t.
+* Text elements you will need (examples):
+* text-001  Task List Selection
+* text-002  Header Data
+* text-003  Operation Data
+* text-004  Characteristic Data
+* text-005  Detailed View
 
-*–––––––––––––––––––––––––––––––––––*
+*---------------------------------------------------------------*
+* Task List Type (checkboxes)                                   *
+*---------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_ttype WITH FRAME TITLE text-001.
 
-- Selection Screen
-  *–––––––––––––––––––––––––––––––––––*
+PARAMETERS:
+  p_ftl  TYPE c AS CHECKBOX USER-COMMAND uc_tlt, " Functional Location Task List
+  p_etl  TYPE c AS CHECKBOX,                       " Equipment Task List
+  p_gtl  TYPE c AS CHECKBOX.                       " General Task List
 
-SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+SELECTION-SCREEN END OF BLOCK b_ttype.
 
-“— Task List Type (At least one must be selected)
-SELECTION-SCREEN BEGIN OF LINE.
-SELECTION-SCREEN COMMENT 1(30) TEXT-t01.
-SELECTION-SCREEN END OF LINE.
+*---------------------------------------------------------------*
+* Task List Selection                                           *
+*---------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_tl WITH FRAME TITLE text-001.
 
-PARAMETERS: p_functloc AS CHECKBOX DEFAULT ‘X’ USER-COMMAND utype,
-p_equip    AS CHECKBOX USER-COMMAND utype,
-p_gen      AS CHECKBOX USER-COMMAND utype.
+SELECT-OPTIONS:
+  so_tplnr FOR tapl-tplnr,    " Functional Location
+  so_equnr FOR eapl-equnr,    " Equipment
+  so_plnnr FOR plko-plnnr,    " Group
+  so_plnal FOR plko-plnal,    " Group Counter
+  so_keydt FOR plko-datuv.    " Key Date (Single – but select-option OK)
 
-SELECTION-SCREEN END OF BLOCK b1.
+SELECTION-SCREEN END OF BLOCK b_tl.
 
-SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-002.
+*---------------------------------------------------------------*
+* Header Data                                                   *
+*---------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE text-002.
 
-“— Task List Selection
-SELECT-OPTIONS: s_tplnr FOR tapl-tplnr,          “Functional Location
-s_equnr FOR eapl-equnr,          “Equipment
-s_plnnr FOR plko-plnnr,          “Group
-s_plnal FOR plko-plnal.          “Group Counter
+SELECT-OPTIONS:
+  so_htext FOR plko-ktext,    " Header Text / Description
+  so_werks FOR plko-werks,    " Planning Plant
+  so_arbph FOR crhd-arbpl,    " Work Center (Header)
+  so_vagrp FOR plko-vagrp,    " Planner Group
+  so_verwe FOR plko-verwe,    " Usage
+  so_statu FOR plko-statu,    " Status
+  so_anlzh FOR plko-anlzu,    " System Condition
+  so_strat FOR plko-strat,    " Maintenance Strategy
+  so_istrh FOR plko-istru,    " Assembly
+  so_adpsp FOR plko-adpsp,    " Reference Element PM/PS
+  so_slwbe FOR plko-slwbez,   " Inspection Points
+  so_andat FOR plko-andat,    " Created On
+  so_annam FOR plko-annam,    " Created By
+  so_aedat FOR plko-aedat,    " Changed On
+  so_aenam FOR plko-aenam.    " Changed By
 
-PARAMETERS:     p_datuv TYPE plko-datuv OBLIGATORY DEFAULT sy-datum. “Key Date
+SELECTION-SCREEN END OF BLOCK b_hd.
 
-SELECTION-SCREEN END OF BLOCK b2.
+*---------------------------------------------------------------*
+* Operation Data                                                *
+*---------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE text-003.
 
-SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE TEXT-003.
+SELECT-OPTIONS:
+  so_vornr FOR plpo-vornr,        " Operation
+  so_otext FOR plpo-ltxa1,        " Operation Short Text
+  so_otlng TYPE char132,          " Operation Long Text (no DB field, so type only)
+  so_steus FOR plpo-steus,        " Control Key
+  so_arbpo FOR crhd-arbpl,        " Work Center (Operation)
+  so_ktsch FOR plpo-ktsch,        " Standard Text Key
+  so_exsta FOR plpo-execution_stage, " Execution Stage
+  so_anlzo FOR plpo-anlzu,        " System Condition (Op)
+  so_istro FOR plpo-istru,        " Assembly (Op)
+  so_larnt FOR plpo-larnt,        " Activity Type
+  so_ebeln FOR plpo-ebeln,        " Outline Agreement
+  so_ebelp FOR plpo-ebelp,        " Outline Agreement Item
+  so_lifnr FOR plpo-lifnr.        " Supplier
 
-“— Header Data
-SELECT-OPTIONS: s_ktext FOR plko-ktext,          “Header Text
-s_werks FOR plko-werks,          “Planning Plant
-s_arbplh FOR crhd-arbpl,         “Work Center (Header)
-s_vagrp FOR plko-vagrp,          “Planner Group
-s_verwe FOR plko-verwe,          “Usage
-s_statu FOR plko-statu,          “Status
-s_anlzuh FOR plko-anlzu,         “System Condition
-s_strat FOR plko-strat,          “Maintenance Strategy
-s_istruh FOR plko-istru,         “Assembly
-s_adpsp FOR plko-adpsp,          “Reference Element PM/PS
-s_slwbez FOR plko-slwbez,        “Inspection Points
-s_andat FOR plko-andat,          “Created On
-s_annam FOR plko-annam,          “Created By
-s_aedat FOR plko-aedat,          “Changed On
-s_aenam FOR plko-aenam.          “Changed By
+" Operation long text indicator – as per FDS:
+PARAMETERS p_opltx TYPE c AS CHECKBOX. " (checks PLPO-TXTSP <> space)
 
-SELECTION-SCREEN END OF BLOCK b3.
+SELECTION-SCREEN END OF BLOCK b_op.
 
-SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE TEXT-004.
+*---------------------------------------------------------------*
+* Characteristic Data                                           *
+*---------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE text-004.
 
-“— Operation Data
-SELECT-OPTIONS: s_vornr FOR plpo-vornr,          “Operation
-s_ltxa1 FOR plpo-ltxa1,          “Operation Short Text
-s_ltext TYPE c LENGTH 132,        “Operation Long Text (free text search)
-s_steus FOR plpo-steus,          “Control Key
-s_arbplo FOR crhd-arbpl,         “Work Center (Operation)
-s_ktsch FOR plpo-ktsch,          “Standard Text Key
-s_exstge FOR plpo-execution_stage, “Execution Stage
-s_anlzuo FOR plpo-anlzu,         “System Condition (Op)
-s_istruo FOR plpo-istru,         “Assembly (Op)
-s_larnt FOR plpo-larnt,          “Activity Type
-s_ebeln FOR plpo-ebeln,          “Outline Agreement
-s_ebelp FOR plpo-ebelp,          “Outline Agreement Item
-s_lifnr FOR plpo-lifnr.          “Supplier
+SELECT-OPTIONS:
+  so_merkn FOR plmk-merknr,       " Number
+  so_mic   FOR plmk-verwmerkm,    " Master Inspection Characteristic
+  so_cktxt FOR plmk-kurztext,     " Characteristic Short Text
+  so_chltx TYPE char132,          " Characteristic Long Text (no DB field)
+  so_ltxtk FOR plmk-ltextkz,      " Long Text Indicator
+  so_tolun FOR plmk-toleranzun,   " Lower Spec Limit
+  so_tolob FOR plmk-toleranzob,   " Upper Spec Limit
+  so_meth  FOR plmk-methode,      " Inspection Method
+  so_sproc FOR plmk-stichprver.   " Sampling Procedure
 
-“— Long Text Indicator for Operations
-PARAMETERS: p_ltxtop AS CHECKBOX.                 “Long Text Indicator
+SELECTION-SCREEN END OF BLOCK b_ch.
 
-SELECTION-SCREEN END OF BLOCK b4.
+*---------------------------------------------------------------*
+* Detailed View toggles (checkboxes)                            *
+*---------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE text-005.
 
-SELECTION-SCREEN BEGIN OF BLOCK b5 WITH FRAME TITLE TEXT-005.
+PARAMETERS:
+  p_showc TYPE c AS CHECKBOX,  " Show Characteristics
+  p_showl TYPE c AS CHECKBOX.  " Show Long Text
 
-“— Characteristic Data
-SELECT-OPTIONS: s_merknr FOR plmk-merknr,        “Number
-s_verwmk FOR plmk-verwmerkm,     “Master Inspection Characteristic
-s_kurzxt FOR plmk-kurztext,      “Characteristic Short Text
-s_cltext TYPE c LENGTH 132,       “Characteristic Long Text (free text)
-s_tolun  FOR plmk-toleranzun,    “Lower Specific Limit
-s_tolob  FOR plmk-toleranzob,    “Upper Specific Limit
-s_metho  FOR plmk-methode,       “Inspection Method
-s_stichp FOR plmk-stichprver.    “Sampling Procedure
-
-“— Long Text Indicator for Characteristics
-PARAMETERS: p_ltxtch AS CHECKBOX.                 “Long Text Indicator
-
-SELECTION-SCREEN END OF BLOCK b5.
-
-SELECTION-SCREEN BEGIN OF BLOCK b6 WITH FRAME TITLE TEXT-006.
-
-“— Detailed View Options
-PARAMETERS: p_shchar TYPE c LENGTH 3 AS LISTBOX VISIBLE LENGTH 5
-DEFAULT ‘NO’ USER-COMMAND uchar,
-p_shltxt TYPE c LENGTH 3 AS LISTBOX VISIBLE LENGTH 5
-DEFAULT ‘NO’ USER-COMMAND ultxt.
-
-SELECTION-SCREEN END OF BLOCK b6.
-
-*–––––––––––––––––––––––––––––––––––*
-
-- Selection Texts
-  *–––––––––––––––––––––––––––––––––––*
-- TEXT-001: Task List Type
-- TEXT-t01: Task List Type (at least one required)
-- TEXT-002: Task List Selection
-- TEXT-003: Header Data
-- TEXT-004: Operation Data
-- TEXT-005: Characteristic Data
-- TEXT-006: Detailed View
+SELECTION-SCREEN END OF BLOCK b_det.
