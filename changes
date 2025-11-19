@@ -1,164 +1,295 @@
-*&---------------------------------------------------------------------*
-*& Form CONVERT_FLOAT_TO_CHAR
-*&---------------------------------------------------------------------*
-*& Convert floating point number to character for display
-*&---------------------------------------------------------------------*
-FORM convert_float_to_char USING    iv_float TYPE f
-                           CHANGING cv_char  TYPE char23.
+*---------------------------------------------------------------------*
+* GET_DATA
+*---------------------------------------------------------------------*
+FORM get_data.
 
-  DATA: lv_string TYPE string,
-        lv_decimals TYPE i VALUE 6.  " Number of decimal places
+  DATA: lv_keydat TYPE plko-datuv,
+        lv_tolun  TYPE plmk-toleranzun,
+        lv_tolob  TYPE plmk-toleranzob.
 
-  " Handle initial/zero values
-  IF iv_float IS INITIAL OR iv_float = 0.
-    cv_char = '0'.
-    RETURN.
+  CLEAR gt_base.
+  CLEAR gs_base.
+
+  " Key date (single value)
+  lv_keydat = so_keydt-low.
+
+  " Tolerance parameters (CHAR16 -> FLTP variables)
+  CLEAR: lv_tolun, lv_tolob.
+  IF so_tolun IS NOT INITIAL.
+    lv_tolun = so_tolun.    " implicit conv CHAR16 -> FLTP
+  ENDIF.
+  IF so_tolob IS NOT INITIAL.
+    lv_tolob = so_tolob.
   ENDIF.
 
-  " Convert float to string with proper formatting
-  TRY.
-      " Method 1: Using WRITE TO with proper formatting
-      WRITE iv_float TO cv_char LEFT-JUSTIFIED DECIMALS lv_decimals.
-      
-      " Remove trailing zeros if needed
-      CONDENSE cv_char NO-GAPS.
-      
-      " Alternative: Keep scientific notation for very large/small numbers
-      IF iv_float > 999999999 OR iv_float < 0.000001.
-        WRITE iv_float TO cv_char EXPONENT 2.
-      ENDIF.
-      
-    CATCH cx_root.
-      " Fallback: convert to string
-      lv_string = iv_float.
-      cv_char = lv_string.
-  ENDTRY.
+  "-------------------------------------------------------------------*
+  " Core selection: PLKO – PLAS – PLPO – PLMK – TAPL – EAPL – CRHD
+  " Only background filters (deletion flags + key date) are in WHERE.
+  " All user selection options are applied afterwards in LOOP.
+  "-------------------------------------------------------------------*
+  SELECT
+    plko~plnty          " header
+    plko~plnnr
+    plko~plnal
+    plko~datuv
+    plko~werks
+    plko~ktext
+    plko~verwe
+    plko~vagrp
+    plko~statu     AS stat_h
+    plko~anlzu     AS anlzu_h
+    plko~strat
+    plko~istru     AS istru_h
+    plko~adpsp
+    plko~slwbez
+    plko~loekz     AS loekz_h
+    plko~andat
+    plko~annam
+    plko~aedat
+    plko~aenam
+
+    tapl~tplnr      " FLOC assignment
+    eapl~equnr      " EQUIP assignment
+
+    plpo~vornr      " operation
+    plpo~ltxa1
+    plpo~steus
+    crhd~arbpl      AS arbpl_o
+    crhd~werks      AS werks_o
+    plpo~ktsch
+    plpo~arbei
+    plpo~arbeh
+    plpo~dauno
+    plpo~daune
+    plpo~kalid
+    plpo~execution_stage
+    plpo~anlzu      AS anlzu_o
+    plpo~istru      AS istru_o
+    plpo~larnt
+    plpo~ebeln
+    plpo~ebelp
+    plpo~lifnr
+    plpo~preis
+    plpo~waers
+    plpo~sakto
+    plpo~ekorg
+    plpo~ekgrp
+    plpo~txtsp      AS txtsp_op
+    plpo~loekz      AS loekz_o
+
+    plmk~merknr     " characteristic
+    plmk~verwmerkm
+    plmk~kurztext   AS kurzt_char
+    plmk~ltextkz
+    plmk~toleranzun
+    plmk~toleranzob
+    plmk~pruefeinh
+    plmk~stichprver
+    plmk~pmethode
+    plmk~katalgart1
+    plmk~auswmenge1
+    plmk~steuerkz
+    plmk~loekz      AS loekz_c
+
+    INTO CORRESPONDING FIELDS OF TABLE gt_base
+
+    FROM  plko
+      INNER JOIN plas
+        ON  plas~plnty = plko~plnty
+        AND plas~plnnr = plko~plnnr
+        AND plas~plnal = plko~plnal
+        AND plas~loekz = ' '
+      INNER JOIN plpo
+        ON  plpo~plnty = plas~plnty
+        AND plpo~plnnr = plas~plnnr
+        AND plpo~plnkn = plas~plnkn
+        AND plpo~zaehl = plas~zaehl
+        AND plpo~loekz = ' '
+      LEFT OUTER JOIN plmk
+        ON  plmk~plnty = plpo~plnty
+        AND plmk~plnnr = plpo~plnnr
+        AND plmk~plnkn = plpo~plnkn
+        AND plmk~zaehl = plpo~zaehl
+        AND plmk~loekz = ' '
+      LEFT OUTER JOIN tapl
+        ON  tapl~plnty = plko~plnty
+        AND tapl~plnnr = plko~plnnr
+        AND tapl~plnal = plko~plnal
+        AND tapl~loekz = ' '
+      LEFT OUTER JOIN eapl
+        ON  eapl~plnty = plko~plnty
+        AND eapl~plnnr = plko~plnnr
+        AND eapl~plnal = plko~plnal
+        AND eapl~loekz = ' '
+      LEFT OUTER JOIN crhd
+        ON  crhd~objid = plpo~arbid
+
+    WHERE plko~loekz = ' '        " header not deleted
+      AND plko~datuv <= lv_keydat.
+
+  "-------------------------------------------------------------------*
+  " Apply all selection-screen filters in ABAP on GT_BASE
+  " (no table aliases here – just structure GS_BASE)
+  "-------------------------------------------------------------------*
+  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+
+  CLEAR lt_filtered.
+
+  LOOP AT gt_base INTO gs_base.
+
+    " Task list type via PLNTY and checkboxes
+    IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+    IF gs_base-plnty = 'B' AND p_etl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+    IF gs_base-plnty = 'E' AND p_gtl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    " ---- Task list selection ----
+    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+      CONTINUE.
+    ENDIF.
+    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
+      CONTINUE.
+    ENDIF.
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+      CONTINUE.
+    ENDIF.
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+      CONTINUE.
+    ENDIF.
+
+    " ---- Header data ----
+    IF so_ktext[] IS NOT INITIAL AND gs_base-ktext NOT IN so_ktext.
+      CONTINUE.
+    ENDIF.
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
+    IF so_vagrp[] IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+      CONTINUE.
+    ENDIF.
+    IF so_verwe[] IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+      CONTINUE.
+    ENDIF.
+    IF so_stath[] IS NOT INITIAL AND gs_base-stat_h NOT IN so_stath.
+      CONTINUE.
+    ENDIF.
+    IF so_anlzh[] IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+      CONTINUE.
+    ENDIF.
+    IF so_strat[] IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+      CONTINUE.
+    ENDIF.
+    IF so_istrh[] IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+      CONTINUE.
+    ENDIF.
+    IF so_adpsp[] IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+      CONTINUE.
+    ENDIF.
+    IF so_slwbe[] IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+      CONTINUE.
+    ENDIF.
+    IF so_andat[] IS NOT INITIAL AND gs_base-andat NOT IN so_andat.
+      CONTINUE.
+    ENDIF.
+    IF so_annam[] IS NOT INITIAL AND gs_base-annam NOT IN so_annam.
+      CONTINUE.
+    ENDIF.
+    IF so_aedat[] IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+      CONTINUE.
+    ENDIF.
+    IF so_aenam[] IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+      CONTINUE.
+    ENDIF.
+
+    " ---- Operation data ----
+    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
+    IF so_uvorn[] IS NOT INITIAL AND gs_base-vornr NOT IN so_uvorn.
+      CONTINUE.
+    ENDIF.
+    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+      CONTINUE.
+    ENDIF.
+    IF so_steus[] IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
+      CONTINUE.
+    ENDIF.
+    IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
+      CONTINUE.
+    ENDIF.
+    IF so_optpl[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_optpl.
+      CONTINUE.
+    ENDIF.
+    IF so_opequ[] IS NOT INITIAL AND gs_base-equnr NOT IN so_opequ.
+      CONTINUE.
+    ENDIF.
+    IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
+      CONTINUE.
+    ENDIF.
+    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
+      CONTINUE.
+    ENDIF.
+    IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
+      CONTINUE.
+    ENDIF.
+    IF so_istru[] IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
+      CONTINUE.
+    ENDIF.
+    IF so_larnt[] IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
+      CONTINUE.
+    ENDIF.
+    IF so_ebeln[] IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
+      CONTINUE.
+    ENDIF.
+    IF so_ebelp[] IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
+      CONTINUE.
+    ENDIF.
+    IF so_lifnr[] IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
+      CONTINUE.
+    ENDIF.
+
+    " Operation long-text indicator
+    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    " ---- Characteristic data ----
+    IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      CONTINUE.
+    ENDIF.
+    IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      CONTINUE.
+    ENDIF.
+    IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      CONTINUE.
+    ENDIF.
+    IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      CONTINUE.
+    ENDIF.
+    IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      CONTINUE.
+    ENDIF.
+    IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> lv_tolun.
+      CONTINUE.
+    ENDIF.
+    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> lv_tolob.
+      CONTINUE.
+    ENDIF.
+
+    " All checks passed
+    APPEND gs_base TO lt_filtered.
+
+  ENDLOOP.
+
+  gt_base = lt_filtered.
 
 ENDFORM.
-
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form BUILD_OUTPUT_TABLE (Updated section)
-*&---------------------------------------------------------------------*
-      " Check if characteristics should be displayed
-      IF p_shchar = gc_x.
-        " Loop through characteristics for this operation
-        LOOP AT it_plmk INTO ls_plmk
-          WHERE plnty = ls_plpo-plnty
-            AND plnnr = ls_plpo-plnnr
-            AND plnkn = ls_plpo-plnkn
-            AND zaehl = ls_plpo-zaehl.
-
-          " Fill characteristic data
-          gs_output-merknr = ls_plmk-merknr.
-          gs_output-verwmerkm = ls_plmk-verwmerkm.
-          gs_output-kurztext = ls_plmk-kurztext.
-          gs_output-ltextkz = ls_plmk-ltextkz.
-          
-          " FIXED: Convert floating point to character
-          gs_output-toleranzun_f = ls_plmk-toleranzun.  " Store original
-          gs_output-toleranzob_f = ls_plmk-toleranzob.  " Store original
-          
-          PERFORM convert_float_to_char USING ls_plmk-toleranzun
-                                        CHANGING gs_output-toleranzun.
-          PERFORM convert_float_to_char USING ls_plmk-toleranzob
-                                        CHANGING gs_output-toleranzob.
-          
-          gs_output-methode = ls_plmk-methode.
-          gs_output-stichprver = ls_plmk-stichprver.
-          gs_output-pruefeinh = ls_plmk-pruefeinh.
-          gs_output-katalgart1 = ls_plmk-katalgart1.
-          gs_output-auswmenge1 = ls_plmk-auswmenge1.
-
-          " Parse control indicators
-          PERFORM parse_control_indicators USING ls_plmk-steuerkz
-                                            CHANGING gs_output.
-
-          " Store keys for long text
-          gs_output-zaehl_char = ls_plmk-zaehl.
-          gs_output-kzeinstell = ls_plmk-kzeinstell.
-          gs_output-ltextspr = ls_plmk-ltextspr.
-
-          APPEND gs_output TO gt_output.
-          CLEAR: gs_output-merknr, gs_output-verwmerkm,
-                 gs_output-kurztext, gs_output-ltextkz,
-                 gs_output-toleranzun, gs_output-toleranzob.
-        ENDLOOP.
-
-        " If no characteristics found, still add operation
-        IF sy-subrc <> 0.
-          APPEND gs_output TO gt_output.
-        ENDIF.
-      ELSE.
-        " Just add operation without characteristics
-        APPEND gs_output TO gt_output.
-      ENDIF.
-
-
-
-
-SELECTION-SCREEN BEGIN OF BLOCK b5 WITH FRAME TITLE TEXT-006.
-  " Characteristic Data
-  SELECT-OPTIONS: s_merknr FOR plmk-merknr,
-                  s_verwm  FOR plmk-verwmerkm,
-                  s_kurzt  FOR plmk-kurztext,
-                  s_charlt FOR plmk-kurztext,  " Char long text search
-                  s_ltxtkz FOR plmk-ltextkz.
-                  
-  " FIXED: Use character range for floating point fields
-  PARAMETERS: s_tolun_l TYPE char23,  " Lower limit - low value
-              s_tolun_h TYPE char23,  " Lower limit - high value
-              s_tolob_l TYPE char23,  " Upper limit - low value
-              s_tolob_h TYPE char23.  " Upper limit - high value
-              
-  SELECT-OPTIONS: s_methd  FOR plmk-methode,
-                  s_stichp FOR plmk-stichprver.
-SELECTION-SCREEN END OF BLOCK b5.
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form GET_DATA (Updated PLMK selection)
-*&---------------------------------------------------------------------*
-  " Step 3: Get Characteristics (PLMK) if needed
-  IF p_shchar = gc_x OR
-     s_merknr IS NOT INITIAL OR
-     s_verwm IS NOT INITIAL OR
-     s_kurzt IS NOT INITIAL OR
-     s_charlt IS NOT INITIAL.
-     
-    SELECT * FROM plmk
-      INTO TABLE lt_plmk
-      FOR ALL ENTRIES IN lt_plpo
-      WHERE plnty = lt_plpo-plnty
-        AND plnnr = lt_plpo-plnnr
-        AND plnkn = lt_plpo-plnkn
-        AND zaehl = lt_plpo-zaehl
-        AND merknr IN s_merknr
-        AND verwmerkm IN s_verwm
-        AND kurztext IN s_kurzt
-        AND ltextkz IN s_ltxtkz
-        " Removed toleranzun and toleranzob from WHERE clause
-        " Will filter after conversion
-        AND methode IN s_methd
-        AND stichprver IN s_stichp
-        AND loekz = space
-        AND ltextspr = sy-langu
-        AND gueltigab LE p_datuv
-        AND valid_to_on_db GE p_datuv.
-        
-    " FIXED: Apply floating point filter after SELECT
-    IF s_tolun_l IS NOT INITIAL OR s_tolun_h IS NOT INITIAL.
-      DELETE lt_plmk WHERE toleranzun < s_tolun_l OR
-                           toleranzun > s_tolun_h.
-    ENDIF.
-    
-    IF s_tolob_l IS NOT INITIAL OR s_tolob_h IS NOT INITIAL.
-      DELETE lt_plmk WHERE toleranzob < s_tolob_l OR
-                           toleranzob > s_tolob_h.
-    ENDIF.
-  ENDIF.
