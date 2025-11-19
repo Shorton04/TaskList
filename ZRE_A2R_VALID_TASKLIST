@@ -1,7 +1,7 @@
 *&---------------------------------------------------------------------*
 *& Report  ZRE_A2R_VALID_TASKLIST
 *&---------------------------------------------------------------------*
-*& Maintenance Task List Validation Report
+*& Task List Validation Report
 *&---------------------------------------------------------------------*
 REPORT zre_a2r_valid_tasklist.
 
@@ -10,13 +10,13 @@ INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
 
 *---------------------------------------------------------------------*
-* SELECTION-SCREEN EVENTS
+* SELECTION-SCREEN CHECKS
 *---------------------------------------------------------------------*
 AT SELECTION-SCREEN.
   PERFORM validate_selection.
 
 *---------------------------------------------------------------------*
-* START-OF-SELECTION
+* MAIN LOGIC
 *---------------------------------------------------------------------*
 START-OF-SELECTION.
 
@@ -27,7 +27,7 @@ START-OF-SELECTION.
     RETURN.
   ENDIF.
 
-  " Initial build of display table according to checkboxes
+  " Initial display build according to Detailed View flags
   IF p_showc = 'X'.
     PERFORM build_display_with_char.
   ELSE.
