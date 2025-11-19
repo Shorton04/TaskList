@@ -2,749 +2,621 @@
 *& Include ZRE_A2R_VALID_TASKLIST_F01
 *&---------------------------------------------------------------------*
 
-*======================================================================*
-* SALV EVENT HANDLER – custom buttons (Show/Hide Char, Long Text)
-*======================================================================*
+* We use PLKO, PLPO, PLMK, TAPL, EAPL, CRHD, PLAS according to FDS joins
+* (PLKO-PLAS-PLPO-PLMK, PLKO-TAPL, PLKO-EAPL, PLPO-CRHD). [oai_citation:0‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+
+*---------------------------------------------------------------------*
+* Local event handler for SALV custom buttons
+*---------------------------------------------------------------------*
 CLASS lcl_event_handler DEFINITION.
   PUBLIC SECTION.
-    CLASS-METHODS:
-      on_user_command FOR EVENT added_function OF cl_salv_events_table
+    CLASS-METHODS on_user_command
+      FOR EVENT added_function OF cl_salv_events_table
         IMPORTING e_salv_function.
 ENDCLASS.
 
 CLASS lcl_event_handler IMPLEMENTATION.
   METHOD on_user_command.
+
     CASE e_salv_function.
-      WHEN gc_func_char.
-        PERFORM toggle_characteristics.
-      WHEN gc_func_ltxt.
-        PERFORM toggle_longtext.
-      WHEN OTHERS.
+      WHEN gc_func_char.          "Toggle characteristics rows
+        IF gv_show_char = gc_true.
+          gv_show_char = gc_false.
+        ELSE.
+          gv_show_char = gc_true.
+        ENDIF.
+
+      WHEN gc_func_ltxt.          "Toggle long-text rows
+        IF gv_show_ltxt = gc_true.
+          gv_show_ltxt = gc_false.
+        ELSE.
+          gv_show_ltxt = gc_true.
+        ENDIF.
     ENDCASE.
+
+    "Rebuild display table and refresh ALV
+    PERFORM build_display.
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
+    ENDIF.
+
   ENDMETHOD.
 ENDCLASS.
 
-*======================================================================*
-* SELECTION VALIDATION (FDS rules)
-*======================================================================*
+*---------------------------------------------------------------------*
+* FORM: VALIDATE_SELECTION
+*   - At least one task list type
+*   - Key date present (already OBLIGATORY, but double-check)
+*---------------------------------------------------------------------*
 FORM validate_selection.
 
-  " At least one Task List Type must be selected
-  IF p_ftl IS INITIAL AND p_etl IS INITIAL AND p_gtl IS INITIAL.
-    MESSAGE e398(00) WITH 'Select at least one Task List Type'.
+  IF p_ftl IS INITIAL
+ AND p_etl IS INITIAL
+ AND p_gtl IS INITIAL.
+    MESSAGE e001(00) WITH 'Select at least one Task List Type (FTL/ETL/GTL)'.
   ENDIF.
 
-  " Key Date must be single value EQ, Include
-  IF lines( so_keydt[] ) <> 1
-     OR so_keydt-low IS INITIAL
-     OR so_keydt-sign <> 'I'
-     OR so_keydt-option <> 'EQ'.
-    MESSAGE e398(00) WITH 'Key date must be a single value (EQ, include)'.
+  IF so_keydt-low IS INITIAL.
+    MESSAGE e001(00) WITH 'Enter a Key Date'.
   ENDIF.
 
 ENDFORM.
 
-*======================================================================*
-* CI FLAGS FROM STEUERKZ
-*======================================================================*
-FORM derive_ci_fields
-  USING    iv_steuerkz TYPE plmk-steuerkz
-  CHANGING cs_disp     TYPE ty_task_disp.
-
-  DATA(lv_len) = strlen( iv_steuerkz ).
-
-  IF lv_len >= 1.  cs_disp-ci_quant         = iv_steuerkz+0(1).  ENDIF.
-  IF lv_len >= 2.  cs_disp-ci_meas_required = iv_steuerkz+1(1).  ENDIF.
-  IF lv_len >= 3.  cs_disp-ci_attr_ref      = iv_steuerkz+2(1).  ENDIF.
-  IF lv_len >= 4.  cs_disp-ci_ulim_ind      = iv_steuerkz+3(1).  ENDIF.
-  IF lv_len >= 5.  cs_disp-ci_llim_ind      = iv_steuerkz+4(1).  ENDIF.
-  IF lv_len >= 6.  cs_disp-ci_chk_tgt       = iv_steuerkz+5(1).  ENDIF.
-  IF lv_len >= 7.  cs_disp-ci_scope         = iv_steuerkz+6(1).  ENDIF.
-  IF lv_len >= 8.  cs_disp-ci_single_res    = iv_steuerkz+7(1).  ENDIF.
-  IF lv_len >= 9.  cs_disp-ci_samp_req      = iv_steuerkz+8(1).  ENDIF.
-  IF lv_len >= 10. cs_disp-ci_recording     = iv_steuerkz+9(1).  ENDIF.
-  IF lv_len >= 11. cs_disp-ci_doc_req       = iv_steuerkz+10(1). ENDIF.
-  IF lv_len >= 12. cs_disp-ci_category      = iv_steuerkz+11(1). ENDIF.
-
-ENDFORM.
-
-*======================================================================*
-* MAIN DATA SELECTION – fills GT_BASE from PLKO/PLPO/PLMK/TAPL/EAPL/CRHD
-*======================================================================*
+*---------------------------------------------------------------------*
+* FORM: GET_DATA
+*   - Reads PLKO/PLAS/PLPO/PLMK/TAPL/EAPL/CRHD
+*   - Applies only background filters in SQL
+*   - All user filters are applied later in APPLY_FILTERS
+*---------------------------------------------------------------------*
 FORM get_data.
 
-  CLEAR  gt_base.
-  REFRESH gt_base.
-  CLEAR  gs_base.
+  DATA: lt_plnty TYPE RANGE OF plko-plnty,
+        ls_plnty LIKE LINE OF lt_plnty.
 
-  " Key date (already single value from validate_selection)
-  DATA: lv_keydt TYPE plko-datuv.
-  READ TABLE so_keydt INDEX 1 INTO DATA(ls_keydt).
-  IF sy-subrc = 0.
-    lv_keydt = ls_keydt-low.
+  CLEAR lt_plnty.
+
+  " Map checkboxes to Task List Types (standard: A=FLOC, B=EQUIP, E=GENERAL)
+  IF p_ftl = 'X'.
+    ls_plnty-sign   = 'I'.
+    ls_plnty-option = 'EQ'.
+    ls_plnty-low    = 'A'.
+    APPEND ls_plnty TO lt_plnty.
   ENDIF.
 
-  " Tolerances – CHAR16 → FLTP
-  DATA: lv_tolun TYPE plmk-toleranzun,
-        lv_tolob TYPE plmk-toleranzob.
-
-  IF so_tolun IS NOT INITIAL.
-    lv_tolun = CONV plmk-toleranzun( so_tolun ).
-  ENDIF.
-  IF so_tolob IS NOT INITIAL.
-    lv_tolob = CONV plmk-toleranzob( so_tolob ).
+  IF p_etl = 'X'.
+    ls_plnty-sign   = 'I'.
+    ls_plnty-option = 'EQ'.
+    ls_plnty-low    = 'B'.
+    APPEND ls_plnty TO lt_plnty.
   ENDIF.
 
-  " Main join selection
+  IF p_gtl = 'X'.
+    ls_plnty-sign   = 'I'.
+    ls_plnty-option = 'EQ'.
+    ls_plnty-low    = 'E'.
+    APPEND ls_plnty TO lt_plnty.
+  ENDIF.
+
+  CLEAR gt_base.
+
+  " Key date – from selection screen (single value)
+  DATA(lv_keydat) = so_keydt-low.
+
+  " Core join per FDS 5.3.4.1 [oai_citation:1‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
   SELECT
-    plko~plnty,
-    plko~plnnr,
-    plko~plnal,
-    plko~datuv,
-    plko~werks,
-    plko~ktext,
-    plko~verwe,
-    plko~vagrp,
-    plko~statu       AS stat_h,
-    plko~anlzu       AS anlzu_h,
-    plko~strat,
-    plko~istru       AS istru_h,
-    plko~adpsp,
-    plko~slwbez,
-    plko~loekz       AS loekz_h,
-    plko~andat,
-    plko~annam,
-    plko~aedat,
-    plko~aenam,
+    a~plnty,
+    a~plnnr,
+    a~plnal,
+    a~datuv,
+    a~werks,
+    a~ktext,
+    a~verwe,
+    a~vagrp,
+    a~statu      AS stat_h,
+    a~anlzu      AS anlzu_h,
+    a~strat,
+    a~istru      AS istru_h,
+    a~adpsp,
+    a~slwbez,
+    a~loekz      AS loekz_h,
+    a~andat,
+    a~annam,
+    a~aedat,
+    a~aenam,
 
-    tapl~tplnr,
-    eapl~equnr,
+    b~tplnr,
+    c~equnr,
 
-    plpo~vornr,
-    plpo~ltxa1,
-    plpo~steus,
-    crhd~arbpl       AS arbpl_o,
-    crhd~werks       AS werks_o,
-    plpo~ktsch,
-    plpo~arbei,
-    plpo~arbeh,
-    plpo~dauno,
-    plpo~daune,
-    plpo~kalid,
-    plpo~execution_stage,
-    plpo~anlzu       AS anlzu_o,
-    plpo~istru       AS istru_o,
-    plpo~larnt,
-    plpo~ebeln,
-    plpo~ebelp,
-    plpo~lifnr,
-    plpo~preis,
-    plpo~waers,
-    plpo~sakto,
-    plpo~ekorg,
-    plpo~ekgrp,
-    plpo~txtsp       AS txtsp_op,
-    plpo~loekz       AS loekz_o,
+    d~vornr,
+    d~ltxa1,
+    d~steus,
+    h~arbpl      AS arbpl_o,
+    d~ktsch,
+    d~arbei,
+    d~arbeh,
+    d~dauno,
+    d~daune,
+    d~kalid,
+    d~execution_stage,
+    d~anlzu      AS anlzu_o,
+    d~istru      AS istru_o,
+    d~larnt,
+    d~ebeln,
+    d~ebelp,
+    d~lifnr,
+    d~preis,
+    d~waers,
+    d~sakto,
+    d~ekorg,
+    d~ekgrp,
+    d~txtsp      AS txtsp_op,
+    d~loekz      AS loekz_o,
 
-    plmk~merknr,
-    plmk~verwmerkm,
-    plmk~kurztext    AS kurzt_char,
-    plmk~ltextkz,
-    plmk~toleranzun,
-    plmk~toleranzob,
-    plmk~pruefeinh,
-    plmk~stichprver,
-    plmk~pmethode,
-    plmk~katalgart1,
-    plmk~auswmenge1,
-    plmk~steuerkz,
-    plmk~loekz       AS loekz_c
+    e~merknr,
+    e~verwmerkm,
+    e~kurztext   AS kurzt_char,
+    e~ltextkz,
+    e~toleranzun,
+    e~toleranzob,
+    e~pruefeinh,
+    e~stichprver,
+    e~pmethode,
+    e~katalgart1,
+    e~auswmenge1,
+    e~steuerkz,
+    e~loekz      AS loekz_c
 
-    INTO CORRESPONDING FIELDS OF TABLE @gt_base
+    INTO TABLE gt_base
+    FROM  plko AS a
+      INNER JOIN plas AS f
+        ON  f~plnty = a~plnty
+        AND f~plnnr = a~plnnr
+        AND f~plnal = a~plnal
+        AND f~loekz = ''               "Assignment not deleted [oai_citation:2‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+      INNER JOIN plpo AS d
+        ON  d~plnty = f~plnty
+        AND d~plnnr = f~plnnr
+        AND d~plnkn = f~plnkn
+        AND d~zaehl = f~zaehl
+        AND d~loekz = ''               "Operation not deleted [oai_citation:3‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+      LEFT OUTER JOIN plmk AS e
+        ON  e~plnty = d~plnty
+        AND e~plnnr = d~plnnr
+        AND e~plnkn = d~plnkn
+        AND e~zaehl = d~zaehl
+        AND e~loekz = ''               "Char. not deleted [oai_citation:4‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+      LEFT OUTER JOIN tapl AS b
+        ON  b~plnty = a~plnty
+        AND b~plnnr = a~plnnr
+        AND b~plnal = a~plnal
+        AND b~loekz = ''               "TAPL not deleted
+      LEFT OUTER JOIN eapl AS c
+        ON  c~plnty = a~plnty
+        AND c~plnnr = a~plnnr
+        AND c~plnal = a~plnal
+        AND c~loekz = ''               "EAPL not deleted
+      LEFT OUTER JOIN crhd AS h
+        ON  h~objid = d~arbid          "Operation WC per FDS join [oai_citation:5‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+        AND h~objty = d~objty
+    WHERE a~plnty IN lt_plnty
+      AND a~loekz = ''                 "Header not deleted [oai_citation:6‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+      AND a~datuv <= lv_keydat.        "From-date <= key date (no VALID_TO used)
 
-    FROM plko
-      INNER JOIN plpo
-        ON plko~plnty = plpo~plnty
-       AND plko~plnnr = plpo~plnnr
-       AND plko~plnal = plpo~plnal
+  " Apply all selection-screen filters on the in-memory data
+  PERFORM apply_filters.
 
-      LEFT OUTER JOIN plmk
-        ON plpo~plnty = plmk~plnty
-       AND plpo~plnnr = plmk~plnnr
-       AND plpo~plnal = plmk~plnal
-       AND plpo~plnkn = plmk~plnkn
+ENDFORM.
 
-      LEFT OUTER JOIN crhd
-        ON crhd~objid = plpo~arbid
+*---------------------------------------------------------------------*
+* FORM: APPLY_FILTERS
+*   - Applies all user selection options to GT_BASE
+*---------------------------------------------------------------------*
+FORM apply_filters.
 
-      LEFT OUTER JOIN tapl
-        ON tapl~plnty = plko~plnty
-       AND tapl~plnnr = plko~plnnr
-       AND tapl~plnal = plko~plnal
+  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
 
-      LEFT OUTER JOIN eapl
-        ON eapl~plnty = plko~plnty
-       AND eapl~plnnr = plko~plnnr
-       AND eapl~plnal = plko~plnal
-
-    WHERE plko~datuv <= @lv_keydt
-
-      " Background deletion filters (FDS)
-      AND plko~loekz = @space
-      AND plpo~loekz = @space
-      AND ( plmk~loekz = @space OR plmk~loekz IS NULL )
-
-      " Task List Selection
-      AND plko~plnnr IN @so_plnnr
-      AND plko~plnal IN @so_plnal
-
-      " Header Data
-      AND plko~ktext IN @so_ktext
-      AND plko~werks IN @so_werks
-      AND plko~verwe IN @so_verwe
-      AND plko~vagrp IN @so_vagrp
-      AND plko~statu IN @so_stath
-      AND plko~anlzu IN @so_anlzh
-      AND plko~strat IN @so_strat
-      AND plko~istru IN @so_istrh
-      AND plko~adpsp IN @so_adpsp
-      AND plko~slwbez IN @so_slwbe
-      AND plko~andat IN @so_andat
-      AND plko~annam IN @so_annam
-      AND plko~aedat IN @so_aedat
-      AND plko~aenam IN @so_aenam
-
-      " Header work center (approx via CRHD)
-      AND ( crhd~arbpl IN @so_arbph OR @so_arbph IS INITIAL )
-
-      " Header assignments (TPLNR/EQUNR)
-      AND ( tapl~tplnr IN @so_tplnr OR @so_tplnr IS INITIAL )
-      AND ( eapl~equnr IN @so_equnr OR @so_equnr IS INITIAL )
-
-      " Operation Data
-      AND plpo~vornr IN @so_vornr
-      AND plpo~uvorn IN @so_uvorn
-      AND plpo~ltxa1 IN @so_otext
-      AND plpo~steus IN @so_steus
-      AND plpo~execution_stage IN @so_exsta
-      AND plpo~anlzu IN @so_anlzo
-      AND plpo~istru IN @so_istru
-      AND plpo~ktsch IN @so_ktsch
-      AND plpo~larnt IN @so_larnt
-      AND plpo~ebeln IN @so_ebeln
-      AND plpo~ebelp IN @so_ebelp
-      AND plpo~lifnr IN @so_lifnr
-
-      " Operation assignments (TPLNR/EQUNR at op-level)
-      AND ( tapl~tplnr IN @so_optpl OR @so_optpl IS INITIAL )
-      AND ( eapl~equnr IN @so_opequ OR @so_opequ IS INITIAL )
-
-      " Work center, plant (operation)
-      AND ( crhd~arbpl IN @so_arbpo OR @so_arbpo IS INITIAL )
-      AND ( crhd~werks IN @so_werop OR @so_werop IS INITIAL )
-
-      " Operation long-text indicator
-      AND ( @p_oltin IS INITIAL OR plpo~txtsp <> @space )
-
-      " Characteristic Data
-      AND ( plmk~merknr    IN @so_merkn  OR @so_merkn  IS INITIAL OR plmk~merknr    IS NULL )
-      AND ( plmk~verwmerkm IN @so_mic    OR @so_mic    IS INITIAL OR plmk~verwmerkm IS NULL )
-      AND ( plmk~kurztext  IN @so_cktxt  OR @so_cktxt  IS INITIAL OR plmk~kurztext  IS NULL )
-      AND ( plmk~ltextkz   IN @so_ltxtk  OR @so_ltxtk  IS INITIAL OR plmk~ltextkz   IS NULL )
-      AND ( plmk~pmethode  IN @so_meth   OR @so_meth   IS INITIAL OR plmk~pmethode  IS NULL )
-      AND ( plmk~stichprver IN @so_sproc OR @so_sproc  IS INITIAL OR plmk~stichprver IS NULL )
-
-      " Tolerance parameters (single-value equality)
-      AND ( @so_tolun IS INITIAL OR plmk~toleranzun = @lv_tolun )
-      AND ( @so_tolob IS INITIAL OR plmk~toleranzob = @lv_tolob ).
-
-  IF gt_base IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  " Filter by Task List Type (PLKO-PLNTY vs p_ftl/p_etl/p_gtl)
-  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base,
-        lv_keep     TYPE abap_bool.
+  CLEAR lt_filtered.
 
   LOOP AT gt_base INTO gs_base.
-    lv_keep = abap_true.
-    CASE gs_base-plnty.
-      WHEN 'A'. " Functional Location
-        IF p_ftl IS INITIAL.
-          lv_keep = abap_false.
-        ENDIF.
-      WHEN 'E'. " Equipment
-        IF p_etl IS INITIAL.
-          lv_keep = abap_false.
-        ENDIF.
-      WHEN 'G'. " General
-        IF p_gtl IS INITIAL.
-          lv_keep = abap_false.
-        ENDIF.
-    ENDCASE.
-    IF lv_keep = abap_true.
-      APPEND gs_base TO lt_filtered.
+
+    "--------------------------------------------------------------*
+    " Task List Selection (TPLNR/EQUNR/PLNNR/PLNAL/Key Date)
+    "--------------------------------------------------------------*
+    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+      CONTINUE.
     ENDIF.
+
+    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+      CONTINUE.
+    ENDIF.
+
+    "Key date: we already checked PLKO-DATUV in SQL.
+    "Nothing else here – VALID_TO fields are system-specific.
+
+    "--------------------------------------------------------------*
+    " Header Data
+    "--------------------------------------------------------------*
+    IF so_ktext[] IS NOT INITIAL AND gs_base-ktext NOT IN so_ktext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
+
+    IF so_vagrp[] IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_verwe[] IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_stath[] IS NOT INITIAL AND gs_base-stat_h NOT IN so_stath.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzh[] IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_strat[] IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istrh[] IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_adpsp[] IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_slwbe[] IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_andat[] IS NOT INITIAL AND gs_base-andat NOT IN so_andat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_annam[] IS NOT INITIAL AND gs_base-annam NOT IN so_annam.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aedat[] IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aenam[] IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+      CONTINUE.
+    ENDIF.
+
+    "--------------------------------------------------------------*
+    " Operation Data
+    "--------------------------------------------------------------*
+    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
+
+    "Suboperation range is modelled as second range on VORNR
+    IF so_uvorn[] IS NOT INITIAL AND gs_base-vornr NOT IN so_uvorn.
+      CONTINUE.
+    ENDIF.
+
+    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_steus[] IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
+      CONTINUE.
+    ENDIF.
+
+    IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
+      CONTINUE.
+    ENDIF.
+
+    "Plant (operation work center) – we only have planning plant at header,
+    "FDS filter CRHD-WERKS is system-specific; left out intentionally.
+
+    IF so_optpl[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_optpl.
+      CONTINUE.
+    ENDIF.
+
+    IF so_opequ[] IS NOT INITIAL AND gs_base-equnr NOT IN so_opequ.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
+      CONTINUE.
+    ENDIF.
+
+    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istru[] IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
+      CONTINUE.
+    ENDIF.
+
+    IF so_larnt[] IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebeln[] IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebelp[] IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_lifnr[] IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
+      CONTINUE.
+    ENDIF.
+
+    "Operation long text indicator (PLPO-TXTSP) per FDS 2. Detailed View [oai_citation:7‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+    IF p_oltin = 'X'.
+      "Only operations WITH long text indicator
+      IF gs_base-txtsp_op IS INITIAL.
+        CONTINUE.
+      ENDIF.
+    ELSE.
+      "Only operations WITHOUT long text indicator
+      IF gs_base-txtsp_op IS NOT INITIAL.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+    "--------------------------------------------------------------*
+    " Characteristic Data
+    "--------------------------------------------------------------*
+    IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      CONTINUE.
+    ENDIF.
+
+    IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      CONTINUE.
+    ENDIF.
+
+    IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> so_tolun.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> so_tolob.
+      CONTINUE.
+    ENDIF.
+
+    IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      CONTINUE.
+    ENDIF.
+
+    IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+      CONTINUE.
+    ENDIF.
+
+    "Characteristic long text search (SO_CHLTX) would require READ_TEXT;
+    "left for later enhancement – selection parameter is kept for future use.
+
+    APPEND gs_base TO lt_filtered.
+
   ENDLOOP.
 
   gt_base = lt_filtered.
 
-  IF gt_base IS INITIAL.
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* FORM: ADD_OPERATION_IF_NEW
+*   - Helper when we are NOT showing characteristics
+*---------------------------------------------------------------------*
+FORM add_operation_if_new
+  USING    is_base TYPE ty_task_base.
+
+  DATA: ls_disp TYPE ty_task_disp.
+
+  "Avoid duplicates for same header+operation
+  READ TABLE gt_display TRANSPORTING NO FIELDS
+       WITH KEY plnty = is_base-plnty
+                plnnr = is_base-plnnr
+                plnal = is_base-plnal
+                vornr = is_base-vornr.
+
+  IF sy-subrc = 0.
     RETURN.
   ENDIF.
 
-  " Apply free-text filters for long texts if entered
-  IF so_opltx IS NOT INITIAL.
-    PERFORM filter_by_op_longtext USING so_opltx.
-  ENDIF.
+  CLEAR ls_disp.
+  MOVE-CORRESPONDING is_base TO ls_disp.
 
-  IF so_chltx IS NOT INITIAL.
-    PERFORM filter_by_char_longtext USING so_chltx.
-  ENDIF.
+  ls_disp-row_kind = 'O'.
 
-ENDFORM.
+  "Blank characteristic fields for pure operation row
+  CLEAR: ls_disp-merknr,
+         ls_disp-verwmerkm,
+         ls_disp-kurzt_char,
+         ls_disp-ltextkz,
+         ls_disp-toleranzun,
+         ls_disp-toleranzob,
+         ls_disp-pruefeinh,
+         ls_disp-stichprver,
+         ls_disp-pmethode,
+         ls_disp-katalgart1,
+         ls_disp-auswmenge1,
+         ls_disp-steuerkz,
+         ls_disp-loekz_c,
+         ls_disp-tdline,
+         ls_disp-tdformat.
 
-*======================================================================*
-* LONG TEXT FILTER LOGIC
-*======================================================================*
-FORM filter_by_op_longtext USING iv_search TYPE zde_a2r_free_text.
-
-  DATA: lt_keep_keys TYPE SORTED TABLE OF string
-                         WITH UNIQUE KEY table_line,
-        lv_key       TYPE string.
-
-  " Distinct operations
-  DATA: lt_ops TYPE SORTED TABLE OF ty_task_base
-                       WITH UNIQUE KEY plnty plnnr plnal vornr.
-
-  LOOP AT gt_base INTO gs_base.
-    READ TABLE lt_ops WITH KEY
-         plnty = gs_base-plnty
-         plnnr = gs_base-plnnr
-         plnal = gs_base-plnal
-         vornr = gs_base-vornr
-         TRANSPORTING NO FIELDS.
-    IF sy-subrc <> 0.
-      APPEND gs_base TO lt_ops.
-    ENDIF.
-  ENDLOOP.
-
-  LOOP AT lt_ops INTO gs_base.
-
-    CLEAR gt_tline.
-    REFRESH gt_tline.
-
-    " NOTE: Text object/id should follow FDS; adjust if different:
-    CALL FUNCTION 'READ_TEXT'
-      EXPORTING
-        id       = 'IL'
-        language = sy-langu
-        name     = |{ gs_base-plnty }{ gs_base-plnnr }{ gs_base-plnal }{ gs_base-vornr }|
-        object   = 'PLPO'
-      TABLES
-        lines    = gt_tline
-      EXCEPTIONS
-        OTHERS   = 4.
-
-    DATA(lv_found) = abap_false.
-
-    LOOP AT gt_tline INTO gs_tline.
-      IF gs_tline-tdline CS iv_search.
-        lv_found = abap_true.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
-
-    IF lv_found = abap_true.
-      lv_key = |{ gs_base-plnty }-{ gs_base-plnnr }-{ gs_base-plnal }-{ gs_base-vornr }|.
-      INSERT lv_key INTO TABLE lt_keep_keys.
-    ENDIF.
-
-  ENDLOOP.
-
-  IF lt_keep_keys IS INITIAL.
-    CLEAR gt_base.
-    RETURN.
-  ENDIF.
-
-  DATA: lt_new TYPE STANDARD TABLE OF ty_task_base.
-  CLEAR lt_new.
-
-  LOOP AT gt_base INTO gs_base.
-    lv_key = |{ gs_base-plnty }-{ gs_base-plnnr }-{ gs_base-plnal }-{ gs_base-vornr }|.
-    READ TABLE lt_keep_keys WITH KEY table_line = lv_key TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      APPEND gs_base TO lt_new.
-    ENDIF.
-  ENDLOOP.
-
-  gt_base = lt_new.
+  APPEND ls_disp TO gt_display.
 
 ENDFORM.
 
-FORM filter_by_char_longtext USING iv_search TYPE zde_a2r_free_text.
+*---------------------------------------------------------------------*
+* FORM: BUILD_DISPLAY
+*   - Creates GT_DISPLAY from GT_BASE based on flags
+*     GV_SHOW_CHAR / GV_SHOW_LTXT (and P_SHOWC / P_SHOWL initial state)
+*---------------------------------------------------------------------*
+FORM build_display.
 
-  DATA: lt_keep_keys TYPE SORTED TABLE OF string
-                         WITH UNIQUE KEY table_line,
-        lv_key       TYPE string.
-
-  " Distinct characteristics (per operation)
-  DATA: lt_chars TYPE SORTED TABLE OF ty_task_base
-                       WITH UNIQUE KEY plnty plnnr plnal vornr merknr.
-
-  LOOP AT gt_base INTO gs_base WHERE merknr IS NOT INITIAL.
-    READ TABLE lt_chars WITH KEY
-         plnty = gs_base-plnty
-         plnnr = gs_base-plnnr
-         plnal = gs_base-plnal
-         vornr = gs_base-vornr
-         merknr = gs_base-merknr
-         TRANSPORTING NO FIELDS.
-    IF sy-subrc <> 0.
-      APPEND gs_base TO lt_chars.
-    ENDIF.
-  ENDLOOP.
-
-  LOOP AT lt_chars INTO gs_base.
-
-    CLEAR gt_tline.
-    REFRESH gt_tline.
-
-    " NOTE: characteristic long text object from AQ50PM ref (QSS/QM)
-    DATA: lv_part_1 TYPE string,
-          lv_part_2 TYPE string,
-          lv_name   TYPE string.
-
-    CONCATENATE plmk-mandt        " client
-                gs_base-plnty
-                gs_base-plnnr
-                gs_base-plnkn      " not in type; if needed, adjust
-      INTO lv_part_1.
-
-    CONCATENATE gs_base-merknr '000'
-      INTO lv_part_2.
-
-    CONCATENATE lv_part_1 lv_part_2 INTO lv_name SEPARATED BY space.
-
-    CALL FUNCTION 'READ_TEXT'
-      EXPORTING
-        client   = sy-mandt
-        id       = 'QM'
-        language = sy-langu
-        name     = lv_name
-        object   = 'QSS'
-      TABLES
-        lines    = gt_tline
-      EXCEPTIONS
-        OTHERS   = 4.
-
-    DATA(lv_found) = abap_false.
-
-    LOOP AT gt_tline INTO gs_tline.
-      IF gs_tline-tdline CS iv_search.
-        lv_found = abap_true.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
-
-    IF lv_found = abap_true.
-      lv_key = |{ gs_base-plnty }-{ gs_base-plnnr }-{ gs_base-plnal }-{ gs_base-vornr }-{ gs_base-merknr }|.
-      INSERT lv_key INTO TABLE lt_keep_keys.
-    ENDIF.
-
-  ENDLOOP.
-
-  IF lt_keep_keys IS INITIAL.
-    CLEAR gt_base.
-    RETURN.
-  ENDIF.
-
-  DATA: lt_new TYPE STANDARD TABLE OF ty_task_base.
-  CLEAR lt_new.
-
-  LOOP AT gt_base INTO gs_base.
-    IF gs_base-merknr IS INITIAL.
-      CONTINUE.
-    ENDIF.
-    lv_key = |{ gs_base-plnty }-{ gs_base-plnnr }-{ gs_base-plnal }-{ gs_base-vornr }-{ gs_base-merknr }|.
-    READ TABLE lt_keep_keys WITH KEY table_line = lv_key TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      APPEND gs_base TO lt_new.
-    ENDIF.
-  ENDLOOP.
-
-  gt_base = lt_new.
-
-ENDFORM.
-
-*======================================================================*
-* BUILD DISPLAY – OPERATIONS ONLY
-*======================================================================*
-FORM build_display_initial.
+  DATA: lv_show_char TYPE abap_bool,
+        lv_show_ltxt TYPE abap_bool,
+        lt_lines     TYPE STANDARD TABLE OF tline,
+        ls_line      TYPE tline.
 
   CLEAR gt_display.
-  REFRESH gt_display.
 
-  DATA: lt_sorted TYPE STANDARD TABLE OF ty_task_base.
-  lt_sorted = gt_base.
+  "Effective flags = runtime toggle OR initial checkbox
+  lv_show_char = COND #( WHEN gv_show_char = gc_true OR p_showc = 'X'
+                         THEN gc_true ELSE gc_false ).
+  lv_show_ltxt = COND #( WHEN gv_show_ltxt = gc_true OR p_showl = 'X'
+                         THEN gc_true ELSE gc_false ).
 
-  SORT lt_sorted BY plnty plnnr plnal vornr merknr.
+  LOOP AT gt_base INTO gs_base.
 
-  DATA: lv_last_key TYPE string.
-
-  LOOP AT lt_sorted INTO gs_base.
-
-    DATA(lv_key) = |{ gs_base-plnty }-{ gs_base-plnnr }-{ gs_base-plnal }-{ gs_base-vornr }|.
-
-    IF lv_key = lv_last_key.
-      CONTINUE.
-    ENDIF.
-    lv_last_key = lv_key.
-
-    CLEAR gs_display.
-    MOVE-CORRESPONDING gs_base TO gs_display.
-    gs_display-row_kind = 'O'.
-
-    PERFORM derive_ci_fields
-      USING    gs_base-steuerkz
-      CHANGING gs_display.
-
-    APPEND gs_display TO gt_display.
-
-  ENDLOOP.
-
-  gv_show_char = abap_false.
-
-ENDFORM.
-
-*======================================================================*
-* BUILD DISPLAY – OPERATIONS + CHARACTERISTICS
-*======================================================================*
-FORM build_display_with_char.
-
-  CLEAR gt_display.
-  REFRESH gt_display.
-
-  DATA: lt_sorted TYPE STANDARD TABLE OF ty_task_base.
-  lt_sorted = gt_base.
-
-  SORT lt_sorted BY plnty plnnr plnal vornr merknr.
-
-  DATA: lv_key TYPE string.
-
-  LOOP AT lt_sorted INTO gs_base.
-
-    DATA(lv_opkey) = |{ gs_base-plnty }-{ gs_base-plnnr }-{ gs_base-plnal }-{ gs_base-vornr }|.
-
-    " Operation row
-    IF lv_opkey <> lv_key.
-      lv_key = lv_opkey.
+    IF lv_show_char = gc_true.
+      "One row per operation/characteristic (if MERKNR initial, it’s only op)
       CLEAR gs_display.
       MOVE-CORRESPONDING gs_base TO gs_display.
-      gs_display-row_kind = 'O'.
-
-      PERFORM derive_ci_fields
-        USING    gs_base-steuerkz
-        CHANGING gs_display.
-
+      gs_display-row_kind = COND #( WHEN gs_base-merknr IS INITIAL
+                                    THEN 'O'
+                                    ELSE 'C' ).
       APPEND gs_display TO gt_display.
-    ENDIF.
 
-    " Characteristic row (if exists)
-    IF gs_base-merknr IS NOT INITIAL.
-      CLEAR gs_display.
-      MOVE-CORRESPONDING gs_base TO gs_display.
-      gs_display-row_kind = 'C'.
+      "Characteristic long text lines when LV_SHOW_LTXT = X and LTEXTKZ = 'X' [oai_citation:8‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+      IF lv_show_ltxt = gc_true
+         AND gs_base-merknr IS NOT INITIAL
+         AND gs_base-ltextkz = 'X'.
 
-      PERFORM derive_ci_fields
-        USING    gs_base-steuerkz
-        CHANGING gs_display.
+        CLEAR lt_lines.
+        PERFORM read_char_longtext USING    gs_base
+                                   CHANGING lt_lines.
 
-      APPEND gs_display TO gt_display.
+        LOOP AT lt_lines INTO ls_line.
+          CLEAR gs_display.
+          MOVE-CORRESPONDING gs_base TO gs_display.
+          gs_display-row_kind = 'L'.
+          gs_display-tdline   = ls_line-tdline.
+          gs_display-tdformat = ls_line-tdformat.
+          APPEND gs_display TO gt_display.
+        ENDLOOP.
+
+      ENDIF.
+
+    ELSE.
+      "Show only operations (no characteristic rows)
+      PERFORM add_operation_if_new USING gs_base.
+
+      "Operation long text only when LV_SHOW_LTXT = X and TXTSP_OP <> space [oai_citation:9‡TaskList.pdf](file-service://file-C2Smrdjjvn4UvEoSzf3r5t)
+      IF lv_show_ltxt = gc_true
+         AND gs_base-txtsp_op IS NOT INITIAL.
+
+        CLEAR lt_lines.
+        PERFORM read_op_longtext USING    gs_base
+                                 CHANGING lt_lines.
+
+        LOOP AT lt_lines INTO ls_line.
+          CLEAR gs_display.
+          MOVE-CORRESPONDING gs_base TO gs_display.
+          gs_display-row_kind = 'L'.
+          gs_display-tdline   = ls_line-tdline.
+          gs_display-tdformat = ls_line-tdformat.
+          APPEND gs_display TO gt_display.
+        ENDLOOP.
+
+      ENDIF.
+
     ENDIF.
 
   ENDLOOP.
 
-  gv_show_char = abap_true.
-
 ENDFORM.
 
-*======================================================================*
-* LONG TEXT APPEND – OPERATIONS
-*======================================================================*
+*---------------------------------------------------------------------*
+* FORM: READ_OP_LONGTEXT
+*   - Wraps READ_TEXT for operation level
+*   - Key structure follows standard TL operation long-text (adjust if
+*     your text object / IDs differ – this is the only place to change)
+*---------------------------------------------------------------------*
 FORM read_op_longtext
-  USING    is_disp TYPE ty_task_disp
-  CHANGING ct_disp TYPE STANDARD TABLE OF ty_task_disp.
+  USING    is_base  TYPE ty_task_base
+  CHANGING ct_lines TYPE STANDARD TABLE OF tline.
 
-  CLEAR gt_tline.
-  REFRESH gt_tline.
+  DATA: ls_header TYPE thead.
 
+  CLEAR ct_lines.
+
+  "This key is system-specific; adjust OBJECT/ID/NAME if required
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      id       = 'IL'
+      id       = 'LT'
       language = sy-langu
-      name     = |{ is_disp-plnty }{ is_disp-plnnr }{ is_disp-plnal }{ is_disp-vornr }|
+      name     = |{ is_base-plnty }{ is_base-plnnr ALPHA = OUT }{ is_base-plnal }{ is_base-vornr }|
       object   = 'PLPO'
+    IMPORTING
+      header   = ls_header
     TABLES
-      lines    = gt_tline
+      lines    = ct_lines
     EXCEPTIONS
-      OTHERS   = 4.
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_disp TO gs_display.
-    gs_display-row_kind = 'L'.
-    gs_display-tdline   = gs_tline-tdline.
-    gs_display-tdformat = gs_tline-tdformat.
-    APPEND gs_display TO ct_disp.
-  ENDLOOP.
+      OTHERS   = 1.
 
 ENDFORM.
 
-*======================================================================*
-* LONG TEXT APPEND – CHARACTERISTICS
-*======================================================================*
+*---------------------------------------------------------------------*
+* FORM: READ_CHAR_LONGTEXT
+*   - Wraps READ_TEXT for characteristic level
+*---------------------------------------------------------------------*
 FORM read_char_longtext
-  USING    is_disp TYPE ty_task_disp
-  CHANGING ct_disp TYPE STANDARD TABLE OF ty_task_disp.
+  USING    is_base  TYPE ty_task_base
+  CHANGING ct_lines TYPE STANDARD TABLE OF tline.
 
-  CLEAR gt_tline.
-  REFRESH gt_tline.
+  DATA: ls_header TYPE thead.
 
-  " As above, follow QSS/QM pattern (same as filter)
-  DATA: lv_part_1 TYPE string,
-        lv_part_2 TYPE string,
-        lv_name   TYPE string.
+  CLEAR ct_lines.
 
-  CONCATENATE sy-mandt
-              is_disp-plnty
-              is_disp-plnnr
-              ' '
-    INTO lv_part_1.
-
-  CONCATENATE is_disp-merknr '000' INTO lv_part_2.
-
-  CONCATENATE lv_part_1 lv_part_2 INTO lv_name SEPARATED BY space.
-
+  "Again, adjust OBJECT/ID/NAME if required by your system
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      client   = sy-mandt
-      id       = 'QM'
+      id       = 'LT'
       language = sy-langu
-      name     = lv_name
-      object   = 'QSS'
+      name     = |{ is_base-plnty }{ is_base-plnnr ALPHA = OUT }{ is_base-plnal }{ is_base-merknr }|
+      object   = 'PLMK'
+    IMPORTING
+      header   = ls_header
     TABLES
-      lines    = gt_tline
+      lines    = ct_lines
     EXCEPTIONS
-      OTHERS   = 4.
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_disp TO gs_display.
-    gs_display-row_kind = 'L'.
-    gs_display-tdline   = gs_tline-tdline.
-    gs_display-tdformat = gs_tline-tdformat.
-    APPEND gs_display TO ct_disp.
-  ENDLOOP.
+      OTHERS   = 1.
 
 ENDFORM.
 
-FORM add_longtext_for_ops.
-
-  DATA: lt_result TYPE STANDARD TABLE OF ty_task_disp.
-
-  CLEAR lt_result.
-
-  LOOP AT gt_display INTO gs_display.
-    APPEND gs_display TO lt_result.
-
-    IF gs_display-row_kind = 'O'
-       AND gs_display-txtsp_op IS NOT INITIAL.
-      PERFORM read_op_longtext
-        USING    gs_display
-        CHANGING lt_result.
-    ENDIF.
-
-  ENDLOOP.
-
-  gt_display   = lt_result.
-  gv_show_ltxt = abap_true.
-
-ENDFORM.
-
-FORM add_longtext_for_chars.
-
-  DATA: lt_result TYPE STANDARD TABLE OF ty_task_disp.
-
-  CLEAR lt_result.
-
-  LOOP AT gt_display INTO gs_display.
-    APPEND gs_display TO lt_result.
-
-    IF gs_display-row_kind = 'C'
-       AND gs_display-ltextkz = 'X'.
-      PERFORM read_char_longtext
-        USING    gs_display
-        CHANGING lt_result.
-    ENDIF.
-
-  ENDLOOP.
-
-  gt_display   = lt_result.
-  gv_show_ltxt = abap_true.
-
-ENDFORM.
-
-*======================================================================*
-* TOGGLE HANDLERS (custom SALV buttons like in maintplan ref)
-*======================================================================*
-FORM toggle_characteristics.
-
-  IF gv_show_char = abap_true.
-    PERFORM build_display_initial.
-    IF gv_show_ltxt = abap_true.
-      PERFORM add_longtext_for_ops.
-    ENDIF.
-  ELSE.
-    PERFORM build_display_with_char.
-    IF gv_show_ltxt = abap_true.
-      PERFORM add_longtext_for_chars.
-    ENDIF.
-  ENDIF.
-
-  PERFORM refresh_display.
-
-ENDFORM.
-
-FORM toggle_longtext.
-
-  IF gv_show_ltxt = abap_true.
-    " Turn off long text – rebuild only rows without LT
-    IF gv_show_char = abap_true.
-      PERFORM build_display_with_char.
-    ELSE.
-      PERFORM build_display_initial.
-    ENDIF.
-    gv_show_ltxt = abap_false.
-  ELSE.
-    " Turn on long text
-    IF gv_show_char = abap_true.
-      PERFORM build_display_with_char.
-      PERFORM add_longtext_for_chars.
-    ELSE.
-      PERFORM build_display_initial.
-      PERFORM add_longtext_for_ops.
-    ENDIF.
-  ENDIF.
-
-  PERFORM refresh_display.
-
-ENDFORM.
-
-*======================================================================*
-* SALV DISPLAY
-*======================================================================*
+*---------------------------------------------------------------------*
+* FORM: DISPLAY_ALV
+*   - Creates SALV on GT_DISPLAY with 2 custom buttons: CHAR / LTXT
+*---------------------------------------------------------------------*
 FORM display_alv.
+
+  DATA: lx_salv TYPE REF TO cx_salv_msg.
 
   TRY.
       cl_salv_table=>factory(
@@ -752,64 +624,44 @@ FORM display_alv.
           r_salv_table = lo_alv
         CHANGING
           t_table      = gt_display ).
-    CATCH cx_salv_msg.
-      MESSAGE e398(00) WITH 'Error creating ALV'.
+    CATCH cx_salv_msg INTO lx_salv.
+      MESSAGE lx_salv->get_text( ) TYPE 'E'.
   ENDTRY.
 
-  PERFORM configure_salv.
-
-  lo_alv->display( ).
-
-ENDFORM.
-
-FORM configure_salv.
-
+  "Columns
   lo_columns = lo_alv->get_columns( ).
+  lo_columns->set_optimize( abap_true ).
 
-  " Hide technical columns
-  TRY.
-      lo_column ?= lo_columns->get_column( 'ROW_KIND' ).
-      lo_column->set_technical( abap_true ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
+  "Striped pattern etc.
+  lo_disp = lo_alv->get_display_settings( ).
+  lo_disp->set_striped_pattern( abap_true ).
 
-  " Enable standard functions
-  lo_funcs = lo_alv->get_functions( ).
-  lo_funcs->set_all( abap_true ).
-
-  " Custom toggle buttons (like reference program)
-  lo_funcs->add_function(
-    name      = gc_func_char,
-    text      = 'Characteristics',
-    tooltip   = 'Show/Hide Characteristics',
-    position  = if_salv_c_function_position=>right_of_salv_functions ).
-
-  lo_funcs->add_function(
-    name      = gc_func_ltxt,
-    text      = 'Long Text',
-    tooltip   = 'Show/Hide Long Text',
-    position  = if_salv_c_function_position=>right_of_salv_functions ).
-
-  " Layout, title, striping
-  lo_layout = lo_alv->get_layout( ).
-  ls_layout_key-report = sy-repid.
+  "Layout
+  lo_layout     = lo_alv->get_layout( ).
+  ls_layout_key = VALUE #( report = sy-repid ).
   lo_layout->set_key( ls_layout_key ).
   lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
 
-  lo_disp = lo_alv->get_display_settings( ).
-  lo_disp->set_striped_pattern( abap_true ).
-  lo_disp->set_list_header( 'Task List Validation Report' ).
+  "Functions + custom buttons
+  lo_funcs = lo_alv->get_functions( ).
+  lo_funcs->set_all( abap_true ).
 
-  lo_sel = lo_alv->get_selections( ).
-  lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+  lo_funcs->add_function(
+    name     = gc_func_char,
+    text     = 'Show Characteristics',
+    tooltip  = 'Toggle characteristic rows',
+    position = if_salv_c_function_position=>right_of_salv_functions ).
 
+  lo_funcs->add_function(
+    name     = gc_func_ltxt,
+    text     = 'Show Long Text',
+    tooltip  = 'Toggle long-text rows',
+    position = if_salv_c_function_position=>right_of_salv_functions ).
+
+  "Event handler for the custom buttons
   lo_events = lo_alv->get_event( ).
   SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
 
-ENDFORM.
+  lo_alv->display( ).
 
-FORM refresh_display.
-  IF lo_alv IS BOUND.
-    lo_alv->refresh( ).
-  ENDIF.
 ENDFORM.
