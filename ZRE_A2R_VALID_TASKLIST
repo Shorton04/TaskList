@@ -1,45 +1,31 @@
-*&---------------------------------------------------------------------*
-*& Report  ZRE_A2R_VALID_TASKLIST
-*&---------------------------------------------------------------------*
-*& Task List Validation Report
-*&---------------------------------------------------------------------*
 REPORT zre_a2r_valid_tasklist.
 
+*---------------------------------------------------------------------*
+* Includes
+*---------------------------------------------------------------------*
 INCLUDE zre_a2r_valid_tasklist_top.
 INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
 
 *---------------------------------------------------------------------*
-* SELECTION-SCREEN CHECKS
+* Events
 *---------------------------------------------------------------------*
+
 AT SELECTION-SCREEN.
   PERFORM validate_selection.
 
-*---------------------------------------------------------------------*
-* MAIN LOGIC
-*---------------------------------------------------------------------*
 START-OF-SELECTION.
+
+  "Initial visibility comes from selection screen checkboxes
+  gv_show_char = COND #( WHEN p_showc = 'X' THEN gc_true ELSE gc_false ).
+  gv_show_ltxt = COND #( WHEN p_showl = 'X' THEN gc_true ELSE gc_false ).
 
   PERFORM get_data.
 
   IF gt_base IS INITIAL.
-    MESSAGE s398(00) WITH 'No data found for entered selection'.
-    RETURN.
+    MESSAGE i398(00).   "Standard: 'No data was selected'
+    EXIT.
   ENDIF.
 
-  " Initial display build according to Detailed View flags
-  IF p_showc = 'X'.
-    PERFORM build_display_with_char.
-  ELSE.
-    PERFORM build_display_initial.
-  ENDIF.
-
-  IF p_showl = 'X'.
-    IF gv_show_char = abap_true.
-      PERFORM add_longtext_for_chars.
-    ELSE.
-      PERFORM add_longtext_for_ops.
-    ENDIF.
-  ENDIF.
-
+  PERFORM build_display.
   PERFORM display_alv.
