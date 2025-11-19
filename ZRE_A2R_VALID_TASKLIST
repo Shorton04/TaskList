@@ -1,29 +1,40 @@
+*&---------------------------------------------------------------------*
+*& Report  ZRE_A2R_VALID_TASKLIST
+*&---------------------------------------------------------------------*
 REPORT zre_a2r_valid_tasklist.
 
-*---------------------------------------------------------------------*
-* Includes
-*---------------------------------------------------------------------*
 INCLUDE zre_a2r_valid_tasklist_top.
 INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
 
 *---------------------------------------------------------------------*
-* Events
+* Selection-screen checks
 *---------------------------------------------------------------------*
-
 AT SELECTION-SCREEN.
   PERFORM validate_selection.
 
+*---------------------------------------------------------------------*
+* Main processing
+*---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  "Initial visibility comes from selection screen checkboxes
-  gv_show_char = COND #( WHEN p_showc = 'X' THEN gc_true ELSE gc_false ).
-  gv_show_ltxt = COND #( WHEN p_showl = 'X' THEN gc_true ELSE gc_false ).
+  "Initial state of toggles comes from checkboxes
+  IF p_showc = 'X'.
+    gv_show_char = gc_true.
+  ELSE.
+    gv_show_char = gc_false.
+  ENDIF.
+
+  IF p_showl = 'X'.
+    gv_show_ltxt = gc_true.
+  ELSE.
+    gv_show_ltxt = gc_false.
+  ENDIF.
 
   PERFORM get_data.
 
   IF gt_base IS INITIAL.
-    MESSAGE i398(00).   "Standard: 'No data was selected'
+    MESSAGE s398(00) WITH 'No data found for the given selection'.
     EXIT.
   ENDIF.
 
