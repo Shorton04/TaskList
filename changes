@@ -1,492 +1,210 @@
+*&---------------------------------------------------------------------*
+*& Include ZRE_A2R_VALID_TASKLIST_F01
+*&---------------------------------------------------------------------*
+
 *---------------------------------------------------------------------*
-* Update text of SALV custom buttons based on current flags
+*  ASSUMPTIONS (declared in TOP)
+*  ------------------------------
+*  TYPES:
+*    ty_task_base   - header + operation + characteristic (source)
+*    ty_task_disp   - flat ALV display structure, including:
+*                     PLNNR, PLNAL, WERKS, VORNR, OP_LTXT,
+*                     ARBPL_O, ARBEI, MERKNR, KURZT_CHAR,
+*                     PMETHODE, CHAR_LTXT, ROW_KIND, TDFORMAT, ...
+*
+*  DATA (global, in TOP):
+*    gt_base        TYPE STANDARD TABLE OF ty_task_base
+*    gs_base        TYPE ty_task_base
+*    gt_display     TYPE STANDARD TABLE OF ty_task_disp
+*    gs_display     TYPE ty_task_disp
+*    gt_tline       TYPE STANDARD TABLE OF tline
+*    gs_tline       TYPE tline
+*
+*    gv_show_char   TYPE abap_bool   "X = characteristics visible
+*    gv_show_ltxt   TYPE abap_bool   "X = long text visible
+*
+*    lo_alv         TYPE REF TO cl_salv_table
+*    go_container   TYPE REF TO cl_gui_custom_container
+*
+*  CONSTANTS (in TOP):
+*    gc_true        TYPE abap_bool VALUE 'X'
+*    gc_false       TYPE abap_bool VALUE space
+*
+*    gc_button_char   TYPE sy-ucomm VALUE '&CHAR'   "Show Char
+*    gc_button_charh  TYPE sy-ucomm VALUE '&CHARH'  "Hide Char
+*    gc_button_ltxt   TYPE sy-ucomm VALUE '&LTXT'   "Show Long Text
+*    gc_button_ltxth  TYPE sy-ucomm VALUE '&LTXTH'  "Hide Long Text
+*    gc_button_back   TYPE sy-ucomm VALUE '&F03'
+*    gc_button_exit   TYPE sy-ucomm VALUE '&F15'
+*    gc_button_cancel TYPE sy-ucomm VALUE '&F12'
 *---------------------------------------------------------------------*
-FORM update_button_texts.
-
-  DATA: lo_funcs  TYPE REF TO cl_salv_functions_list,
-        lo_fchar  TYPE REF TO cl_salv_function,
-        lo_fltxt  TYPE REF TO cl_salv_function.
-
-  CHECK lo_alv IS BOUND.
-
-  lo_funcs = lo_alv->get_functions( ).
-
-  TRY.
-      "=== Characteristics button ===
-      lo_fchar ?= lo_funcs->get_function( gc_func_char ).
-
-      IF gv_show_char = gc_true.
-        lo_fchar->set_text( 'Hide characteristics' ).
-      ELSE.
-        lo_fchar->set_text( 'Show characteristics' ).
-      ENDIF.
-
-      "=== Long text button ===
-      lo_fltxt ?= lo_funcs->get_function( gc_func_ltxt ).
-
-      IF gv_show_ltxt = gc_true.
-        lo_fltxt->set_text( 'Hide long text' ).
-      ELSE.
-        lo_fltxt->set_text( 'Show long text' ).
-      ENDIF.
-
-    CATCH cx_root.
-      "If something goes wrong, just keep default texts
-  ENDTRY.
-
-ENDFORM.
 
 
+*======================================================================*
+*   PBO/PAI Modules for Screen 0100
+*======================================================================*
 
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*  - Sets PF-STATUS based on gv_show_char / gv_show_ltxt
+*  - Creates container + SALV on first call
+*  - Applies ALV layout / column settings
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
 
-      lo_funcs = lo_alv->get_functions( ).
-      lo_funcs->set_all( 'X' ).
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
 
-      lo_funcs->add_function
-        EXPORTING
-          name     = gc_func_char
-          text     = 'Characteristics'
-          tooltip  = 'Show/Hide characteristics'
-          position = if_salv_c_function_position=>right_of_salv_functions.
+  "Create container + SALV only once
+  IF go_container IS INITIAL.
 
-      lo_funcs->add_function
-        EXPORTING
-          name     = gc_func_ltxt
-          text     = 'Long Text'
-          tooltip  = 'Show/Hide long text'
-          position = if_salv_c_function_position=>right_of_salv_functions.
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'CC_ALV'.   "Custom Control name on Screen 0100
 
+    "Initial build of display table
+    PERFORM build_display.
 
+    "Create SALV inside container
+    cl_salv_table=>factory(
+      EXPORTING
+        r_container  = go_container
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
 
+    "Basic ALV settings
+    PERFORM configure_alv.
 
-METHOD on_user_command.
-
-  CASE e_salv_function.
-    WHEN gc_func_char.
-      "Toggle characteristics
-      IF gv_show_char = gc_true.
-        gv_show_char = gc_false.
-      ELSE.
-        gv_show_char = gc_true.
-      ENDIF.
-
-    WHEN gc_func_ltxt.
-      "Toggle long text
-      IF gv_show_ltxt = gc_true.
-        gv_show_ltxt = gc_false.
-      ELSE.
-        gv_show_ltxt = gc_true.
-      ENDIF.
-  ENDCASE.
-
-  "Rebuild internal table
-  PERFORM build_display.
-
-  "Update button labels (Show/Hide) according to new flags
-  PERFORM update_button_texts.
-
-  "Refresh SALV
-  IF lo_alv IS BOUND.
-    lo_alv->refresh( ).
+  ELSE.
+    "Dataset might have changed between calls
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
+    ENDIF.
   ENDIF.
 
-ENDMETHOD.
+ENDMODULE.
 
 
+*&---------------------------------------------------------------------*
+*& Module USER_COMMAND_0100 INPUT
+*&---------------------------------------------------------------------*
+*  - Handles PF-STATUS buttons:
+*      Show/Hide Characteristics
+*      Show/Hide Long Text
+*      Refresh / Back / Exit / Cancel
+*&---------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
 
+  CASE sy-ucomm.
 
-*---------------------------------------------------------------------*
-* Local class for SALV user command (custom buttons)
-*---------------------------------------------------------------------*
-CLASS lcl_event_handler DEFINITION.
-  PUBLIC SECTION.
-    CLASS-METHODS on_user_command
-      FOR EVENT added_function OF cl_salv_events_table
-      IMPORTING e_salv_function.
-ENDCLASS.
+    WHEN gc_button_char OR gc_button_charh.
+      PERFORM toggle_char.
 
-CLASS lcl_event_handler IMPLEMENTATION.
-  METHOD on_user_command.
+    WHEN gc_button_ltxt OR gc_button_ltxth.
+      PERFORM toggle_ltxt.
 
-    CASE e_salv_function.
-      WHEN gc_func_char.
-        "Toggle characteristics flag
-        IF gv_show_char = gc_true.
-          gv_show_char = gc_false.
-        ELSE.
-          gv_show_char = gc_true.
-        ENDIF.
-
-      WHEN gc_func_ltxt.
-        "Toggle long text flag
-        IF gv_show_ltxt = gc_true.
-          gv_show_ltxt = gc_false.
-        ELSE.
-          gv_show_ltxt = gc_true.
-        ENDIF.
-    ENDCASE.
-
-    "Rebuild display table
-    PERFORM build_display.
-
-    "Update button labels (Show/Hide)
-    PERFORM update_button_texts.
-
-    "Refresh ALV
-    IF lo_alv IS BOUND.
-      lo_alv->refresh( ).
-    ENDIF.
-
-  ENDMETHOD.
-ENDCLASS.
-
-
-
-
-
-
-*---------------------------------------------------------------------*
-* Update text of SALV custom buttons based on current flags
-*---------------------------------------------------------------------*
-FORM update_button_texts.
-
-  DATA: lo_funcs TYPE REF TO cl_salv_functions_list,
-        lo_fchar TYPE REF TO cl_salv_function,
-        lo_fltxt TYPE REF TO cl_salv_function.
-
-  "No ALV yet → nothing to do
-  CHECK lo_alv IS BOUND.
-
-  lo_funcs = lo_alv->get_functions( ).
-
-  TRY.
-      "=== Characteristics button ===
-      lo_fchar ?= lo_funcs->get_function( gc_func_char ).
-
-      IF gv_show_char = gc_true.
-        lo_fchar->set_text( 'Hide characteristics' ).
-      ELSE.
-        lo_fchar->set_text( 'Show characteristics' ).
+    WHEN 'REFRESH'.
+      PERFORM build_display.
+      IF lo_alv IS BOUND.
+        lo_alv->refresh( ).
       ENDIF.
 
-      "=== Long text button ===
-      lo_fltxt ?= lo_funcs->get_function( gc_func_ltxt ).
+    WHEN gc_button_back OR gc_button_exit OR gc_button_cancel.
+      CLEAR: gv_show_char, gv_show_ltxt.
+      LEAVE TO SCREEN 0.
 
-      IF gv_show_ltxt = gc_true.
-        lo_fltxt->set_text( 'Hide long text' ).
-      ELSE.
-        lo_fltxt->set_text( 'Show long text' ).
-      ENDIF.
+  ENDCASE.
 
-    CATCH cx_root.
-      "If something fails, just keep the default texts
-  ENDTRY.
+ENDMODULE.
+
+
+*======================================================================*
+*   Helper Forms – PF-STATUS / Title / ALV configuration
+*======================================================================*
+
+*&---------------------------------------------------------------------*
+*& Form set_pfstatus_from_state
+*&---------------------------------------------------------------------*
+*  - Chooses which PF-STATUS to use based on flags
+*&---------------------------------------------------------------------*
+FORM set_pfstatus_from_state.
+
+  DATA lv_pfstatus TYPE sypfkey.
+
+  IF gv_show_char = gc_true AND gv_show_ltxt = gc_true.
+    lv_pfstatus = 'ZSALV_TL_BOTH'.
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+    lv_pfstatus = 'ZSALV_TL_CHAR'.
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+    lv_pfstatus = 'ZSALV_TL_LTXT'.
+  ELSE.
+    lv_pfstatus = 'ZSALV_TL_NONE'.
+  ENDIF.
+
+  SET PF-STATUS lv_pfstatus.
 
 ENDFORM.
 
 
+*&---------------------------------------------------------------------*
+*& Form set_title_from_state
+*&---------------------------------------------------------------------*
+*  - Builds a dynamic title text depending on current state
+*&---------------------------------------------------------------------*
+FORM set_title_from_state.
 
+  DATA lv_title TYPE string.
 
-*---------------------------------------------------------------------*
-* Display ALV with SALV and two custom buttons
-*---------------------------------------------------------------------*
-FORM display_alv.
+  lv_title = 'Maintenance Task List Report'.
 
-  DATA: lx_salv_msg TYPE REF TO cx_salv_msg,
-        lx_salv_ex  TYPE REF TO cx_root.
+  IF gv_show_char = gc_true.
+    lv_title = lv_title && ' - Characteristics Active'.
+  ENDIF.
+  IF gv_show_ltxt = gc_true.
+    lv_title = lv_title && ' - Long Text Active'.
+  ENDIF.
 
-  TRY.
-
-      "Create SALV
-      CALL METHOD cl_salv_table=>factory
-        IMPORTING
-          r_salv_table = lo_alv
-        CHANGING
-          t_table      = gt_display.
-
-      "Columns
-      lo_columns = lo_alv->get_columns( ).
-      lo_columns->set_optimize( value = abap_true ).
-
-      "Display settings
-      lo_disp = lo_alv->get_display_settings( ).
-      lo_disp->set_striped_pattern( abap_true ).
-
-      "… your layout, column settings, etc. stay as they are …
-
-      "Functions
-      lo_funcs = lo_alv->get_functions( ).
-      lo_funcs->set_all( abap_true ).
-
-      lo_funcs->add_function
-        EXPORTING
-          name     = gc_func_char
-          text     = 'Characteristics'
-          tooltip  = 'Show/Hide characteristics'
-          position = if_salv_c_function_position=>right_of_salv_functions.
-
-      lo_funcs->add_function
-        EXPORTING
-          name     = gc_func_ltxt
-          text     = 'Long Text'
-          tooltip  = 'Show/Hide long text'
-          position = if_salv_c_function_position=>right_of_salv_functions.
-
-      "Set initial labels according to selection-screen flags
-      PERFORM update_button_texts.
-
-      "Events (for custom buttons)
-      lo_events = lo_alv->get_event( ).
-      SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
-
-      "Show ALV
-      lo_alv->display( ).
-
-    CATCH cx_salv_existing INTO lx_salv_ex.
-      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
-
-    CATCH cx_salv_wrong_call INTO lx_salv_ex.
-      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
-
-    CATCH cx_salv_msg INTO lx_salv_msg.
-      MESSAGE lx_salv_msg->get_text( ) TYPE 'E'.
-
-  ENDTRY.
+  "GUI Title must exist in SE41 (e.g. TITLE_100)
+  SET TITLEBAR 'TITLE_100' WITH lv_title.
 
 ENDFORM.
 
 
+*&---------------------------------------------------------------------*
+*& Form configure_alv
+*&---------------------------------------------------------------------*
+*  - One-time ALV configuration (columns, layout, stripes, etc.)
+*&---------------------------------------------------------------------*
+FORM configure_alv.
 
-
-" Long text
-         row_kind   TYPE c LENGTH 1,
-         op_ltxt    TYPE tline-tdline,   "Operation long text
-         char_ltxt  TYPE tline-tdline,   "Characteristic long text
-         tdformat   TYPE tline-tdformat,
-
-
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind = 'L'.
-    gs_display-op_ltxt  = gs_tline-tdline.   " <-- fill Op Long Text
-    gs_display-tdformat = gs_tline-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-
-
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind = 'L'.
-    gs_display-char_ltxt = gs_tline-tdline. " <-- fill Char Long Text
-    gs_display-tdformat  = gs_tline-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-
-
-
-      DATA lo_col TYPE REF TO cl_salv_column_table.
-
-      "--- Header / key columns ---
-      lo_col ?= lo_columns->get_column( 'PLNNR' ).   "Group
-      lo_col->set_position( 1 ).
-      lo_col->set_short_text(  'Group' ).
-      lo_col->set_medium_text( 'Group' ).
-
-      lo_col ?= lo_columns->get_column( 'PLNAL' ).   "Counter
-      lo_col->set_position( 2 ).
-      lo_col->set_short_text(  'Counter' ).
-      lo_col->set_medium_text( 'Counter' ).
-
-      lo_col ?= lo_columns->get_column( 'WERKS' ).   "Plant
-      lo_col->set_position( 3 ).
-      lo_col->set_short_text(  'Plant' ).
-      lo_col->set_medium_text( 'Plant' ).
-
-      "--- Operation + Op long text ---
-      lo_col ?= lo_columns->get_column( 'VORNR' ).   "Operation
-      lo_col->set_position( 4 ).
-      lo_col->set_short_text(  'Oper.' ).
-      lo_col->set_medium_text( 'Operation' ).
-
-      lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
-      lo_col->set_position( 5 ).
-      lo_col->set_short_text(  'Long text' ).
-      lo_col->set_medium_text( 'Operation long text' ).
-
-      "--- Work center / Work ---
-      lo_col ?= lo_columns->get_column( 'ARBPL_O' ). "Work center
-      lo_col->set_position( 6 ).
-      lo_col->set_short_text(  'Work Ctr' ).
-      lo_col->set_medium_text( 'Work center' ).
-
-      lo_col ?= lo_columns->get_column( 'ARBEI' ).   "Work (qty)
-      lo_col->set_position( 7 ).
-      lo_col->set_short_text(  'Work' ).
-      lo_col->set_medium_text( 'Work' ).
-
-      "--- Characteristic fields ---
-      lo_col ?= lo_columns->get_column( 'MERKNR' ).  "Insp. #
-      lo_col->set_position( 8 ).
-      lo_col->set_short_text(  'Insp.#' ).
-      lo_col->set_medium_text( 'Inspection #' ).
-
-      lo_col ?= lo_columns->get_column( 'KURZT_CHAR' ). "Description
-      lo_col->set_position( 9 ).
-      lo_col->set_short_text(  'Description' ).
-      lo_col->set_medium_text( 'Description' ).
-
-      lo_col ?= lo_columns->get_column( 'PMETHODE' ).   "Insp. method
-      lo_col->set_position( 10 ).
-      lo_col->set_short_text(  'Insp.meth.' ).
-      lo_col->set_medium_text( 'Inspection method' ).
-
-      lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).  "Char long text
-      lo_col->set_position( 11 ).
-      lo_col->set_short_text(  'Char long text' ).
-      lo_col->set_medium_text( 'Characteristic long text' ).
-
-      "Hide purely technical fields
-      TRY.
-          lo_col ?= lo_columns->get_column( 'ROW_KIND' ).
-          lo_col->set_technical( abap_true ).
-
-          lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
-          lo_col->set_technical( abap_true ).
-        CATCH cx_salv_not_found.
-      ENDTRY.
-
-
-
-*---------------------------------------------------------------------*
-* Local class for SALV user command (custom buttons)
-*---------------------------------------------------------------------*
-CLASS lcl_event_handler DEFINITION.
-  PUBLIC SECTION.
-    CLASS-METHODS on_user_command
-      FOR EVENT added_function OF cl_salv_events_table
-      IMPORTING e_salv_function.
-ENDCLASS.
-
-CLASS lcl_event_handler IMPLEMENTATION.
-  METHOD on_user_command.
-
-    CASE e_salv_function.
-      WHEN gc_func_char.
-        "Toggle characteristics
-        IF gv_show_char = gc_true.
-          gv_show_char = gc_false.
-        ELSE.
-          gv_show_char = gc_true.
-        ENDIF.
-
-      WHEN gc_func_ltxt.
-        "Toggle long text
-        IF gv_show_ltxt = gc_true.
-          gv_show_ltxt = gc_false.
-        ELSE.
-          gv_show_ltxt = gc_true.
-        ENDIF.
-    ENDCASE.
-
-    "Rebuild display table
-    PERFORM build_display.
-
-    "Update button labels (Show/Hide)
-    PERFORM update_button_texts.
-
-    "Refresh ALV
-    IF lo_alv IS BOUND.
-      lo_alv->refresh( ).
-    ENDIF.
-
-  ENDMETHOD.
-ENDCLASS.
-
-
-
-
-
-*---------------------------------------------------------------------*
-* Update text of SALV custom buttons based on current flags
-*---------------------------------------------------------------------*
-FORM update_button_texts.
-
-  DATA: lo_funcs TYPE REF TO cl_salv_functions_list,
-        lo_fchar TYPE REF TO cl_salv_function,
-        lo_fltxt TYPE REF TO cl_salv_function.
+  DATA: lo_columns TYPE REF TO cl_salv_columns_table,
+        lo_col     TYPE REF TO cl_salv_column_table,
+        lo_layout  TYPE REF TO cl_salv_layout,
+        ls_key     TYPE salv_s_layout_key,
+        lo_disp    TYPE REF TO cl_salv_display_settings.
 
   CHECK lo_alv IS BOUND.
 
-  lo_funcs = lo_alv->get_functions( ).
+  lo_columns = lo_alv->get_columns( ).
+  lo_columns->set_optimize( abap_true ).
 
+  "Stripe pattern
+  lo_disp = lo_alv->get_display_settings( ).
+  lo_disp->set_striped_pattern( abap_true ).
+
+  "Layout
+  lo_layout = lo_alv->get_layout( ).
+  ls_key-report = sy-repid.
+  lo_layout->set_key( ls_key ).
+  lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+
+  "---------------------------------------------
+  " Column order / texts – per Visualization
+  "---------------------------------------------
   TRY.
-      "=== Characteristics button ===
-      lo_fchar ?= lo_funcs->get_function( gc_func_char ).
-
-      IF gv_show_char = gc_true.
-        lo_fchar->set_text( 'Hide characteristics' ).
-      ELSE.
-        lo_fchar->set_text( 'Show characteristics' ).
-      ENDIF.
-
-      "=== Long text button ===
-      lo_fltxt ?= lo_funcs->get_function( gc_func_ltxt ).
-
-      IF gv_show_ltxt = gc_true.
-        lo_fltxt->set_text( 'Hide long text' ).
-      ELSE.
-        lo_fltxt->set_text( 'Show long text' ).
-      ENDIF.
-
-    CATCH cx_root.
-      "If something goes wrong, keep default texts
-  ENDTRY.
-
-ENDFORM.
-
-
-
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind = 'L'.
-    gs_display-op_ltxt  = gs_tline-tdline.   "operation long text column
-    gs_display-tdformat = gs_tline-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-
-
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind  = 'L'.
-    gs_display-char_ltxt = gs_tline-tdline.  "characteristic long text column
-    gs_display-tdformat  = gs_tline-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-
-
-
-
-      DATA lo_col TYPE REF TO cl_salv_column_table.
 
       "--- Header / key columns ---
       lo_col ?= lo_columns->get_column( 'PLNNR' ).   "Group
@@ -516,7 +234,7 @@ ENDFORM.
       lo_col->set_medium_text( 'Operation long text' ).
 
       "--- Work center / work ---
-      lo_col ?= lo_columns->get_column( 'ARBPL_O' ). "Work center
+      lo_col ?= lo_columns->get_column( 'ARBPL_O' ). "Work center (operation)
       lo_col->set_position( 6 ).
       lo_col->set_short_text(  'Work ctr' ).
       lo_col->set_medium_text( 'Work center' ).
@@ -547,17 +265,274 @@ ENDFORM.
       lo_col->set_short_text(  'Char long text' ).
       lo_col->set_medium_text( 'Characteristic long text' ).
 
-      "Hide purely technical fields
-      TRY.
-          lo_col ?= lo_columns->get_column( 'ROW_KIND' ).
-          lo_col->set_technical( abap_true ).
+      "Hide technical fields
+      lo_col ?= lo_columns->get_column( 'ROW_KIND' ).
+      lo_col->set_technical( abap_true ).
 
-          lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
-          lo_col->set_technical( abap_true ).
-        CATCH cx_salv_not_found.
-      ENDTRY.
+      lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
+      lo_col->set_technical( abap_true ).
+
+    CATCH cx_salv_not_found.
+      "If column is missing, just ignore
+  ENDTRY.
+
+ENDFORM.
 
 
+*======================================================================*
+*   Core logic – Build display & Long text helpers
+*======================================================================*
+
+*&---------------------------------------------------------------------*
+*& Form build_display
+*&---------------------------------------------------------------------*
+*  - Builds GT_DISPLAY based on GT_BASE and flags:
+*      gv_show_char, gv_show_ltxt
+*  - One operation row for each op (ROW_KIND = 'O')
+*  - Optionally:
+*      - Op long text rows (ROW_KIND = 'L', OP_LTXT filled)
+*      - Characteristic rows (ROW_KIND = 'C')
+*      - Char long text rows (ROW_KIND = 'L', CHAR_LTXT filled)
+*&---------------------------------------------------------------------*
+FORM build_display.
+
+  DATA: lv_last_plnty TYPE plko-plnty,
+        lv_last_plnnr TYPE plko-plnnr,
+        lv_last_plnal TYPE plko-plnal,
+        lv_last_vornr TYPE plpo-vornr.
+
+  CLEAR gt_display.
+  CLEAR gs_display.
+
+  CLEAR: lv_last_plnty, lv_last_plnnr, lv_last_plnal, lv_last_vornr.
+
+  LOOP AT gt_base INTO gs_base.
+
+    "---------------------------------------------------------------*
+    " 1) Operation row – only when operation key changes
+    "---------------------------------------------------------------*
+    IF gs_base-plnty <> lv_last_plnty OR
+       gs_base-plnnr <> lv_last_plnnr OR
+       gs_base-plnal <> lv_last_plnal OR
+       gs_base-vornr <> lv_last_vornr.
+
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'O'.
+
+      " Derive CI indicators etc. (if you have a helper FORM)
+      PERFORM derive_ci_fields
+        USING    gs_base-steuerkz
+        CHANGING gs_display.
+
+      APPEND gs_display TO gt_display.
+
+      "Remember last operation key
+      lv_last_plnty = gs_base-plnty.
+      lv_last_plnnr = gs_base-plnnr.
+      lv_last_plnal = gs_base-plnal.
+      lv_last_vornr = gs_base-vornr.
+
+      "Operation long text lines (if Show Long Text is active)
+      IF gv_show_ltxt = gc_true
+         AND gs_base-txtsp_op IS NOT INITIAL.
+        PERFORM append_op_longtext USING gs_base.
+      ENDIF.
+
+    ENDIF.
+
+    "---------------------------------------------------------------*
+    " 2) Characteristic row + long text (if Show Characteristics)
+    "---------------------------------------------------------------*
+    IF gv_show_char = gc_true
+       AND gs_base-merknr IS NOT INITIAL.
+
+      "Characteristic row
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'C'.
+
+      PERFORM derive_ci_fields
+        USING    gs_base-steuerkz
+        CHANGING gs_display.
+
+      APPEND gs_display TO gt_display.
+
+      "Characteristic long text (if long text indicator is set)
+      IF gs_base-ltextkz IS NOT INITIAL
+         AND gv_show_ltxt = gc_true.
+        PERFORM append_char_longtext USING gs_base.
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
 
 
+*&---------------------------------------------------------------------*
+*& Form append_op_longtext
+*&---------------------------------------------------------------------*
+*  - Appends operation long text lines as separate rows in GT_DISPLAY
+*    with ROW_KIND = 'L' and OP_LTXT filled
+*&---------------------------------------------------------------------*
+FORM append_op_longtext USING is_base TYPE ty_task_base.
 
+  DATA: ls_thead TYPE thead,
+        lv_name  TYPE thead-tdname.
+
+  CLEAR gt_tline.
+
+  "Build text name per FDS (adjust if your key is different)
+  "Example: PLNTY + PLNNR (ALPHA) + PLNAL + VORNR
+  lv_name = |{ is_base-plnty }{ is_base-plnnr ALPHA = OUT }{ is_base-plnal }{ is_base-vornr }|.
+
+  CLEAR ls_thead.
+  ls_thead-tdid     = 'PLPO'.     "Operation long text ID (adjust if needed)
+  ls_thead-tdspras  = sy-langu.
+  ls_thead-tdname   = lv_name.
+  ls_thead-tdobject = 'PLPO'.    "Operation text object (adjust if needed)
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = ls_thead-tdid
+      language = ls_thead-tdspras
+      name     = ls_thead-tdname
+      object   = ls_thead-tdobject
+    TABLES
+      lines    = gt_tline
+    EXCEPTIONS
+      OTHERS   = 4.
+
+  IF sy-subrc <> 0 OR gt_tline IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT gt_tline INTO gs_tline.
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind = 'L'.
+    gs_display-op_ltxt  = gs_tline-tdline.
+    gs_display-tdformat = gs_tline-tdformat.
+
+    APPEND gs_display TO gt_display.
+  ENDLOOP.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form append_char_longtext
+*&---------------------------------------------------------------------*
+*  - Appends characteristic long text lines as separate rows in GT_DISPLAY
+*    with ROW_KIND = 'L' and CHAR_LTXT filled
+*&---------------------------------------------------------------------*
+FORM append_char_longtext USING is_base TYPE ty_task_base.
+
+  DATA: ls_thead TYPE thead,
+        lv_name  TYPE thead-tdname.
+
+  CLEAR gt_tline.
+
+  "Build text name for characteristic (adjust to match system)
+  "Example: PLNTY + PLNNR (ALPHA) + PLNAL + MERKNR (ALPHA)
+  lv_name = |{ is_base-plnty }{ is_base-plnnr ALPHA = OUT }{ is_base-plnal }{ is_base-merknr ALPHA = OUT }|.
+
+  CLEAR ls_thead.
+  ls_thead-tdid     = 'PLMK'.     "Characteristic long text ID (adjust if needed)
+  ls_thead-tdspras  = sy-langu.
+  ls_thead-tdname   = lv_name.
+  ls_thead-tdobject = 'PLMK'.    "Characteristic text object (adjust if needed)
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = ls_thead-tdid
+      language = ls_thead-tdspras
+      name     = ls_thead-tdname
+      object   = ls_thead-tdobject
+    TABLES
+      lines    = gt_tline
+    EXCEPTIONS
+      OTHERS   = 4.
+
+  IF sy-subrc <> 0 OR gt_tline IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT gt_tline INTO gs_tline.
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind  = 'L'.
+    gs_display-char_ltxt = gs_tline-tdline.
+    gs_display-tdformat  = gs_tline-tdformat.
+
+    APPEND gs_display TO gt_display.
+  ENDLOOP.
+
+ENDFORM.
+
+
+*======================================================================*
+*   Toggle helpers for PF-STATUS buttons
+*======================================================================*
+
+*&---------------------------------------------------------------------*
+*& Form toggle_char
+*&---------------------------------------------------------------------*
+FORM toggle_char.
+
+  IF gv_show_char = gc_true.
+    gv_show_char = gc_false.
+  ELSE.
+    gv_show_char = gc_true.
+  ENDIF.
+
+  PERFORM build_display.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+
+  IF lo_alv IS BOUND.
+    lo_alv->refresh( ).
+  ENDIF.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form toggle_ltxt
+*&---------------------------------------------------------------------*
+FORM toggle_ltxt.
+
+  IF gv_show_ltxt = gc_true.
+    gv_show_ltxt = gc_false.
+  ELSE.
+    gv_show_ltxt = gc_true.
+  ENDIF.
+
+  PERFORM build_display.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+
+  IF lo_alv IS BOUND.
+    lo_alv->refresh( ).
+  ENDIF.
+
+ENDFORM.
+
+
+*======================================================================*
+*   PLACEHOLDER – YOUR EXISTING SELECTION LOGIC
+*======================================================================*
+* Here you can keep or insert:
+*   - FORM get_data
+*   - FORM apply_selections
+*   - JOIN logic to fill GT_BASE (PLKO/PLPO/PLMK/TAPL/EAPL/CRHD)
+*   - FORM derive_ci_fields
+*
+* Make sure GT_BASE is fully populated before:
+*   - You call SCREEN 0100 in the main program
+*   - PBO STATUS_0100 calls build_display the first time
+*======================================================================*
