@@ -1,4 +1,101 @@
 *---------------------------------------------------------------------*
+* Update text of SALV custom buttons based on current flags
+*---------------------------------------------------------------------*
+FORM update_button_texts.
+
+  DATA: lo_funcs  TYPE REF TO cl_salv_functions_list,
+        lo_fchar  TYPE REF TO cl_salv_function,
+        lo_fltxt  TYPE REF TO cl_salv_function.
+
+  CHECK lo_alv IS BOUND.
+
+  lo_funcs = lo_alv->get_functions( ).
+
+  TRY.
+      "=== Characteristics button ===
+      lo_fchar ?= lo_funcs->get_function( gc_func_char ).
+
+      IF gv_show_char = gc_true.
+        lo_fchar->set_text( 'Hide characteristics' ).
+      ELSE.
+        lo_fchar->set_text( 'Show characteristics' ).
+      ENDIF.
+
+      "=== Long text button ===
+      lo_fltxt ?= lo_funcs->get_function( gc_func_ltxt ).
+
+      IF gv_show_ltxt = gc_true.
+        lo_fltxt->set_text( 'Hide long text' ).
+      ELSE.
+        lo_fltxt->set_text( 'Show long text' ).
+      ENDIF.
+
+    CATCH cx_root.
+      "If something goes wrong, just keep default texts
+  ENDTRY.
+
+ENDFORM.
+
+
+
+
+      lo_funcs = lo_alv->get_functions( ).
+      lo_funcs->set_all( 'X' ).
+
+      lo_funcs->add_function
+        EXPORTING
+          name     = gc_func_char
+          text     = 'Characteristics'
+          tooltip  = 'Show/Hide characteristics'
+          position = if_salv_c_function_position=>right_of_salv_functions.
+
+      lo_funcs->add_function
+        EXPORTING
+          name     = gc_func_ltxt
+          text     = 'Long Text'
+          tooltip  = 'Show/Hide long text'
+          position = if_salv_c_function_position=>right_of_salv_functions.
+
+
+
+
+METHOD on_user_command.
+
+  CASE e_salv_function.
+    WHEN gc_func_char.
+      "Toggle characteristics
+      IF gv_show_char = gc_true.
+        gv_show_char = gc_false.
+      ELSE.
+        gv_show_char = gc_true.
+      ENDIF.
+
+    WHEN gc_func_ltxt.
+      "Toggle long text
+      IF gv_show_ltxt = gc_true.
+        gv_show_ltxt = gc_false.
+      ELSE.
+        gv_show_ltxt = gc_true.
+      ENDIF.
+  ENDCASE.
+
+  "Rebuild internal table
+  PERFORM build_display.
+
+  "Update button labels (Show/Hide) according to new flags
+  PERFORM update_button_texts.
+
+  "Refresh SALV
+  IF lo_alv IS BOUND.
+    lo_alv->refresh( ).
+  ENDIF.
+
+ENDMETHOD.
+
+
+
+
+*---------------------------------------------------------------------*
 * Local class for SALV user command (custom buttons)
 *---------------------------------------------------------------------*
 CLASS lcl_event_handler DEFINITION.
@@ -48,7 +145,6 @@ ENDCLASS.
 
 
 
-
 *---------------------------------------------------------------------*
 * Update text of SALV custom buttons based on current flags
 *---------------------------------------------------------------------*
@@ -87,7 +183,6 @@ FORM update_button_texts.
   ENDTRY.
 
 ENDFORM.
-
 
 
 
@@ -159,3 +254,310 @@ FORM display_alv.
   ENDTRY.
 
 ENDFORM.
+
+
+
+
+" Long text
+         row_kind   TYPE c LENGTH 1,
+         op_ltxt    TYPE tline-tdline,   "Operation long text
+         char_ltxt  TYPE tline-tdline,   "Characteristic long text
+         tdformat   TYPE tline-tdformat,
+
+
+
+  LOOP AT gt_tline INTO gs_tline.
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind = 'L'.
+    gs_display-op_ltxt  = gs_tline-tdline.   " <-- fill Op Long Text
+    gs_display-tdformat = gs_tline-tdformat.
+
+    APPEND gs_display TO gt_display.
+  ENDLOOP.
+
+
+
+
+  LOOP AT gt_tline INTO gs_tline.
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind = 'L'.
+    gs_display-char_ltxt = gs_tline-tdline. " <-- fill Char Long Text
+    gs_display-tdformat  = gs_tline-tdformat.
+
+    APPEND gs_display TO gt_display.
+  ENDLOOP.
+
+
+
+
+      DATA lo_col TYPE REF TO cl_salv_column_table.
+
+      "--- Header / key columns ---
+      lo_col ?= lo_columns->get_column( 'PLNNR' ).   "Group
+      lo_col->set_position( 1 ).
+      lo_col->set_short_text(  'Group' ).
+      lo_col->set_medium_text( 'Group' ).
+
+      lo_col ?= lo_columns->get_column( 'PLNAL' ).   "Counter
+      lo_col->set_position( 2 ).
+      lo_col->set_short_text(  'Counter' ).
+      lo_col->set_medium_text( 'Counter' ).
+
+      lo_col ?= lo_columns->get_column( 'WERKS' ).   "Plant
+      lo_col->set_position( 3 ).
+      lo_col->set_short_text(  'Plant' ).
+      lo_col->set_medium_text( 'Plant' ).
+
+      "--- Operation + Op long text ---
+      lo_col ?= lo_columns->get_column( 'VORNR' ).   "Operation
+      lo_col->set_position( 4 ).
+      lo_col->set_short_text(  'Oper.' ).
+      lo_col->set_medium_text( 'Operation' ).
+
+      lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
+      lo_col->set_position( 5 ).
+      lo_col->set_short_text(  'Long text' ).
+      lo_col->set_medium_text( 'Operation long text' ).
+
+      "--- Work center / Work ---
+      lo_col ?= lo_columns->get_column( 'ARBPL_O' ). "Work center
+      lo_col->set_position( 6 ).
+      lo_col->set_short_text(  'Work Ctr' ).
+      lo_col->set_medium_text( 'Work center' ).
+
+      lo_col ?= lo_columns->get_column( 'ARBEI' ).   "Work (qty)
+      lo_col->set_position( 7 ).
+      lo_col->set_short_text(  'Work' ).
+      lo_col->set_medium_text( 'Work' ).
+
+      "--- Characteristic fields ---
+      lo_col ?= lo_columns->get_column( 'MERKNR' ).  "Insp. #
+      lo_col->set_position( 8 ).
+      lo_col->set_short_text(  'Insp.#' ).
+      lo_col->set_medium_text( 'Inspection #' ).
+
+      lo_col ?= lo_columns->get_column( 'KURZT_CHAR' ). "Description
+      lo_col->set_position( 9 ).
+      lo_col->set_short_text(  'Description' ).
+      lo_col->set_medium_text( 'Description' ).
+
+      lo_col ?= lo_columns->get_column( 'PMETHODE' ).   "Insp. method
+      lo_col->set_position( 10 ).
+      lo_col->set_short_text(  'Insp.meth.' ).
+      lo_col->set_medium_text( 'Inspection method' ).
+
+      lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).  "Char long text
+      lo_col->set_position( 11 ).
+      lo_col->set_short_text(  'Char long text' ).
+      lo_col->set_medium_text( 'Characteristic long text' ).
+
+      "Hide purely technical fields
+      TRY.
+          lo_col ?= lo_columns->get_column( 'ROW_KIND' ).
+          lo_col->set_technical( abap_true ).
+
+          lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
+          lo_col->set_technical( abap_true ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+
+
+*---------------------------------------------------------------------*
+* Local class for SALV user command (custom buttons)
+*---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_user_command
+      FOR EVENT added_function OF cl_salv_events_table
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+CLASS lcl_event_handler IMPLEMENTATION.
+  METHOD on_user_command.
+
+    CASE e_salv_function.
+      WHEN gc_func_char.
+        "Toggle characteristics
+        IF gv_show_char = gc_true.
+          gv_show_char = gc_false.
+        ELSE.
+          gv_show_char = gc_true.
+        ENDIF.
+
+      WHEN gc_func_ltxt.
+        "Toggle long text
+        IF gv_show_ltxt = gc_true.
+          gv_show_ltxt = gc_false.
+        ELSE.
+          gv_show_ltxt = gc_true.
+        ENDIF.
+    ENDCASE.
+
+    "Rebuild display table
+    PERFORM build_display.
+
+    "Update button labels (Show/Hide)
+    PERFORM update_button_texts.
+
+    "Refresh ALV
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
+    ENDIF.
+
+  ENDMETHOD.
+ENDCLASS.
+
+
+
+
+
+*---------------------------------------------------------------------*
+* Update text of SALV custom buttons based on current flags
+*---------------------------------------------------------------------*
+FORM update_button_texts.
+
+  DATA: lo_funcs TYPE REF TO cl_salv_functions_list,
+        lo_fchar TYPE REF TO cl_salv_function,
+        lo_fltxt TYPE REF TO cl_salv_function.
+
+  CHECK lo_alv IS BOUND.
+
+  lo_funcs = lo_alv->get_functions( ).
+
+  TRY.
+      "=== Characteristics button ===
+      lo_fchar ?= lo_funcs->get_function( gc_func_char ).
+
+      IF gv_show_char = gc_true.
+        lo_fchar->set_text( 'Hide characteristics' ).
+      ELSE.
+        lo_fchar->set_text( 'Show characteristics' ).
+      ENDIF.
+
+      "=== Long text button ===
+      lo_fltxt ?= lo_funcs->get_function( gc_func_ltxt ).
+
+      IF gv_show_ltxt = gc_true.
+        lo_fltxt->set_text( 'Hide long text' ).
+      ELSE.
+        lo_fltxt->set_text( 'Show long text' ).
+      ENDIF.
+
+    CATCH cx_root.
+      "If something goes wrong, keep default texts
+  ENDTRY.
+
+ENDFORM.
+
+
+
+
+  LOOP AT gt_tline INTO gs_tline.
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind = 'L'.
+    gs_display-op_ltxt  = gs_tline-tdline.   "operation long text column
+    gs_display-tdformat = gs_tline-tdformat.
+
+    APPEND gs_display TO gt_display.
+  ENDLOOP.
+
+
+
+
+  LOOP AT gt_tline INTO gs_tline.
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind  = 'L'.
+    gs_display-char_ltxt = gs_tline-tdline.  "characteristic long text column
+    gs_display-tdformat  = gs_tline-tdformat.
+
+    APPEND gs_display TO gt_display.
+  ENDLOOP.
+
+
+
+
+
+      DATA lo_col TYPE REF TO cl_salv_column_table.
+
+      "--- Header / key columns ---
+      lo_col ?= lo_columns->get_column( 'PLNNR' ).   "Group
+      lo_col->set_position( 1 ).
+      lo_col->set_short_text(  'Group' ).
+      lo_col->set_medium_text( 'Group' ).
+
+      lo_col ?= lo_columns->get_column( 'PLNAL' ).   "Counter
+      lo_col->set_position( 2 ).
+      lo_col->set_short_text(  'Counter' ).
+      lo_col->set_medium_text( 'Counter' ).
+
+      lo_col ?= lo_columns->get_column( 'WERKS' ).   "Plant
+      lo_col->set_position( 3 ).
+      lo_col->set_short_text(  'Plant' ).
+      lo_col->set_medium_text( 'Plant' ).
+
+      "--- Operation + operation long text ---
+      lo_col ?= lo_columns->get_column( 'VORNR' ).   "Operation
+      lo_col->set_position( 4 ).
+      lo_col->set_short_text(  'Oper.' ).
+      lo_col->set_medium_text( 'Operation' ).
+
+      lo_col ?= lo_columns->get_column( 'OP_LTXT' ). "Op long text
+      lo_col->set_position( 5 ).
+      lo_col->set_short_text(  'Long text' ).
+      lo_col->set_medium_text( 'Operation long text' ).
+
+      "--- Work center / work ---
+      lo_col ?= lo_columns->get_column( 'ARBPL_O' ). "Work center
+      lo_col->set_position( 6 ).
+      lo_col->set_short_text(  'Work ctr' ).
+      lo_col->set_medium_text( 'Work center' ).
+
+      lo_col ?= lo_columns->get_column( 'ARBEI' ).   "Work
+      lo_col->set_position( 7 ).
+      lo_col->set_short_text(  'Work' ).
+      lo_col->set_medium_text( 'Work' ).
+
+      "--- Characteristic fields ---
+      lo_col ?= lo_columns->get_column( 'MERKNR' ).  "Insp. #
+      lo_col->set_position( 8 ).
+      lo_col->set_short_text(  'Insp.#' ).
+      lo_col->set_medium_text( 'Inspection #' ).
+
+      lo_col ?= lo_columns->get_column( 'KURZT_CHAR' ). "Description
+      lo_col->set_position( 9 ).
+      lo_col->set_short_text(  'Description' ).
+      lo_col->set_medium_text( 'Description' ).
+
+      lo_col ?= lo_columns->get_column( 'PMETHODE' ).   "Insp. method
+      lo_col->set_position( 10 ).
+      lo_col->set_short_text(  'Insp.meth.' ).
+      lo_col->set_medium_text( 'Inspection method' ).
+
+      lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).  "Char long text
+      lo_col->set_position( 11 ).
+      lo_col->set_short_text(  'Char long text' ).
+      lo_col->set_medium_text( 'Characteristic long text' ).
+
+      "Hide purely technical fields
+      TRY.
+          lo_col ?= lo_columns->get_column( 'ROW_KIND' ).
+          lo_col->set_technical( abap_true ).
+
+          lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
+          lo_col->set_technical( abap_true ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+
+
+
+
