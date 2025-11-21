@@ -1,45 +1,23 @@
-*---------------------------------------------------------------------*
-* Local class for SALV user command (custom buttons)
-*---------------------------------------------------------------------*
-CLASS lcl_event_handler DEFINITION.
-  PUBLIC SECTION.
-    METHODS on_user_command
-      FOR EVENT added_function OF cl_salv_events_table
-      IMPORTING e_salv_function.
-ENDCLASS.
+      "---------------------------------------------------------------*
+      " Selections
+      "---------------------------------------------------------------*
+      lo_sel = lo_alv->get_selections( ).
+      lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
 
-CLASS lcl_event_handler IMPLEMENTATION.
-  METHOD on_user_command.
+      "---------------------------------------------------------------*
+      " Events – handled by local handler instance
+      "---------------------------------------------------------------*
+      lo_events = lo_alv->get_event( ).
 
-    CASE e_salv_function.
+      DATA(lo_handler) = NEW lcl_event_handler( ).
+      SET HANDLER lo_handler->on_user_command FOR lo_events.
 
-      WHEN gc_func_char.
-        "Toggle characteristics
-        IF gv_show_char = gc_true.
-          gv_show_char = gc_false.
-        ELSE.
-          gv_show_char = gc_true.
-        ENDIF.
+      "---------------------------------------------------------------*
+      " Display ALV
+      "---------------------------------------------------------------*
+      lo_alv->display( ).
 
-      WHEN gc_func_ltxt.
-        "Toggle long text
-        IF gv_show_ltxt = gc_true.
-          gv_show_ltxt = gc_false.
-        ELSE.
-          gv_show_ltxt = gc_true.
-        ENDIF.
 
-      WHEN OTHERS.
-        RETURN.
 
-    ENDCASE.
 
-    "Rebuild display and refresh ALV
-    PERFORM build_display.
 
-    IF lo_alv IS BOUND.
-      lo_alv->refresh( ).
-    ENDIF.
-
-  ENDMETHOD.
-ENDCLASS.
