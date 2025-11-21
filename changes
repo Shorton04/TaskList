@@ -1,5 +1,5 @@
 *---------------------------------------------------------------------*
-* Local class for SALV user command (custom buttons)
+* Local class for SALV event handling (must be in TOP so it's visible)
 *---------------------------------------------------------------------*
 CLASS lcl_event_handler DEFINITION.
   PUBLIC SECTION.
@@ -14,7 +14,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
     CASE e_salv_function.
 
       WHEN gc_func_char.
-        "Toggle characteristics
         IF gv_show_char = gc_true.
           gv_show_char = gc_false.
         ELSE.
@@ -22,116 +21,18 @@ CLASS lcl_event_handler IMPLEMENTATION.
         ENDIF.
 
       WHEN gc_func_ltxt.
-        "Toggle long text
         IF gv_show_ltxt = gc_true.
           gv_show_ltxt = gc_false.
         ELSE.
           gv_show_ltxt = gc_true.
         ENDIF.
 
-      WHEN OTHERS.
-        RETURN.
-
     ENDCASE.
 
-    "Rebuild display and refresh ALV
     PERFORM build_display.
-
     IF lo_alv IS BOUND.
       lo_alv->refresh( ).
     ENDIF.
 
   ENDMETHOD.
 ENDCLASS.
-
-
-
-
-
-*---------------------------------------------------------------------*
-* Display ALV full-screen with SALV (custom buttons ZCHAR / ZLTXT)
-*---------------------------------------------------------------------*
-FORM display_alv.
-
-  DATA: lx_salv_msg TYPE REF TO cx_salv_msg,
-        lx_salv_ex  TYPE REF TO cx_root,
-        lo_handler  TYPE REF TO lcl_event_handler.
-
-  TRY.
-
-      "---------------------------------------------------------------*
-      " Create SALV (full-screen, no container)
-      "---------------------------------------------------------------*
-      CALL METHOD cl_salv_table=>factory
-        IMPORTING
-          r_salv_table = lo_alv
-        CHANGING
-          t_table      = gt_display.
-
-      "---------------------------------------------------------------*
-      " Columns
-      "---------------------------------------------------------------*
-      lo_columns = lo_alv->get_columns( ).
-      CALL METHOD lo_columns->set_optimize
-        EXPORTING
-          value = abap_true.
-
-      "---------------------------------------------------------------*
-      " Display settings
-      "---------------------------------------------------------------*
-      lo_disp = lo_alv->get_display_settings( ).
-      lo_disp->set_striped_pattern( abap_true ).
-
-      "---------------------------------------------------------------*
-      " Layout
-      "---------------------------------------------------------------*
-      lo_layout = lo_alv->get_layout( ).
-      ls_layout_key-report = sy-repid.
-      lo_layout->set_key( ls_layout_key ).
-      lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
-
-      "---------------------------------------------------------------*
-      " Functions + custom buttons
-      "---------------------------------------------------------------*
-      lo_funcs = lo_alv->get_functions( ).
-      lo_funcs->set_all( abap_true ).
-
-      "Custom button – Characteristics
-      lo_funcs->add_function(
-        name     = gc_func_char
-        text     = 'Characteristics'
-        tooltip  = 'Show/Hide characteristics'
-        position = if_salv_c_function_position=>right_of_salv_functions ).
-
-      "Custom button – Long text
-      lo_funcs->add_function(
-        name     = gc_func_ltxt
-        text     = 'Long Text'
-        tooltip  = 'Show/Hide long text'
-        position = if_salv_c_function_position=>right_of_salv_functions ).
-
-      "---------------------------------------------------------------*
-      " Events – instance handler (fixes your runtime error)
-      "---------------------------------------------------------------*
-      lo_events = lo_alv->get_event( ).
-
-      CREATE OBJECT lo_handler.
-      SET HANDLER lo_handler->on_user_command FOR lo_events.
-
-      "---------------------------------------------------------------*
-      " Show ALV full-screen
-      "---------------------------------------------------------------*
-      CALL METHOD lo_alv->display( ).
-
-    CATCH cx_salv_existing INTO lx_salv_ex.
-      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
-
-    CATCH cx_salv_wrong_call INTO lx_salv_ex.
-      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
-
-    CATCH cx_salv_msg INTO lx_salv_msg.
-      MESSAGE lx_salv_msg->get_text( ) TYPE 'E'.
-
-  ENDTRY.
-
-ENDFORM.
