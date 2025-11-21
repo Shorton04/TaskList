@@ -16,6 +16,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
   METHOD on_user_command.
 
     CASE e_salv_function.
+
       WHEN gc_func_char.
         "Toggle characteristics
         IF gv_show_char = gc_true.
@@ -31,15 +32,22 @@ CLASS lcl_event_handler IMPLEMENTATION.
         ELSE.
           gv_show_ltxt = gc_true.
         ENDIF.
+
+      WHEN OTHERS.
+        RETURN.
+
     ENDCASE.
 
+    "Rebuild display and refresh ALV
     PERFORM build_display.
+
     IF lo_alv IS BOUND.
       lo_alv->refresh( ).
     ENDIF.
 
   ENDMETHOD.
 ENDCLASS.
+
 
 *---------------------------------------------------------------------*
 * Validate selection
@@ -622,19 +630,17 @@ FORM display_alv.
       "---------------------------------------------------------------*
       " Create SALV
       "---------------------------------------------------------------*
-      CALL METHOD cl_salv_table=>factory
+      cl_salv_table=>factory(
         IMPORTING
           r_salv_table = lo_alv
         CHANGING
-          t_table      = gt_display.
+          t_table      = gt_display ).
 
       "---------------------------------------------------------------*
       " Columns
       "---------------------------------------------------------------*
       lo_columns = lo_alv->get_columns( ).
-      CALL METHOD lo_columns->set_optimize
-        EXPORTING
-          value = abap_true.
+      lo_columns->set_optimize( abap_true ).
 
       "Hide technical columns
       TRY.
@@ -653,9 +659,7 @@ FORM display_alv.
       " Display settings
       "---------------------------------------------------------------*
       lo_disp = lo_alv->get_display_settings( ).
-      CALL METHOD lo_disp->set_striped_pattern
-        EXPORTING
-          value = abap_true.
+      lo_disp->set_striped_pattern( abap_true ).
 
       lv_title = 'Valid Task Lists'.
       lo_disp->set_list_header( lv_title ).
@@ -665,37 +669,29 @@ FORM display_alv.
       "---------------------------------------------------------------*
       lo_layout = lo_alv->get_layout( ).
       ls_layout_key-report = sy-repid.
-      CALL METHOD lo_layout->set_key
-        EXPORTING
-          value = ls_layout_key.
-      CALL METHOD lo_layout->set_save_restriction
-        EXPORTING
-          value = if_salv_c_layout=>restrict_none.
+      lo_layout->set_key( ls_layout_key ).
+      lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
       lo_layout->set_default( abap_true ).
 
       "---------------------------------------------------------------*
       " Standard functions + custom buttons
       "---------------------------------------------------------------*
       lo_funcs = lo_alv->get_functions( ).
-      CALL METHOD lo_funcs->set_all
-        EXPORTING
-          value = abap_true.
+      lo_funcs->set_all( abap_true ).
 
       "Custom button – Characteristics
-      CALL METHOD lo_funcs->add_function
-        EXPORTING
-          name     = gc_func_char      " 'ZCHAR'
-          text     = 'Characteristics'
-          tooltip  = 'Show / Hide characteristics'
-          position = if_salv_c_function_position=>right_of_salv_functions.
+      lo_funcs->add_function(
+        name     = gc_func_char      " 'ZCHAR'
+        text     = 'Characteristics'
+        tooltip  = 'Show / Hide characteristics'
+        position = if_salv_c_function_position=>right_of_salv_functions ).
 
       "Custom button – Long text
-      CALL METHOD lo_funcs->add_function
-        EXPORTING
-          name     = gc_func_ltxt      " 'ZLTXT'
-          text     = 'Long Text'
-          tooltip  = 'Show / Hide long text'
-          position = if_salv_c_function_position=>right_of_salv_functions.
+      lo_funcs->add_function(
+        name     = gc_func_ltxt      " 'ZLTXT'
+        text     = 'Long Text'
+        tooltip  = 'Show / Hide long text'
+        position = if_salv_c_function_position=>right_of_salv_functions ).
 
       "---------------------------------------------------------------*
       " Selections
@@ -704,7 +700,7 @@ FORM display_alv.
       lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
 
       "---------------------------------------------------------------*
-      " Events – handled in local class LCL_EVENT_HANDLER
+      " Events – static handler (Maintplan pattern)
       "---------------------------------------------------------------*
       lo_events = lo_alv->get_event( ).
       SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
