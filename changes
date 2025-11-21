@@ -1,3 +1,136 @@
+*---------------------------------------------------------------------*
+* Local class for SALV user command (custom buttons)
+*---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_user_command
+      FOR EVENT added_function OF cl_salv_events_table
+      IMPORTING e_salv_function.
+ENDCLASS.
+
+CLASS lcl_event_handler IMPLEMENTATION.
+  METHOD on_user_command.
+
+    CASE e_salv_function.
+
+      WHEN gc_func_char.
+        "Toggle characteristics
+        IF gv_show_char = gc_true.
+          gv_show_char = gc_false.
+        ELSE.
+          gv_show_char = gc_true.
+        ENDIF.
+
+      WHEN gc_func_ltxt.
+        "Toggle long text
+        IF gv_show_ltxt = gc_true.
+          gv_show_ltxt = gc_false.
+        ELSE.
+          gv_show_ltxt = gc_true.
+        ENDIF.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    "Rebuild display and refresh ALV
+    PERFORM build_display.
+
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
+    ENDIF.
+
+  ENDMETHOD.
+ENDCLASS.
+
+
+
+
+
+*---------------------------------------------------------------------*
+* Display ALV with SALV and two custom buttons
+*---------------------------------------------------------------------*
+FORM display_alv.
+
+  DATA: lx_salv_msg TYPE REF TO cx_salv_msg,
+        lx_salv_ex  TYPE REF TO cx_root,
+        lv_title    TYPE lvc_title.
+
+  "No data – nothing to show
+  IF gt_display IS INITIAL.
+    MESSAGE s398(00) WITH 'No data to display'.
+    RETURN.
+  ENDIF.
+
+  TRY.
+
+      "---------------------------------------------------------------*
+      " Create SALV
+      "---------------------------------------------------------------*
+      cl_salv_table=>factory(
+        IMPORTING
+          r_salv_table = lo_alv
+        CHANGING
+          t_table      = gt_display ).
+
+      "---------------------------------------------------------------*
+      " Columns
+      "---------------------------------------------------------------*
+      lo_columns = lo_alv->get_columns( ).
+      lo_columns->set_optimize( abap_true ).
+
+      "Hide technical columns
+      TRY.
+          lo_column ?= lo_columns->get_column( 'ROW_KIND' ).
+          lo_column->set_technical( abap_true ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_column ?= lo_columns->get_column( 'TDFORMAT' ).
+          lo_column->set_technical( abap_true ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      "---------------------------------------------------------------*
+      " Display settings
+      "---------------------------------------------------------------*
+      lo_disp = lo_alv->get_display_settings( ).
+      lo_disp->set_striped_pattern( abap_true ).
+
+      lv_title = 'Valid Task Lists'.
+      lo_disp->set_list_header( lv_title ).
+
+      "---------------------------------------------------------------*
+      " Layout
+      "---------------------------------------------------------------*
+      lo_layout = lo_alv->get_layout( ).
+      ls_layout_key-report = sy-repid.
+      lo_layout->set_key( ls_layout_key ).
+      lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+      lo_layout->set_default( abap_true ).
+
+      "---------------------------------------------------------------*
+      " Standard functions + custom buttons
+      "---------------------------------------------------------------*
+      lo_funcs = lo_alv->get_functions( ).
+      lo_funcs->set_all( abap_true ).
+
+      "Custom button – Characteristics
+      lo_funcs->add_function(
+        name     = gc_func_char      " 'ZCHAR'
+        text     = 'Characteristics'
+        tooltip  = 'Show / Hide characteristics'
+        position = if_salv_c_function_position=>right_of_salv_functions ).
+
+      "Custom button – Long text
+      lo_funcs->add_function(
+        name     = gc_func_ltxt      " 'ZLTXT'
+        text     = 'Long Text'
+        tooltip  = 'Show / Hide long text'
+        position = if_salv_c_function_position=>right_of_salv_functions ).
+
       "---------------------------------------------------------------*
       " Selections
       "---------------------------------------------------------------*
@@ -5,19 +138,25 @@
       lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
 
       "---------------------------------------------------------------*
-      " Events – handled by local handler instance
+      " Events – static handler (Maintplan pattern)
       "---------------------------------------------------------------*
       lo_events = lo_alv->get_event( ).
-
-      DATA(lo_handler) = NEW lcl_event_handler( ).
-      SET HANDLER lo_handler->on_user_command FOR lo_events.
+      SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
 
       "---------------------------------------------------------------*
       " Display ALV
       "---------------------------------------------------------------*
       lo_alv->display( ).
 
+    CATCH cx_salv_existing INTO lx_salv_ex.
+      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
 
+    CATCH cx_salv_wrong_call INTO lx_salv_ex.
+      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
 
+    CATCH cx_salv_msg INTO lx_salv_msg.
+      MESSAGE lx_salv_msg->get_text( ) TYPE 'E'.
 
+  ENDTRY.
 
+ENDFORM.
