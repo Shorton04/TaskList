@@ -1,12 +1,45 @@
-"Hide technical columns
-TRY.
-    lo_column ?= lo_columns->get_column( 'ROW_KIND' ).
-    lo_column->set_technical( abap_true ).
-  CATCH cx_salv_not_found.
-ENDTRY.
+*---------------------------------------------------------------------*
+* Local class for SALV user command (custom buttons)
+*---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    METHODS on_user_command
+      FOR EVENT added_function OF cl_salv_events_table
+      IMPORTING e_salv_function.
+ENDCLASS.
 
-TRY.
-    lo_column ?= lo_columns->get_column( 'TDFORMAT' ).
-    lo_column->set_technical( abap_true ).
-  CATCH cx_salv_not_found.
-ENDTRY.
+CLASS lcl_event_handler IMPLEMENTATION.
+  METHOD on_user_command.
+
+    CASE e_salv_function.
+
+      WHEN gc_func_char.
+        "Toggle characteristics
+        IF gv_show_char = gc_true.
+          gv_show_char = gc_false.
+        ELSE.
+          gv_show_char = gc_true.
+        ENDIF.
+
+      WHEN gc_func_ltxt.
+        "Toggle long text
+        IF gv_show_ltxt = gc_true.
+          gv_show_ltxt = gc_false.
+        ELSE.
+          gv_show_ltxt = gc_true.
+        ENDIF.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    "Rebuild display and refresh ALV
+    PERFORM build_display.
+
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
+    ENDIF.
+
+  ENDMETHOD.
+ENDCLASS.
