@@ -1,264 +1,91 @@
-*---------------------------------------------------------------------*
-* Display ALV – aligned to FDS column order & names
-*---------------------------------------------------------------------*
-FORM display_alv.
+"-----------------------------------------------------------*
+" Column texts – FDS-friendly captions
+"-----------------------------------------------------------*
 
-  DATA: lx_salv_ex  TYPE REF TO cx_root,
-        lx_salv_msg TYPE REF TO cx_salv_msg.
+TRY.
+    lo_column ?= lo_columns->get_column( 'PLNNR' ).
+    lo_column->set_short_text(  |Group| ).
+    lo_column->set_medium_text( |Group| ).
+    lo_column->set_long_text(   |Group| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-  IF gt_display IS INITIAL.
-    MESSAGE s398(00) WITH 'No data to display'.
-    RETURN.
-  ENDIF.
+TRY.
+    lo_column ?= lo_columns->get_column( 'PLNAL' ).
+    lo_column->set_short_text(  |Counter| ).
+    lo_column->set_medium_text( |Counter| ).
+    lo_column->set_long_text(   |Counter| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-  TRY.
+TRY.
+    lo_column ?= lo_columns->get_column( 'WERKS' ).
+    lo_column->set_short_text(  |Plant| ).
+    lo_column->set_medium_text( |Plant| ).
+    lo_column->set_long_text(   |Plant| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-      " Create SALV only once
-      IF lo_alv IS INITIAL.
+TRY.
+    lo_column ?= lo_columns->get_column( 'VORNR' ).
+    lo_column->set_short_text(  |Operation| ).
+    lo_column->set_medium_text( |Operation| ).
+    lo_column->set_long_text(   |Operation| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-        cl_salv_table=>factory(
-          IMPORTING
-            r_salv_table = lo_alv
-          CHANGING
-            t_table      = gt_display ).
+TRY.
+    lo_column ?= lo_columns->get_column( 'TDFORMAT' ).
+    lo_column->set_short_text(  |Fmt Key| ).
+    lo_column->set_medium_text( |Format Key| ).
+    lo_column->set_long_text(   |Format Key| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-        " Columns handling
-        lo_columns = lo_alv->get_columns( ).
-        lo_columns->set_optimize( abap_true ).
+TRY.
+    lo_column ?= lo_columns->get_column( 'OP_LTXT' ).
+    lo_column->set_short_text(  |Op Long Text| ).
+    lo_column->set_medium_text( |Operation Long Text| ).
+    lo_column->set_long_text(   |Operation Long Text| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-        "-----------------------------------------------------------*
-        " Hide columns that are NOT in the FDS visible list
-        "  Visible columns (do NOT hide):
-        "    PLNNR, PLNAL, WERKS, VORNR,
-        "    TDFORMAT, OP_LTXT (or TDLINE), ARBPL_O, ARBEI,
-        "    KURZT_CHAR, PMETHODE, CHAR_LTXT
-        "-----------------------------------------------------------*
-        " Technical
-        PERFORM hide_column USING 'ROW_KIND'.
+TRY.
+    lo_column ?= lo_columns->get_column( 'ARBPL_O' ).
+    lo_column->set_short_text(  |Work Ctr| ).
+    lo_column->set_medium_text( |Work Center| ).
+    lo_column->set_long_text(   |Work Center| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-        " Header to hide
-        PERFORM hide_column USING 'PLNTY'.
-        PERFORM hide_column USING 'DATUV'.
-        PERFORM hide_column USING 'KTEXT'.
-        PERFORM hide_column USING 'TPLNR'.
-        PERFORM hide_column USING 'EQUNR'.
-        PERFORM hide_column USING 'VERWE'.
-        PERFORM hide_column USING 'VAGRP'.
-        PERFORM hide_column USING 'STAT_H'.
-        PERFORM hide_column USING 'ANLZU_H'.
-        PERFORM hide_column USING 'STRAT'.
-        PERFORM hide_column USING 'ISTRU_H'.
-        PERFORM hide_column USING 'ADPSP'.
-        PERFORM hide_column USING 'SLWBEZ'.
-        PERFORM hide_column USING 'LOEKZ_H'.
-        PERFORM hide_column USING 'ANDAT'.
-        PERFORM hide_column USING 'ANNAM'.
-        PERFORM hide_column USING 'AEDAT'.
-        PERFORM hide_column USING 'AENAM'.
+TRY.
+    lo_column ?= lo_columns->get_column( 'ARBEI' ).
+    lo_column->set_short_text(  |Work| ).
+    lo_column->set_medium_text( |Work| ).
+    lo_column->set_long_text(   |Work| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-        " Operation to hide (keep VORNR, ARBPL_O, ARBEI)
-        PERFORM hide_column USING 'LTXA1'.
-        PERFORM hide_column USING 'STEUS'.
-        PERFORM hide_column USING 'WERKS_O'.
-        PERFORM hide_column USING 'KTSCH'.
-        PERFORM hide_column USING 'ARBEH'.
-        PERFORM hide_column USING 'DAUNO'.
-        PERFORM hide_column USING 'DAUNE'.
-        PERFORM hide_column USING 'KALID'.
-        PERFORM hide_column USING 'EXECUTION_STAGE'.
-        PERFORM hide_column USING 'ANLZU_O'.
-        PERFORM hide_column USING 'ISTRU_O'.
-        PERFORM hide_column USING 'LARNT'.
-        PERFORM hide_column USING 'EBELN'.
-        PERFORM hide_column USING 'EBELP'.
-        PERFORM hide_column USING 'LIFNR'.
-        PERFORM hide_column USING 'PREIS'.
-        PERFORM hide_column USING 'WAERS'.
-        PERFORM hide_column USING 'SAKTO'.
-        PERFORM hide_column USING 'EKORG'.
-        PERFORM hide_column USING 'EKGRP'.
-        PERFORM hide_column USING 'TXTSP_OP'.
-        PERFORM hide_column USING 'LOEKZ_O'.
+TRY.
+    lo_column ?= lo_columns->get_column( 'KURZT_CHAR' ).
+    lo_column->set_short_text(  |Insp Desc| ).
+    lo_column->set_medium_text( |Insp. Description| ).
+    lo_column->set_long_text(   |Inspection Description| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-        " Characteristic to hide (keep KURZT_CHAR, PMETHODE)
-        PERFORM hide_column USING 'MERKNR'.
-        PERFORM hide_column USING 'VERWMERKM'.
-        PERFORM hide_column USING 'LTEXTKZ'.
-        PERFORM hide_column USING 'TOLERANZUN'.
-        PERFORM hide_column USING 'TOLERANZOB'.
-        PERFORM hide_column USING 'PRUEFEINH'.
-        PERFORM hide_column USING 'STICHPRVER'.
-        PERFORM hide_column USING 'KATALGART1'.
-        PERFORM hide_column USING 'AUSWMENGE1'.
-        PERFORM hide_column USING 'STEUERKZ'.
-        PERFORM hide_column USING 'LOEKZ_C'.
+TRY.
+    lo_column ?= lo_columns->get_column( 'PMETHODE' ).
+    lo_column->set_short_text(  |Insp Meth| ).
+    lo_column->set_medium_text( |Inspection Method| ).
+    lo_column->set_long_text(   |Inspection Method| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-        " CI flags – all hidden
-        PERFORM hide_column USING 'CI_QUANT'.
-        PERFORM hide_column USING 'CI_MEAS_REQUIRED'.
-        PERFORM hide_column USING 'CI_ATTR_REF'.
-        PERFORM hide_column USING 'CI_ULIM_IND'.
-        PERFORM hide_column USING 'CI_LLIM_IND'.
-        PERFORM hide_column USING 'CI_CHK_TGT'.
-        PERFORM hide_column USING 'CI_SCOPE'.
-        PERFORM hide_column USING 'CI_SINGLE_RES'.
-        PERFORM hide_column USING 'CI_SAMP_REQ'.
-        PERFORM hide_column USING 'CI_RECORDING'.
-        PERFORM hide_column USING 'CI_DOC_REQ'.
-        PERFORM hide_column USING 'CI_CATEGORY'.
-
-        " NOTE: Do NOT hide TDFORMAT, OP_LTXT, CHAR_LTXT, TDLINE.
-        " If your structure still uses TDLINE instead of OP_LTXT/CHAR_LTXT,
-        " the hide_column calls above will simply ignore non-existing fields.
-
-        "-----------------------------------------------------------*
-        " FDS column order (using columns->set_column_position)
-        "  1  Group              (PLNNR)
-        "  2  Counter            (PLNAL)
-        "  3  Plant              (WERKS)
-        "  4  Operation          (VORNR)
-        "  5  Format Key         (TDFORMAT)
-        "  6  Op Long Text       (OP_LTXT / TDLINE)
-        "  7  Work Center        (ARBPL_O)
-        "  8  Work               (ARBEI)
-        "  9  Insp. Description  (KURZT_CHAR)
-        " 10  Insp. Method       (PMETHODE)
-        " 11  Char Long Text     (CHAR_LTXT)
-        "-----------------------------------------------------------*
-        PERFORM set_position USING 'PLNNR'      1.
-        PERFORM set_position USING 'PLNAL'      2.
-        PERFORM set_position USING 'WERKS'      3.
-        PERFORM set_position USING 'VORNR'      4.
-        PERFORM set_position USING 'TDFORMAT'   5.
-        PERFORM set_position USING 'OP_LTXT'    6.  " or TDLINE, if used
-        PERFORM set_position USING 'ARBPL_O'    7.
-        PERFORM set_position USING 'ARBEI'      8.
-        PERFORM set_position USING 'KURZT_CHAR' 9.
-        PERFORM set_position USING 'PMETHODE'  10.
-        PERFORM set_position USING 'CHAR_LTXT' 11.
-
-        "-----------------------------------------------------------*
-        " Column texts – FDS-friendly captions
-        "-----------------------------------------------------------*
-        TRY.
-            lo_column ?= lo_columns->get_column( 'PLNNR' ).
-            lo_column->set_short_text(  'Group' ).
-            lo_column->set_medium_text( 'Group' ).
-            lo_column->set_long_text(   'Group' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'PLNAL' ).
-            lo_column->set_short_text(  'Counter' ).
-            lo_column->set_medium_text( 'Counter' ).
-            lo_column->set_long_text(   'Counter' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'WERKS' ).
-            lo_column->set_short_text(  'Plant' ).
-            lo_column->set_medium_text( 'Plant' ).
-            lo_column->set_long_text(   'Plant' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'VORNR' ).
-            lo_column->set_short_text(  'Operation' ).
-            lo_column->set_medium_text( 'Operation' ).
-            lo_column->set_long_text(   'Operation' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'TDFORMAT' ).
-            lo_column->set_short_text(  'Fmt Key' ).
-            lo_column->set_medium_text( 'Format Key' ).
-            lo_column->set_long_text(   'Format Key' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'OP_LTXT' ).
-            lo_column->set_short_text(  'Op Long Text' ).
-            lo_column->set_medium_text( 'Operation Long Text' ).
-            lo_column->set_long_text(   'Operation Long Text' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'ARBPL_O' ).
-            lo_column->set_short_text(  'Work Ctr' ).
-            lo_column->set_medium_text( 'Work Center' ).
-            lo_column->set_long_text(   'Work Center' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'ARBEI' ).
-            lo_column->set_short_text(  'Work' ).
-            lo_column->set_medium_text( 'Work' ).
-            lo_column->set_long_text(   'Work' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'KURZT_CHAR' ).
-            lo_column->set_short_text(  'Insp Desc' ).
-            lo_column->set_medium_text( 'Insp. Description' ).
-            lo_column->set_long_text(   'Insp. Description' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'PMETHODE' ).
-            lo_column->set_short_text(  'Insp Meth' ).
-            lo_column->set_medium_text( 'Insp. Method' ).
-            lo_column->set_long_text(   'Insp. Method' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'CHAR_LTXT' ).
-            lo_column->set_short_text(  'Char LTxt' ).
-            lo_column->set_medium_text( 'Char Long Text' ).
-            lo_column->set_long_text(   'Char Long Text' ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        " Display settings
-        lo_disp = lo_alv->get_display_settings( ).
-        lo_disp->set_striped_pattern( abap_true ).
-        lo_disp->set_list_header( 'Valid Task Lists' ).
-
-        " Layout
-        lo_layout = lo_alv->get_layout( ).
-        ls_layout_key-report = sy-repid.
-        lo_layout->set_key( ls_layout_key ).
-        lo_layout->set_default( abap_true ).
-
-        " Functions
-        lo_funcs = lo_alv->get_functions( ).
-        lo_funcs->set_all( abap_true ).
-
-        " Events
-        lo_events = lo_alv->get_event( ).
-        SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
-
-      ELSE.
-        " ALV already exists – just refresh data
-        lo_alv->refresh( ).
-      ENDIF.
-
-      PERFORM set_pfstatus_from_state.
-      lo_alv->display( ).
-
-    CATCH cx_salv_msg INTO lx_salv_msg.
-      MESSAGE lx_salv_msg->get_text( ) TYPE 'E'.
-    CATCH cx_root INTO lx_salv_ex.
-      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
-  ENDTRY.
-
-ENDFORM.
+TRY.
+    lo_column ?= lo_columns->get_column( 'CHAR_LTXT' ).
+    lo_column->set_short_text(  |Char Long Text| ).
+    lo_column->set_medium_text( |Characteristic Long Text| ).
+    lo_column->set_long_text(   |Characteristic Long Text| ).
+  CATCH cx_salv_not_found.
+ENDTRY.
