@@ -1,82 +1,56 @@
 *---------------------------------------------------------------------*
-* Form APPEND_CHAR_LONGTEXT
-*  - Appends characteristic long text lines as separate rows in
-*    GT_DISPLAY with:
-*       ROW_KIND   = 'L'
-*       CHAR_LTXT  = text line
-*       TDFORMAT   = format key
+* PF-STATUS DETERMINATION
 *---------------------------------------------------------------------*
-FORM append_char_longtext USING is_base TYPE ty_task_base.
+FORM set_pfstatus_from_state.
 
-  DATA: lt_lines TYPE STANDARD TABLE OF tline,
-        ls_line  TYPE tline,
-        lv_name  TYPE thead-tdname,
-        lv_tmp   TYPE thead-tdname.
+  DATA lv_pf TYPE sypfkey.
 
-  CLEAR: lt_lines, lv_name, lv_tmp.
+  "-----------------------------------------------------------*
+  " Decide which PF-STATUS to use based on current state
+  "  gv_show_char = FALSE / TRUE
+  "  gv_show_ltxt = FALSE / TRUE
+  "-----------------------------------------------------------*
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
-  " Only try to read if PLMK says: long text exists
-  IF is_base-ltextkz IS INITIAL.
-    RETURN.
+    " Operations only, no long text
+    " -> Buttons should be:
+    "    - Show Characteristics (&CLISTS)
+    "    - Show Long Text      (&LTXTS)
+    lv_pf = 'ZSALV_BOTH_HIDE'.
+
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    " Operations + long text
+    " -> Buttons should be:
+    "    - Show Characteristics (&CLISTS)
+    "    - Hide Long Text       (&LTXTH)
+    lv_pf = 'ZSALV_LTXT_SHOW'.
+
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+    " Characteristics visible, no long text
+    " -> Buttons should be:
+    "    - Hide Characteristics (&CLISTH)
+    "    - Show Long Text       (&LTXTS)
+    lv_pf = 'ZSALV_CLIST_ONLY'.
+
+  ELSE. " gv_show_char = TRUE AND gv_show_ltxt = TRUE
+
+    " Characteristics + long text
+    " -> Buttons should be:
+    "    - Hide Characteristics (&CLISTH)
+    "    - Hide Long Text       (&LTXTH)
+    lv_pf = 'ZSALV_CLIST_LTXT'.
+
   ENDIF.
 
   "-----------------------------------------------------------*
-  " Build TDNAME for char long text:
-  "   mandt + plnty + plnnr + plnkn + space + merknr + zaehl
-  "   TDOBJECT = 'QSS', TDID = 'QM'
+  " Apply PF-STATUS to SALV
   "-----------------------------------------------------------*
-  CONCATENATE sy-mandt
-              is_base-plnty
-              is_base-plnnr
-              is_base-plnkn
-         INTO lv_tmp.
-
-  CONCATENATE lv_tmp
-              is_base-merknr
-         INTO lv_tmp
-         SEPARATED BY space.
-
-  CONCATENATE lv_tmp
-              is_base-zaehl
-         INTO lv_name.
-
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      client   = sy-mandt
-      id       = 'QM'
-      language = sy-langu
-      name     = lv_name
-      object   = 'QSS'
-    TABLES
-      lines    = lt_lines
-    EXCEPTIONS
-      id                    = 1
-      language              = 2
-      name                  = 3
-      not_found             = 4
-      object                = 5
-      reference_check       = 6
-      wrong_access_to_archive = 7
-      OTHERS                = 8.
-
-  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-    RETURN.
+  IF lo_alv IS BOUND.
+    lo_alv->set_screen_status(
+      pfstatus = lv_pf
+      report   = sy-repid ).
   ENDIF.
-
-  LOOP AT lt_lines INTO ls_line.
-
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind  = 'L'.
-    gs_display-char_ltxt = ls_line-tdline.
-    gs_display-tdformat  = ls_line-tdformat.
-
-    " Make sure op long text column is empty on char rows
-    CLEAR gs_display-op_ltxt.
-
-    APPEND gs_display TO gt_display.
-
-  ENDLOOP.
 
 ENDFORM.
