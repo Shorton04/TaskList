@@ -7,6 +7,13 @@ INCLUDE zre_a2r_valid_tasklist_top.
 INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
 
+INITIALIZATION.
+  CLEAR so_keydt.
+  so_keydt-sign = 'I'.
+  so_keydt-option = 'EQ'.
+  so_keydt-low = sy-datum.
+  APPEND so_keydt.
+
 *---------------------------------------------------------------------*
 * Selection-screen checks
 *---------------------------------------------------------------------*
