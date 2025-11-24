@@ -1,41 +1,7 @@
-Characteristics 
-
- 
-
-When the “Show Characteristics” option is used, the report will: 
-
- 
-
-Determine whether each operation has matching entries in table PLMK. 
-
-If not, it means there is no characteristic assigned to it and the program will move on to the next operation. 
-
-If yes, then go on to the next step. 
-
- 
-
-Long Text 
-
- 
-
-When the “Show Long Text” option is used, the report will: 
-
- 
-
-Determine at which level are long texts going to be displayed: 
-
-If the “Show Characteristics” option has not been used, then the level is “Operations”. Then, in this case determine which operations have long text by evaluating the value of field PLPO-LTXA2TXTSP: 
-
-If it is blank, it means there is no long text and the program will move on to the next operation. 
-
-If it is not blank, then go on to the last step. 
-
-If the “Show Characteristics” option has been used, then the level is “Characteristics”. Then, in this case determine which characteristics have long text by evaluating the value of field PLMK-LTEXTKZ: 
-
-If it is blank, it means there is no long text and the program will move on to the next characteristic. 
-
-If it is “X”, then go on to the last step. 
-
-Execute function module READ_TEXT for each operation or characteristic that have long text (the specs are listed in the table above). The text must be broken down by line and for each line by format key and actual text. 
-
- 
+        TRY.
+            lo_column ?= lo_columns->get_column( 'TDFORMAT' ).
+            lo_column->set_short_text(  'Fmt Key' ).
+            lo_column->set_medium_text( 'Format Key' ).
+            lo_column->set_long_text(   'Format Key (TDFORMAT)' ).
+          CATCH cx_salv_not_found.
+        ENDTRY.
