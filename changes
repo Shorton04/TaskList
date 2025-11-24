@@ -1,192 +1,21 @@
-*&---------------------------------------------------------------------*
-*& Form APPEND_CHAR_LONGTEXT
-*&---------------------------------------------------------------------*
-*  Appends characteristic long text as separate rows:
-*    - ROW_KIND  = 'L'
-*    - CHAR_LTXT = TDLINE
-*&---------------------------------------------------------------------*
-FORM append_char_longtext USING is_base TYPE ty_task_base.
+DATA: lv_plnnr TYPE plko-plnnr,
+      lv_merknr TYPE plmk-merknr.
 
-  DATA: lv_name  TYPE thead-tdname,
-        ls_head  TYPE thead.
+"--- Apply ALPHA conversion (ECC Compatible)
+lv_plnnr  = is_base-plnnr.
+lv_merknr = is_base-merknr.
 
-  CLEAR gt_tline.
+CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+  EXPORTING
+    input  = lv_plnnr
+  IMPORTING
+    output = lv_plnnr.
 
-  ">>> Text name pattern – adjust if your system uses a different one.
-  "    Example: PLNTY + PLNNR(ALPHA) + PLNAL + MERKNR(ALPHA)
-  lv_name = |{ is_base-plnty }
-             { is_base-plnnr ALPHA = OUT }
-             { is_base-plnal }
-             { is_base-merknr ALPHA = OUT }|.
+CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+  EXPORTING
+    input  = lv_merknr
+  IMPORTING
+    output = lv_merknr.
 
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      id       = 'PLMK'     " adjust to your real ID if needed
-      language = sy-langu
-      name     = lv_name
-      object   = 'PLMK'     " adjust to your real OBJECT if needed
-    IMPORTING
-      header   = ls_head
-    TABLES
-      lines    = gt_tline
-    EXCEPTIONS
-      OTHERS   = 1.
-
-  IF sy-subrc <> 0 OR gt_tline IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind  = 'L'.
-    gs_display-char_ltxt = gs_tline-tdline.
-    gs_display-tdformat  = gs_tline-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-ENDFORM.
-
-
-
-*&---------------------------------------------------------------------*
-*& Form APPEND_OP_LONGTEXT
-*&---------------------------------------------------------------------*
-*  Appends operation long text as separate rows:
-*    - ROW_KIND = 'L'
-*    - OP_LTXT  = TDLINE
-*&---------------------------------------------------------------------*
-FORM append_op_longtext USING is_base TYPE ty_task_base.
-
-  DATA: lv_name  TYPE thead-tdname,
-        ls_head  TYPE thead.
-
-  CLEAR gt_tline.
-
-  ">>> Text name pattern – adjust if your system uses a different one.
-  "    This is a common pattern: PLNTY + PLNNR(ALPHA) + PLNAL + VORNR
-  lv_name = |{ is_base-plnty }
-             { is_base-plnnr ALPHA = OUT }
-             { is_base-plnal }
-             { is_base-vornr }|.
-
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      id       = 'PLPO'     " adjust to your real ID if needed
-      language = sy-langu
-      name     = lv_name
-      object   = 'PLPO'     " adjust to your real OBJECT if needed
-    IMPORTING
-      header   = ls_head
-    TABLES
-      lines    = gt_tline
-    EXCEPTIONS
-      OTHERS   = 1.
-
-  IF sy-subrc <> 0 OR gt_tline IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  LOOP AT gt_tline INTO gs_tline.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind = 'L'.
-    gs_display-op_ltxt  = gs_tline-tdline.
-    gs_display-tdformat = gs_tline-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-ENDFORM.
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form BUILD_DISPLAY
-*&---------------------------------------------------------------------*
-* Flat list per FDS:
-*  - One operation row (ROW_KIND = 'O') per unique op key
-*  - Optional characteristic rows (ROW_KIND = 'C') below the op
-*  - Optional op long-text rows (ROW_KIND = 'L', OP_LTXT) below op
-*  - Optional char long-text rows (ROW_KIND = 'L', CHAR_LTXT) below char
-*&---------------------------------------------------------------------*
-FORM build_display.
-
-  DATA: lv_last_plnty TYPE plko-plnty,
-        lv_last_plnnr TYPE plko-plnnr,
-        lv_last_plnal TYPE plko-plnal,
-        lv_last_vornr TYPE plpo-vornr.
-
-  CLEAR gt_display.
-  CLEAR gs_display.
-
-  CLEAR: lv_last_plnty, lv_last_plnnr, lv_last_plnal, lv_last_vornr.
-
-  "Make sure we loop in stable order
-  SORT gt_base BY plnty plnnr plnal vornr merknr.
-
-  LOOP AT gt_base INTO gs_base.
-
-    "-----------------------------------------------------------*
-    " 1) Operation row – only when operation key changes
-    "-----------------------------------------------------------*
-    IF gs_base-plnty <> lv_last_plnty OR
-       gs_base-plnnr <> lv_last_plnnr OR
-       gs_base-plnal <> lv_last_plnal OR
-       gs_base-vornr <> lv_last_vornr.
-
-      CLEAR gs_display.
-      MOVE-CORRESPONDING gs_base TO gs_display.
-      gs_display-row_kind = 'O'.
-
-      "CI flags from STEUERKZ
-      PERFORM derive_ci_fields
-        USING    gs_base-steuerkz
-        CHANGING gs_display.
-
-      APPEND gs_display TO gt_display.
-
-      "Remember last operation key
-      lv_last_plnty = gs_base-plnty.
-      lv_last_plnnr = gs_base-plnnr.
-      lv_last_plnal = gs_base-plnal.
-      lv_last_vornr = gs_base-vornr.
-
-      "=== Operation long text lines directly under operation ===
-      IF gv_show_ltxt = gc_true.
-        PERFORM append_op_longtext USING gs_base.
-      ENDIF.
-
-    ENDIF.
-
-    "-----------------------------------------------------------*
-    " 2) Characteristic row + char long text (under operation)
-    "-----------------------------------------------------------*
-    IF gv_show_char = gc_true
-       AND gs_base-merknr IS NOT INITIAL.
-
-      "Characteristic data row
-      CLEAR gs_display.
-      MOVE-CORRESPONDING gs_base TO gs_display.
-      gs_display-row_kind = 'C'.
-
-      PERFORM derive_ci_fields
-        USING    gs_base-steuerkz
-        CHANGING gs_display.
-
-      APPEND gs_display TO gt_display.
-
-      "Characteristic long text rows under characteristic
-      IF gv_show_ltxt = gc_true.
-        PERFORM append_char_longtext USING gs_base.
-      ENDIF.
-
-    ENDIF.
-
-  ENDLOOP.
-
-ENDFORM.
+"--- Now build the long–text name
+lv_name = |{ is_base-plnty }{ lv_plnnr }{ is_base-plnal }{ lv_merknr }|.
