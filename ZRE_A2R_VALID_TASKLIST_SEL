@@ -57,9 +57,9 @@ SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE TEXT-004.
     so_adpsp FOR plko-adpsp,   " Ref. Element PM/PS
     so_slwbe FOR plko-slwbez,  " Inspection Points
     so_andat FOR plko-andat,   " Created On
-    so_annam FOR plko-annam,   " Created By
+    so_annam FOR plko-annam MATCHCODE OBJECT user_addr,   " Created By
     so_aedat FOR plko-aedat,   " Changed On
-    so_aenam FOR plko-aenam.   " Changed By
+    so_aenam FOR plko-aenam MATCHCODE OBJECT user_addr.   " Changed By
 
   " NOTE (FDS): PLKO-LOEKZ (Deletion Flag) is a background filter = space,
   " so there is NO selection-option for deletion flag here.
