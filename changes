@@ -57,3 +57,66 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
   ENDLOOP.
 
 ENDFORM.
+
+
+
+
+FORM append_op_longtext USING is_base TYPE ty_task_base.
+
+  DATA: ls_thead TYPE thead,
+        lv_name  TYPE thead-tdname,
+        lv_plnnr TYPE plpo-plnnr,
+        lv_plnkn TYPE plpo-plnkn,
+        lv_zaehl TYPE plpo-zaehl.
+
+  CLEAR gt_tline.
+
+  "ALPHA conversions
+  lv_plnnr = is_base-plnnr.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+    EXPORTING input = lv_plnnr
+    IMPORTING output = lv_plnnr.
+
+  lv_plnkn = is_base-plnkn.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+    EXPORTING input = lv_plnkn
+    IMPORTING output = lv_plnkn.
+
+  lv_zaehl = is_base-zaehl.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+    EXPORTING input = lv_zaehl
+    IMPORTING output = lv_zaehl.
+
+  "Correct text name per FDS
+  lv_name = |{ is_base-mandt }{ is_base-plnty }{ lv_plnnr }{ lv_plnkn }{ lv_zaehl }|.
+
+  ls_thead-tdid     = 'PLPO'.
+  ls_thead-tdspras  = sy-langu.
+  ls_thead-tdname   = lv_name.
+  ls_thead-tdobject = 'ROUTING'.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = ls_thead-tdid
+      language = ls_thead-tdspras
+      name     = ls_thead-tdname
+      object   = ls_thead-tdobject
+    TABLES
+      lines    = gt_tline
+    EXCEPTIONS
+      OTHERS   = 4.
+
+  IF sy-subrc <> 0 OR gt_tline IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT gt_tline INTO gs_tline.
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+    gs_display-row_kind = 'L'.
+    gs_display-op_ltxt  = gs_tline-tdline.
+    gs_display-tdformat = gs_tline-tdformat.
+    APPEND gs_display TO gt_display.
+  ENDLOOP.
+
+ENDFORM.
