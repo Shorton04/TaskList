@@ -1,89 +1,157 @@
-FORM append_op_longtext USING is_base TYPE ty_task_base.
+  METHOD manage_inspection_chars.
+    DATA:lt_plpo TYPE STANDARD TABLE OF ts_plpo_tmp,
+         lt_plmk TYPE STANDARD TABLE OF ts_plmk.
 
-  DATA: lt_lines TYPE TABLE OF tline,
-        ls_line  TYPE tline,
-        lv_name  TYPE thead-tdname.
+    DATA: lv_plnnr  TYPE plnnr,
+          lv_plnkn  TYPE plnkn,
+          lv_zaehl  TYPE cim_count,
+          lv_tdname TYPE tdobname,
+          lv_spras  TYPE spras.
 
-  CLEAR lt_lines.
+    CONSTANTS: lc_tdid_qm TYPE tdid     VALUE 'QM',
+               lc_obj_qss TYPE tdobject VALUE 'QSS'.
 
-  "Build NAME according to FDS
-  lv_name = |{ sy-mandt }{
-              is_base-plnty }{
-              is_base-plnnr ALPHA = OUT }{
-              is_base-plnkn ALPHA = OUT }{
-              is_base-zaehl ALPHA = OUT }|.
+***********************************************
+    IF iv_selection = abap_true.
+***********************************************
+      CLEAR et_plmk.
 
+      lt_plpo = it_plpo.
+      CHECK lt_plpo IS NOT INITIAL.
+      SELECT plnty
+             plnnr
+             plnkn
+             kzeinstell
+             merknr
+             zaehl
+             kurztext FROM plmk
+        INTO TABLE et_plmk
+          FOR ALL ENTRIES IN lt_plpo
+            WHERE plnty = lt_plpo-plnty
+             AND  plnnr = lt_plpo-plnnr.
+*             AND  plnkn = lt_plpo-plnkn
+*             AND  zaehl = lt_plpo-zaehl.
+***********************************************
+    ELSE.
+***********************************************
+      lv_plnnr = |{ is_plmk_key-plnnr ALPHA = IN } |.
+      lv_plnkn = |{ is_plmk_key-plnkn ALPHA = IN } |.
+      lv_zaehl = |{ is_plmk_key-zaehl ALPHA = IN } |.
+
+      CONCATENATE sy-mandt
+                  is_plmk_key-plnty
+                  lv_plnnr
+                  lv_plnkn
+                  is_plmk_key-kzeinstell
+                  is_plmk_key-merknr
+                  lv_zaehl INTO lv_tdname RESPECTING BLANKS.
+
+      CLEAR:ev_text_error, et_lines.
+
+      DO 3 TIMES.
+
+        CASE sy-index.
+          WHEN 1.
+            lv_spras = sy-langu.
+          WHEN 2.
+            lv_spras = 'E'.
+          WHEN 3.
+            lv_spras = 'D'.
+        ENDCASE.
+
+        CALL FUNCTION 'READ_TEXT'
+          EXPORTING
+            client                  = sy-mandt
+            id                      = lc_tdid_qm
+            language                = lv_spras
+            name                    = lv_tdname
+            object                  = lc_obj_qss
+          TABLES
+            lines                   = et_lines
+          EXCEPTIONS
+            id                      = 1
+            language                = 2
+            name                    = 3
+            not_found               = 4
+            object                  = 5
+            reference_check         = 6
+            wrong_access_to_archive = 7
+            OTHERS                  = 8.
+        IF sy-subrc <> 0.
+          ev_text_error = abap_true.
+        ELSEIF et_lines[] IS NOT INITIAL.
+          EXIT.
+        ENDIF.
+      ENDDO.
+    ENDIF.
+  ENDMETHOD.
+
+
+
+
+  IF PLMK-STEUERKZ+0(2) = 'XX'.
+      QUAL_QUANT = 'Quant'.
+  ELSE.
+     QUAL_QUANT = 'Qual'.
+  ENDIF.
+  lv_plnnr = plmk-plnnr.
+  lv_plnkn = plmk-plnkn.
+  "SHIFT lv_plnnr RIGHT DELETING TRAILING SPACE.
+  "SHIFT lv_plnkn RIGHT DELETING TRAILING SPACE.
+  IF strlen( lv_plnnr ) < 8.
+    IF strlen( lv_plnnr ) = 7.
+      concatenate lv_plnnr lv_plnkn
+      into lv_plnnr_plnkn
+      separated by ' '.
+    ENDIF.
+    IF strlen( lv_plnnr ) = 6.
+      concatenate lv_plnnr lv_plnkn
+      into lv_plnnr_plnkn
+      separated by '  '.
+    ENDIF.
+  ELSE.
+  concatenate lv_plnnr lv_plnkn
+      into lv_plnnr_plnkn.
+  ENDIF.
+  CONCATENATE
+  PLMK-MANDT
+  PLMK-PLNTY
+  "lv_plnnr
+  "space
+  "space
+  "PLMK-PLNKN
+  lv_plnnr_plnkn
+  INTO lv_part_1.
+  CONCATENATE
+  PLMK-MERKNR
+  PLMK-ZAEHL
+  INTO lv_part_2.
+  CONCATENATE
+  lv_part_1
+  lv_part_2
+  INTO lv_name
+  SEPARATED BY space.
+  clear longtext.
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      id       = 'PLPO'
-      language = sy-langu
-      name     = lv_name
-      object   = 'ROUTING'
+      CLIENT                        = SY-MANDT
+      ID                            = 'QM'
+      LANGUAGE                      = PLMK-LTEXTSPR
+      NAME                          = lv_name
+      OBJECT                        = 'QSS'
+*   ARCHIVE_HANDLE                = 0
+*   LOCAL_CAT                     = ' '
+* IMPORTING
+*   HEADER                        =
+*   OLD_LINE_COUNTER              =
     TABLES
-      lines    = lt_lines
-    EXCEPTIONS
-      OTHERS   = 4.
-
-  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  LOOP AT lt_lines INTO ls_line.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind  = 'L'.
-    gs_display-op_ltxt   = ls_line-tdline.
-    gs_display-tdformat  = ls_line-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-ENDFORM.
-
-
-
-
-
-FORM append_char_longtext USING is_base TYPE ty_task_base.
-
-  DATA: lt_lines TYPE TABLE OF tline,
-        ls_line  TYPE tline,
-        lv_name  TYPE thead-tdname.
-
-  CLEAR lt_lines.
-
-  "Build NAME per FDS: mandt + plnty + plnnr + plnkn + merknr
-  lv_name = |{ sy-mandt }{
-              is_base-plnty }{
-              is_base-plnnr ALPHA = OUT }{
-              is_base-plnkn ALPHA = OUT }{
-              is_base-merknr ALPHA = OUT }|.
-
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      id       = 'QM'
-      language = sy-langu
-      name     = lv_name
-      object   = 'QSS'
-    TABLES
-      lines    = lt_lines
-    EXCEPTIONS
-      OTHERS   = 4.
-
-  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  LOOP AT lt_lines INTO ls_line.
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind   = 'L'.
-    gs_display-char_ltxt  = ls_line-tdline.
-    gs_display-tdformat   = ls_line-tdformat.
-
-    APPEND gs_display TO gt_display.
-  ENDLOOP.
-
-ENDFORM.
+      LINES                         = lt_lines
+   EXCEPTIONS
+     ID                            = 1
+     LANGUAGE                      = 2
+     NAME                          = 3
+     NOT_FOUND                     = 4
+     OBJECT                        = 5
+    REFERENCE_CHECK               = 6
+     WRONG_ACCESS_TO_ARCHIVE       = 7
+    OTHERS                        = 8.
