@@ -1,23 +1,4 @@
-FORM rebuild_output .
-
-  " Always clear before rebuilding
-  CLEAR gt_final.
-  CLEAR gt_base.
-  CLEAR gt_char.
-  CLEAR gt_ltxt.
+CLEAR gt_final.
   REFRESH gt_final.
-  REFRESH gt_base.
-  REFRESH gt_char.
-  REFRESH gt_ltxt.
-
-  " Also clear ALV display table
-  IF gt_alv_disp[] IS NOT INITIAL.
-    CLEAR gt_alv_disp.
-    REFRESH gt_alv_disp.
-  ENDIF.
-
-  PERFORM get_data.
-  PERFORM prepare_output.
-  PERFORM adjust_display.
-
-ENDFORM.
+  CLEAR gt_alv_disp.
+  REFRESH gt_alv_disp.
