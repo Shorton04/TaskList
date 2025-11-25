@@ -1,29 +1,18 @@
-  "-----------------------------------------------------------*
-  " Remove duplicate header rows (O/C), keep all long-text rows (L)
-  "-----------------------------------------------------------*
-  DATA: lt_header TYPE STANDARD TABLE OF ty_task_disp,
-        lt_ltxt   TYPE STANDARD TABLE OF ty_task_disp.
+FORM rebuild_output.
 
-  CLEAR: lt_header, lt_ltxt.
+* 1. Always start clean
+  CLEAR gt_alv.
+  CLEAR gt_alv_disp.  "or whatever table you bind to ALV
 
-  LOOP AT gt_display INTO gs_display.
-    IF gs_display-row_kind = 'L'.
-      APPEND gs_display TO lt_ltxt.     " keep ALL long-text lines
-    ELSE.
-      APPEND gs_display TO lt_header.   " header rows (O or C)
-    ENDIF.
-  ENDLOOP.
+* 2. Start from a pure base (operations + 1st char / or op only,
+*    whatever you defined as base):
+  gt_alv_disp[] = gt_base[].   "NEVER append on top of old result
 
-  " One header per key: Group/Cntr/Plant/Op/Insp#
-  SORT lt_header BY plnty plnnr plnal vornr merknr row_kind.
-  DELETE ADJACENT DUPLICATES FROM lt_header
-    COMPARING plnty plnnr plnal vornr merknr row_kind.
+* 3. Apply flags
+  PERFORM adjust_display USING gv_show_char gv_show_ltxt
+                         CHANGING gt_alv_disp.
 
-  " Rebuild GT_DISPLAY: first headers, then LT rows
-  CLEAR gt_display.
-  APPEND LINES OF lt_header TO gt_display.
-  APPEND LINES OF lt_ltxt   TO gt_display.
+* 4. Refresh ALV
+  go_alv->refresh_table_display( ).
 
-
-
-
+ENDFORM.
