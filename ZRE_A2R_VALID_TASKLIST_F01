@@ -9,36 +9,17 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
     CASE e_salv_function.
 
-        "---------------------------------------------------------------
-        " Show Characteristics
-        " - Switch to operation + characteristics
-        " - Long text goes back to default (off)
-        "---------------------------------------------------------------
       WHEN gc_func_clist_s.     " &CLISTS
         gv_show_char = gc_true.
         gv_show_ltxt = gc_false.
 
-        "---------------------------------------------------------------
-        " Hide Characteristics
-        " - Back to operations only
-        " - Long text also reset (off)
-        "---------------------------------------------------------------
       WHEN gc_func_clist_h.     " &CLISTH
         gv_show_char = gc_false.
         gv_show_ltxt = gc_false.
 
-        "---------------------------------------------------------------
-        " Show Long Text
-        " - If gv_show_char = abap_false  → show operation long texts
-        " - If gv_show_char = abap_true   → show characteristic long texts
-        " (the distinction is handled inside BUILD_DISPLAY)
-        "---------------------------------------------------------------
       WHEN gc_func_ltxt_s.      " &LTXTS
         gv_show_ltxt = gc_true.
 
-        "---------------------------------------------------------------
-        " Hide Long Text
-        "---------------------------------------------------------------
       WHEN gc_func_ltxt_h.      " &LTXTH
         gv_show_ltxt = gc_false.
 
@@ -277,6 +258,8 @@ FORM get_data.
 
     WHERE plko~loekz = ' '        " header not deleted
       AND plko~datuv <= lv_keydat.
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+  DELETE ADJACENT DUPLICATES FROM gt_base COMPARING plnty plnnr plnal vornr merknr.
 
   "-------------------------------------------------------------------*
   " Apply selection-screen filters in ABAP on GT_BASE
@@ -406,25 +389,18 @@ MODULE status_0100 OUTPUT.
 
 ENDMODULE.
 
-*======================================================================*
-*   Helper Forms – PF-STATUS / Title
-*======================================================================*
-
-*======================================================================*
-*   Core logic – Build display & Long text helpers
-*======================================================================*
 
 *&---------------------------------------------------------------------*
 *& Form build_display
 *&---------------------------------------------------------------------*
 FORM build_display.
 
-  DATA: ls_base       TYPE ty_task_base,
-        ls_disp       TYPE ty_task_disp,
-        lv_last_plnty TYPE plko-plnty,
-        lv_last_plnnr TYPE plko-plnnr,
-        lv_last_plnal TYPE plko-plnal,
-        lv_last_vornr TYPE plpo-vornr,
+  DATA: ls_base        TYPE ty_task_base,
+        ls_disp        TYPE ty_task_disp,
+        lv_last_plnty  TYPE plko-plnty,
+        lv_last_plnnr  TYPE plko-plnnr,
+        lv_last_plnal  TYPE plko-plnal,
+        lv_last_vornr  TYPE plpo-vornr,
         lv_last_merknr TYPE plmk-merknr.
 
   CLEAR gt_display.
@@ -530,11 +506,11 @@ FORM adjust_display_fields_by_state.
         "PMETHODE stays, per FDS
       ENDIF.
 
-    "-------------------------------------------------------------*
-    " B) Show Char = Yes, Show Long Text = No
-    "    → Operation + characteristic rows, no long text
-    "    → Keep Insp#, Description, Method
-    "-------------------------------------------------------------*
+      "-------------------------------------------------------------*
+      " B) Show Char = Yes, Show Long Text = No
+      "    → Operation + characteristic rows, no long text
+      "    → Keep Insp#, Description, Method
+      "-------------------------------------------------------------*
     ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
 
       "No long text in this mode
@@ -542,12 +518,12 @@ FORM adjust_display_fields_by_state.
              <ls_disp>-op_ltxt,
              <ls_disp>-char_ltxt.
 
-    "-------------------------------------------------------------*
-    " C) Show Char = No, Show Long Text = Yes
-    "    → Operation rows + operation long-text rows
-    "    → FK + OP_LTXT visible
-    "    → No characteristic info at all
-    "-------------------------------------------------------------*
+      "-------------------------------------------------------------*
+      " C) Show Char = No, Show Long Text = Yes
+      "    → Operation rows + operation long-text rows
+      "    → FK + OP_LTXT visible
+      "    → No characteristic info at all
+      "-------------------------------------------------------------*
     ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
 
       CLEAR: <ls_disp>-merknr,       "Insp#
@@ -557,11 +533,11 @@ FORM adjust_display_fields_by_state.
 
       "TDFORMAT + OP_LTXT stay filled for op long-text rows
 
-    "-------------------------------------------------------------*
-    " D) Show Char = Yes, Show Long Text = Yes
-    "    → Operation + characteristic rows + characteristic long text
-    "    → OP long text is not generated in this mode
-    "-------------------------------------------------------------*
+      "-------------------------------------------------------------*
+      " D) Show Char = Yes, Show Long Text = Yes
+      "    → Operation + characteristic rows + characteristic long text
+      "    → OP long text is not generated in this mode
+      "-------------------------------------------------------------*
     ELSE.
       "No additional clearing needed.
       "APPEND_CHAR_LONGTEXT already clears OP_LTXT for char rows.
@@ -573,7 +549,7 @@ ENDFORM.
 
 
 *---------------------------------------------------------------------*
-* Display ALV – aligned to FDS column order & names
+* Display ALV
 *---------------------------------------------------------------------*
 FORM display_alv.
 
@@ -681,18 +657,18 @@ FORM display_alv.
         "-----------------------------------------------------------*
         " FDS column order
         "-----------------------------------------------------------*
-        PERFORM set_position USING 'PLNNR'      1.   "Group
-        PERFORM set_position USING 'PLNAL'      2.   "Counter
-        PERFORM set_position USING 'WERKS'      3.   "Plant
-        PERFORM set_position USING 'VORNR'      4.   "Operation
-        PERFORM set_position USING 'ARBPL_O'    5.   "WC
-        PERFORM set_position USING 'ARBEI'      6.   "Work
-        PERFORM set_position USING 'KURZT_CHAR' 7.   "Description
-        PERFORM set_position USING 'PMETHODE'   8.   "Insp. Method
-        PERFORM set_position USING 'MERKNR'     9.   "Insp#
-        PERFORM set_position USING 'TDFORMAT'  10.   "FK
-        PERFORM set_position USING 'OP_LTXT'   11.   "Op Long Text
-        PERFORM set_position USING 'CHAR_LTXT' 12.   "Char Long Text
+          PERFORM set_position USING 'PLNNR'      1.   "Group
+          PERFORM set_position USING 'PLNAL'      2.   "Counter
+          PERFORM set_position USING 'WERKS'      3.   "Plant
+          PERFORM set_position USING 'VORNR'      4.   "Operation
+          PERFORM set_position USING 'ARBPL_O'    5.   "WC
+          PERFORM set_position USING 'ARBEI'      6.   "Work
+          PERFORM set_position USING 'KURZT_CHAR' 7.   "Description
+          PERFORM set_position USING 'PMETHODE'   8.   "Insp. Method
+          PERFORM set_position USING 'MERKNR'     9.   "Insp#
+          PERFORM set_position USING 'TDFORMAT'  10.   "FK
+          PERFORM set_position USING 'OP_LTXT'   11.   "Op Long Text
+          PERFORM set_position USING 'CHAR_LTXT' 12.   "Char Long Text
 
         "-----------------------------------------------------------*
         " Column texts – FDS-friendly captions
@@ -796,7 +772,7 @@ FORM display_alv.
         " Display settings
         lo_disp = lo_alv->get_display_settings( ).
         lo_disp->set_striped_pattern( abap_true ).
-        lo_disp->set_list_header( 'Valid Task Lists' ).
+        lo_disp->set_list_header( 'Maintenance Task List Report' ).
 
         " Layout
         lo_layout = lo_alv->get_layout( ).
