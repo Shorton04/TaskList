@@ -1,4 +1,39 @@
-CLEAR gt_final.
-  REFRESH gt_final.
-  CLEAR gt_alv_disp.
-  REFRESH gt_alv_disp.
+  "---------------------------------------------------------*
+  " 1) Operation header row
+  "    - Always once per operation when:
+  "        * Characteristics are hidden  OR
+  "        * Operation has NO characteristics
+  "---------------------------------------------------------*
+  IF     ls_base-plnty <> lv_last_plnty
+     OR  ls_base-plnnr <> lv_last_plnnr
+     OR  ls_base-plnal <> lv_last_plnal
+     OR  ls_base-vornr <> lv_last_vornr.
+
+    " Show operation row only if:
+    "   - we are in "no char" mode, OR
+    "   - this operation has no characteristic (MERKNR initial)
+    IF gv_show_char = gc_false
+       OR ls_base-merknr IS INITIAL.
+
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+      ls_disp-row_kind = 'O'.
+      APPEND ls_disp TO gt_display.
+
+      " In LT-only mode, add operation long text rows
+      IF gv_show_char = gc_false
+         AND gv_show_ltxt = gc_true.
+        PERFORM append_op_longtext USING ls_base.
+      ENDIF.
+
+    ENDIF.
+
+    " Reset "last characteristic" for this new operation
+    CLEAR lv_last_merknr.
+
+    lv_last_plnty = ls_base-plnty.
+    lv_last_plnnr = ls_base-plnnr.
+    lv_last_plnal = ls_base-plnal.
+    lv_last_vornr = ls_base-vornr.
+
+  ENDIF.
