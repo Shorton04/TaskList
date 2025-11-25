@@ -51,6 +51,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
     PERFORM build_display.
     PERFORM set_pfstatus_from_state.
     PERFORM set_title_from_state.
+    PERFORM set_column_visibility_by_state.
 
     IF lo_alv IS BOUND.
       lo_alv->refresh( ).
@@ -497,9 +498,62 @@ FORM build_display.
     ENDIF.
 
   ENDLOOP.
-
+  PERFORM adjust_display_fields_by_state.
 ENDFORM.
 
+FORM adjust_display_fields_by_state.
+
+  FIELD-SYMBOLS: <ls_disp> TYPE ty_task_disp.
+
+  LOOP AT gt_display ASSIGNING <ls_disp>.
+
+    "-------------------------------------------------------------*
+    " 1) Show Char = No, Show Long Text = No
+    "    → Operations only, Insp# + Description blank on op rows
+    "-------------------------------------------------------------*
+    IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+
+      IF <ls_disp>-row_kind = 'O'.
+        " Insp# + Description cleared, Method kept (per FDS)
+        CLEAR: <ls_disp>-merknr,
+               <ls_disp>-kurzt_char.
+      ENDIF.
+
+      "-------------------------------------------------------------*
+      " 2) Show Char = No, Show Long Text = Yes
+      "    → Operation rows + OP long texts, but
+      "      Insp#, Description, Method must all be blank
+      "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+      IF <ls_disp>-row_kind = 'O'
+      OR <ls_disp>-row_kind = 'L'.   "op long-text rows
+        CLEAR: <ls_disp>-merknr,
+               <ls_disp>-kurzt_char,
+               <ls_disp>-pmethode.
+      ENDIF.
+
+      "-------------------------------------------------------------*
+      " 3) Show Char = Yes, Show Long Text = No
+      "    → Operation + characteristic rows, no long text
+      "       (keep current values)
+      "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+      " No changes on data level
+
+      "-------------------------------------------------------------*
+      " 4) Show Char = Yes, Show Long Text = Yes
+      "    → Operation + char rows + char long text
+      "       (keep current values)
+      "-------------------------------------------------------------*
+    ELSE.
+      " No changes
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
 
 *---------------------------------------------------------------------*
 * Display ALV – aligned to FDS column order & names
@@ -584,7 +638,6 @@ FORM display_alv.
         PERFORM hide_column USING 'LOEKZ_O'.
 
         " Characteristic to hide (keep KURZT_CHAR, PMETHODE)
-        PERFORM hide_column USING 'MERKNR'.
         PERFORM hide_column USING 'VERWMERKM'.
         PERFORM hide_column USING 'LTEXTKZ'.
         PERFORM hide_column USING 'TOLERANZUN'.
@@ -633,12 +686,13 @@ FORM display_alv.
         PERFORM set_position USING 'WERKS'      3.
         PERFORM set_position USING 'VORNR'      4.
         PERFORM set_position USING 'TDFORMAT'   5.
-        PERFORM set_position USING 'OP_LTXT'    6.  " or TDLINE, if used
+        PERFORM set_position USING 'OP_LTXT'    6.
         PERFORM set_position USING 'ARBPL_O'    7.
         PERFORM set_position USING 'ARBEI'      8.
-        PERFORM set_position USING 'KURZT_CHAR' 9.
-        PERFORM set_position USING 'PMETHODE'  10.
-        PERFORM set_position USING 'CHAR_LTXT' 11.
+        PERFORM set_position USING 'MERKNR'     9.
+        PERFORM set_position USING 'KURZT_CHAR'10.
+        PERFORM set_position USING 'PMETHODE'  11.
+        PERFORM set_position USING 'CHAR_LTXT' 12.
 
         "-----------------------------------------------------------*
         " Column texts – FDS-friendly captions
@@ -724,6 +778,14 @@ FORM display_alv.
         ENDTRY.
 
         TRY.
+            lo_column ?= lo_columns->get_column( |MERKNR| ).
+            lo_column->set_short_text(  |Insp Meth| ).
+            lo_column->set_medium_text( |Inspection Method| ).
+            lo_column->set_long_text(   |Inspection Method| ).
+          CATCH cx_salv_not_found.
+        ENDTRY.
+
+        TRY.
             lo_column ?= lo_columns->get_column( 'CHAR_LTXT' ).
             lo_column->set_short_text(  |Char Long Text| ).
             lo_column->set_medium_text( |Characteristic Long Text| ).
@@ -755,6 +817,7 @@ FORM display_alv.
         lo_alv->refresh( ).
       ENDIF.
 
+      PERFORM set_column_visibility_by_state.
       PERFORM set_pfstatus_from_state.
       lo_alv->display( ).
 
@@ -927,6 +990,7 @@ FORM toggle_char.
   PERFORM build_display.
   PERFORM set_pfstatus_from_state.
   PERFORM set_title_from_state.
+  PERFORM set_column_visibility_by_state.
 
   IF lo_alv IS BOUND.
     lo_alv->refresh( ).
@@ -948,6 +1012,7 @@ FORM toggle_ltxt.
   PERFORM build_display.
   PERFORM set_pfstatus_from_state.
   PERFORM set_title_from_state.
+  PERFORM set_column_visibility_by_state.
 
   IF lo_alv IS BOUND.
     lo_alv->refresh( ).
@@ -965,6 +1030,7 @@ MODULE user_command_0100 INPUT.
 
     WHEN 'REFRESH'.
       PERFORM build_display.
+      PERFORM set_column_visibility_by_state.
       IF lo_alv IS BOUND.
         lo_alv->refresh( ).
       ENDIF.
@@ -1001,5 +1067,72 @@ FORM set_position USING pv_col TYPE lvc_fname
     CATCH cx_salv_not_found.
       " Ignore if column does not exist
   ENDTRY.
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* Helper: set column technical flag (visible / hidden)
+*---------------------------------------------------------------------*
+FORM set_column_technical USING pv_col  TYPE lvc_fname
+                                pv_tech TYPE abap_bool.
+
+  DATA: lo_col TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  " Ensure we have the latest columns handle
+  lo_columns = lo_alv->get_columns( ).
+
+  TRY.
+      lo_col ?= lo_columns->get_column( pv_col ).
+      lo_col->set_technical( pv_tech ).
+    CATCH cx_salv_not_found.
+      " Ignore if column not in structure
+  ENDTRY.
+
+ENDFORM.
+
+
+FORM set_column_visibility_by_state.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  " Start from all three visible
+  PERFORM set_column_technical USING 'TDFORMAT' abap_false.
+  PERFORM set_column_technical USING 'OP_LTXT'  abap_false.
+  PERFORM set_column_technical USING 'CHAR_LTXT' abap_false.
+
+  " Now apply the 4 combinations
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+
+    " A) No char, no long text
+    PERFORM set_column_technical USING 'TDFORMAT' abap_true.
+    PERFORM set_column_technical USING 'OP_LTXT'  abap_true.
+    PERFORM set_column_technical USING 'CHAR_LTXT' abap_true.
+
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+    " B) Char only, no long text
+    PERFORM set_column_technical USING 'TDFORMAT' abap_true.
+    PERFORM set_column_technical USING 'OP_LTXT'  abap_true.
+    PERFORM set_column_technical USING 'CHAR_LTXT' abap_true.
+
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    " C) Op long text only
+    "    → FK + OP_LTXT visible, CHAR_LTXT hidden
+    PERFORM set_column_technical USING 'CHAR_LTXT' abap_true.
+
+  ELSE.
+
+    " D) Char + char long text
+    "    → FK + CHAR_LTXT visible, OP_LTXT hidden
+    PERFORM set_column_technical USING 'OP_LTXT' abap_true.
+
+  ENDIF.
 
 ENDFORM.
