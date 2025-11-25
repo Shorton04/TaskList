@@ -83,48 +83,16 @@ FORM set_pfstatus_from_state.
 
   DATA lv_pf TYPE sypfkey.
 
-  "-----------------------------------------------------------*
-  " Decide which PF-STATUS to use based on current state
-  "  gv_show_char = FALSE / TRUE
-  "  gv_show_ltxt = FALSE / TRUE
-  "-----------------------------------------------------------*
   IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
-
-    " Operations only, no long text
-    " -> Buttons should be:
-    "    - Show Characteristics (&CLISTS)
-    "    - Show Long Text      (&LTXTS)
     lv_pf = 'ZSALV_BOTH_HIDE'.
-
   ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-
-    " Operations + long text
-    " -> Buttons should be:
-    "    - Show Characteristics (&CLISTS)
-    "    - Hide Long Text       (&LTXTH)
     lv_pf = 'ZSALV_LTXT_SHOW'.
-
   ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-
-    " Characteristics visible, no long text
-    " -> Buttons should be:
-    "    - Hide Characteristics (&CLISTH)
-    "    - Show Long Text       (&LTXTS)
     lv_pf = 'ZSALV_CLIST_ONLY'.
-
-  ELSE. " gv_show_char = TRUE AND gv_show_ltxt = TRUE
-
-    " Characteristics + long text
-    " -> Buttons should be:
-    "    - Hide Characteristics (&CLISTH)
-    "    - Hide Long Text       (&LTXTH)
+  ELSE.
     lv_pf = 'ZSALV_CLIST_LTXT'.
-
   ENDIF.
 
-  "-----------------------------------------------------------*
-  " Apply PF-STATUS to SALV
-  "-----------------------------------------------------------*
   IF lo_alv IS BOUND.
     lo_alv->set_screen_status(
       pfstatus = lv_pf
@@ -901,22 +869,22 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
 
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      client   = sy-mandt
-      id       = 'QM'
-      language = sy-langu
-      name     = lv_name
-      object   = 'QSS'
+      client                  = sy-mandt
+      id                      = 'QM'
+      language                = sy-langu
+      name                    = lv_name
+      object                  = 'QSS'
     TABLES
-      lines    = lt_lines
+      lines                   = lt_lines
     EXCEPTIONS
-      id                    = 1
-      language              = 2
-      name                  = 3
-      not_found             = 4
-      object                = 5
-      reference_check       = 6
+      id                      = 1
+      language                = 2
+      name                    = 3
+      not_found               = 4
+      object                  = 5
+      reference_check         = 6
       wrong_access_to_archive = 7
-      OTHERS                = 8.
+      OTHERS                  = 8.
 
   IF sy-subrc <> 0 OR lt_lines IS INITIAL.
     RETURN.
