@@ -1,71 +1,75 @@
-FORM set_column_visibility_by_state.
+FORM adjust_display_fields_by_state.
 
-  DATA lo_columns TYPE REF TO cl_salv_columns_table.
-  DATA lo_col     TYPE REF TO cl_salv_column_table.
+  FIELD-SYMBOLS: <ls_disp> TYPE ty_task_disp.
 
-  IF lo_alv IS INITIAL.
-    RETURN.
-  ENDIF.
+  LOOP AT gt_display ASSIGNING <ls_disp>.
 
-  lo_columns = lo_alv->get_columns( ).
+    "-------------------------------------------------------------*
+    " A) Show Char = No, Show Long Text = No
+    "    → Operations only
+    "-------------------------------------------------------------*
+    IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
-  " Helper macro: show column
-  DEFINE show_col.
-    TRY.
-        lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_technical( abap_false ).
-        lo_col->set_visible(   abap_true  ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
+      "No long-text columns in this mode
+      CLEAR: <ls_disp>-tdformat,
+             <ls_disp>-op_ltxt,
+             <ls_disp>-char_ltxt.
 
-  " Helper macro: hide column
-  DEFINE hide_col.
-    TRY.
-        lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_technical( abap_true ).
-        lo_col->set_visible(   abap_false ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
+      "Insp# + Description cleared on op rows
+      IF <ls_disp>-row_kind = 'O'.
+        CLEAR: <ls_disp>-merknr,
+               <ls_disp>-kurzt_char.
+        "PMETHODE stays (per FDS)
+      ENDIF.
 
+    "-------------------------------------------------------------*
+    " B) Show Char = Yes, Show Long Text = No
+    "    → Operation + characteristic rows, no long text at all
+    "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
 
-  "==========================
-  " CASE A — No Char, No LT
-  "==========================
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+      CLEAR: <ls_disp>-tdformat,
+             <ls_disp>-op_ltxt,
+             <ls_disp>-char_ltxt.
 
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
+    "-------------------------------------------------------------*
+    " C) Show Char = No, Show Long Text = Yes
+    "    → Operation rows + operation long-text rows
+    "       FK + OP_LTXT only, no characteristic info
+    "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
 
-  "==========================
-  " CASE B — Char only
-  "==========================
-  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+      CLEAR: <ls_disp>-merknr,
+             <ls_disp>-kurzt_char,
+             <ls_disp>-pmethode,
+             <ls_disp>-char_ltxt.
+      "TDFORMAT + OP_LTXT stay filled for long-text rows
 
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
+    "-------------------------------------------------------------*
+    " D) Show Char = Yes, Show Long Text = Yes
+    "    → Operation + characteristic rows + characteristic LT rows
+    "       Header rows: Insp#/Desc/Method only
+    "       LT rows:     FK + Char Long Text only
+    "-------------------------------------------------------------*
+    ELSE.  "gv_show_char = TRUE AND gv_show_ltxt = TRUE
 
-  "==========================
-  " CASE C — LT only
-  "==========================
-  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+      IF <ls_disp>-row_kind = 'L'.
+        "Characteristic long-text row
+        "→ show only FK + CHAR_LTXT
+        CLEAR: <ls_disp>-merknr,
+               <ls_disp>-kurzt_char,
+               <ls_disp>-pmethode,
+               <ls_disp>-op_ltxt.
+      ELSE.
+        "Operation or characteristic header row
+        "→ no long-text columns here
+        CLEAR: <ls_disp>-tdformat,
+               <ls_disp>-op_ltxt,
+               <ls_disp>-char_ltxt.
+      ENDIF.
 
-    show_col 'TDFORMAT'.
-    show_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
+    ENDIF.
 
-  "==========================
-  " CASE D — Char + LT
-  "==========================
-  ELSE.
-
-    show_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    show_col 'CHAR_LTXT'.
-
-  ENDIF.
+  ENDLOOP.
 
 ENDFORM.
