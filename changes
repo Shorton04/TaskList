@@ -1,39 +1,63 @@
-  "---------------------------------------------------------*
-  " 1) Operation header row
-  "    - Always once per operation when:
-  "        * Characteristics are hidden  OR
-  "        * Operation has NO characteristics
-  "---------------------------------------------------------*
-  IF     ls_base-plnty <> lv_last_plnty
-     OR  ls_base-plnnr <> lv_last_plnnr
-     OR  ls_base-plnal <> lv_last_plnal
-     OR  ls_base-vornr <> lv_last_vornr.
+*&---------------------------------------------------------------------*
+*& Form CLEANUP_DUPLICATES
+*&  - Remove duplicate header rows when Long Text is active
+*&---------------------------------------------------------------------*
+FORM cleanup_duplicates.
 
-    " Show operation row only if:
-    "   - we are in "no char" mode, OR
-    "   - this operation has no characteristic (MERKNR initial)
-    IF gv_show_char = gc_false
-       OR ls_base-merknr IS INITIAL.
+  FIELD-SYMBOLS: <ls_disp> TYPE ty_task_disp.
 
-      CLEAR ls_disp.
-      MOVE-CORRESPONDING ls_base TO ls_disp.
-      ls_disp-row_kind = 'O'.
-      APPEND ls_disp TO gt_display.
+  DATA: lt_op    TYPE STANDARD TABLE OF ty_task_disp,
+        lt_char  TYPE STANDARD TABLE OF ty_task_disp,
+        lt_ltxt  TYPE STANDARD TABLE OF ty_task_disp.
 
-      " In LT-only mode, add operation long text rows
-      IF gv_show_char = gc_false
-         AND gv_show_ltxt = gc_true.
-        PERFORM append_op_longtext USING ls_base.
-      ENDIF.
+  " Only needed when Long Text is shown
+  IF gv_show_ltxt = gc_false.
+    RETURN.
+  ENDIF.
 
-    ENDIF.
+  " Split GT_DISPLAY into O / C / L buckets
+  LOOP AT gt_display ASSIGNING <ls_disp>.
+    CASE <ls_disp>-row_kind.
+      WHEN 'O'.
+        APPEND <ls_disp> TO lt_op.
+      WHEN 'C'.
+        APPEND <ls_disp> TO lt_char.
+      WHEN 'L'.
+        APPEND <ls_disp> TO lt_ltxt.
+      WHEN OTHERS.
+        " Treat any unknown kind like a header row
+        APPEND <ls_disp> TO lt_op.
+    ENDCASE.
+  ENDLOOP.
 
-    " Reset "last characteristic" for this new operation
-    CLEAR lv_last_merknr.
+  CLEAR gt_display.
 
-    lv_last_plnty = ls_base-plnty.
-    lv_last_plnnr = ls_base-plnnr.
-    lv_last_plnal = ls_base-plnal.
-    lv_last_vornr = ls_base-vornr.
+  "-----------------------------------------------------------*
+  " Case C: Hide Char / Show LT
+  "   → one operation row per op + all LT rows
+  "-----------------------------------------------------------*
+  IF gv_show_char = gc_false.
+
+    SORT lt_op BY plnty plnnr plnal vornr.
+    DELETE ADJACENT DUPLICATES FROM lt_op
+      COMPARING plnty plnnr plnal vornr.
+
+    APPEND LINES OF lt_op   TO gt_display.
+    APPEND LINES OF lt_ltxt TO gt_display.
+
+  "-----------------------------------------------------------*
+  " Case D: Show Char / Show LT
+  "   → one char row per characteristic + all LT rows
+  "-----------------------------------------------------------*
+  ELSE.
+
+    SORT lt_char BY plnty plnnr plnal vornr merknr.
+    DELETE ADJACENT DUPLICATES FROM lt_char
+      COMPARING plnty plnnr plnal vornr merknr.
+
+    APPEND LINES OF lt_char TO gt_display.
+    APPEND LINES OF lt_ltxt TO gt_display.
 
   ENDIF.
+
+ENDFORM.
