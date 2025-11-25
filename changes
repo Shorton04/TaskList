@@ -1,83 +1,29 @@
-FORM build_display.
+  "-----------------------------------------------------------*
+  " Remove duplicate header rows (O/C), keep all long-text rows (L)
+  "-----------------------------------------------------------*
+  DATA: lt_header TYPE STANDARD TABLE OF ty_task_disp,
+        lt_ltxt   TYPE STANDARD TABLE OF ty_task_disp.
 
-  DATA: ls_base       TYPE ty_task_base,
-        ls_disp       TYPE ty_task_disp,
-        lv_last_plnty TYPE plko-plnty,
-        lv_last_plnnr TYPE plko-plnnr,
-        lv_last_plnal TYPE plko-plnal,
-        lv_last_vornr TYPE plpo-vornr,
-        lv_last_merknr TYPE plmk-merknr.
+  CLEAR: lt_header, lt_ltxt.
 
-  CLEAR gt_display.
-  CLEAR: lv_last_plnty,
-         lv_last_plnnr,
-         lv_last_plnal,
-         lv_last_vornr,
-         lv_last_merknr.
-
-  "Always in a stable order: one op, then its chars
-  SORT gt_base BY plnty plnnr plnal vornr merknr.
-
-  LOOP AT gt_base INTO ls_base.
-
-    "---------------------------------------------------------*
-    " 1) Operation header row – exactly ONCE per operation
-    "---------------------------------------------------------*
-    IF     ls_base-plnty <> lv_last_plnty
-       OR  ls_base-plnnr <> lv_last_plnnr
-       OR  ls_base-plnal <> lv_last_plnal
-       OR  ls_base-vornr <> lv_last_vornr.
-
-      CLEAR ls_disp.
-      MOVE-CORRESPONDING ls_base TO ls_disp.
-      ls_disp-row_kind = 'O'.
-      APPEND ls_disp TO gt_display.
-
-      "In LT-only mode, add operation long text rows
-      IF gv_show_char = gc_false
-         AND gv_show_ltxt = gc_true.
-        PERFORM append_op_longtext USING ls_base.
-      ENDIF.
-
-      "Reset "last characteristic" for this operation
-      CLEAR lv_last_merknr.
-
-      lv_last_plnty = ls_base-plnty.
-      lv_last_plnnr = ls_base-plnnr.
-      lv_last_plnal = ls_base-plnal.
-      lv_last_vornr = ls_base-vornr.
-
+  LOOP AT gt_display INTO gs_display.
+    IF gs_display-row_kind = 'L'.
+      APPEND gs_display TO lt_ltxt.     " keep ALL long-text lines
+    ELSE.
+      APPEND gs_display TO lt_header.   " header rows (O or C)
     ENDIF.
-
-    "---------------------------------------------------------*
-    " 2) Characteristic header + characteristic long text
-    "    Only when "Show Characteristics" = X
-    "---------------------------------------------------------*
-    IF gv_show_char = gc_true
-       AND ls_base-merknr IS NOT INITIAL.
-
-      "Header row: only once per MERKNR
-      IF ls_base-merknr <> lv_last_merknr.
-
-        CLEAR ls_disp.
-        MOVE-CORRESPONDING ls_base TO ls_disp.
-        ls_disp-row_kind = 'C'.
-        APPEND ls_disp TO gt_display.
-
-        lv_last_merknr = ls_base-merknr.
-
-      ENDIF.
-
-      "Characteristic long text rows only in Char+LT mode
-      IF gv_show_ltxt = gc_true.
-        PERFORM append_char_longtext USING ls_base.
-      ENDIF.
-
-    ENDIF.
-
   ENDLOOP.
 
-  "Normalize fields per mode (clear columns etc.)
-  PERFORM adjust_display_fields_by_state.
+  " One header per key: Group/Cntr/Plant/Op/Insp#
+  SORT lt_header BY plnty plnnr plnal vornr merknr row_kind.
+  DELETE ADJACENT DUPLICATES FROM lt_header
+    COMPARING plnty plnnr plnal vornr merknr row_kind.
 
-ENDFORM.
+  " Rebuild GT_DISPLAY: first headers, then LT rows
+  CLEAR gt_display.
+  APPEND LINES OF lt_header TO gt_display.
+  APPEND LINES OF lt_ltxt   TO gt_display.
+
+
+
+
