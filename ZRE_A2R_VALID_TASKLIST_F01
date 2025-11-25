@@ -254,13 +254,13 @@ FORM get_data.
         ON  plpo~plnty = plas~plnty
         AND plpo~plnnr = plas~plnnr
         AND plpo~plnkn = plas~plnkn
-        AND plpo~zaehl = plas~zaehl
+        "AND plpo~zaehl = plas~zaehl
         AND plpo~loekz = ' '
       LEFT OUTER JOIN plmk
         ON  plmk~plnty = plpo~plnty
         AND plmk~plnnr = plpo~plnnr
         AND plmk~plnkn = plpo~plnkn
-        AND plmk~zaehl = plpo~zaehl
+        "AND plmk~zaehl = plpo~zaehl
         AND plmk~loekz = ' '
       LEFT OUTER JOIN tapl
         ON  tapl~plnty = plko~plnty
@@ -419,88 +419,92 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 FORM build_display.
 
-  DATA: lv_last_plnty TYPE plko-plnty,
+  DATA: ls_base       TYPE ty_task_base,
+        ls_disp       TYPE ty_task_disp,
+        lv_last_plnty TYPE plko-plnty,
         lv_last_plnnr TYPE plko-plnnr,
         lv_last_plnal TYPE plko-plnal,
-        lv_last_vornr TYPE plpo-vornr.
+        lv_last_vornr TYPE plpo-vornr,
+        lv_last_merknr TYPE plmk-merknr.
 
   CLEAR gt_display.
-  CLEAR gs_display.
-
   CLEAR: lv_last_plnty,
          lv_last_plnnr,
          lv_last_plnal,
-         lv_last_vornr.
+         lv_last_vornr,
+         lv_last_merknr.
 
-  " Make sure we loop in a stable key order
+  "Always in a stable order: one op, then its chars
   SORT gt_base BY plnty plnnr plnal vornr merknr.
 
-  LOOP AT gt_base INTO gs_base.
+  LOOP AT gt_base INTO ls_base.
 
-    "-----------------------------------------------------------*
-    " 1) Operation row – only when operation key changes
-    "-----------------------------------------------------------*
-    IF     gs_base-plnty <> lv_last_plnty
-       OR  gs_base-plnnr <> lv_last_plnnr
-       OR  gs_base-plnal <> lv_last_plnal
-       OR  gs_base-vornr <> lv_last_vornr.
+    "---------------------------------------------------------*
+    " 1) Operation header row – exactly ONCE per operation
+    "---------------------------------------------------------*
+    IF     ls_base-plnty <> lv_last_plnty
+       OR  ls_base-plnnr <> lv_last_plnnr
+       OR  ls_base-plnal <> lv_last_plnal
+       OR  ls_base-vornr <> lv_last_vornr.
 
-      CLEAR gs_display.
-      MOVE-CORRESPONDING gs_base TO gs_display.
-      gs_display-row_kind = 'O'.              " Operation row
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+      ls_disp-row_kind = 'O'.
+      APPEND ls_disp TO gt_display.
 
-      PERFORM derive_ci_fields
-        USING    gs_base-steuerkz
-        CHANGING gs_display.
-
-      APPEND gs_display TO gt_display.
-
-      " Operation long text only when:
-      "   - Long Text = ON
-      "   - Show Characteristics = OFF (level = Operations per FDS)
-      IF gv_show_ltxt = gc_true
-         AND gv_show_char <> gc_true.
-        PERFORM append_op_longtext USING gs_base.
+      "In LT-only mode, add operation long text rows
+      IF gv_show_char = gc_false
+         AND gv_show_ltxt = gc_true.
+        PERFORM append_op_longtext USING ls_base.
       ENDIF.
 
-      " Remember last operation key
-      lv_last_plnty = gs_base-plnty.
-      lv_last_plnnr = gs_base-plnnr.
-      lv_last_plnal = gs_base-plnal.
-      lv_last_vornr = gs_base-vornr.
+      "Reset "last characteristic" for this operation
+      CLEAR lv_last_merknr.
+
+      lv_last_plnty = ls_base-plnty.
+      lv_last_plnnr = ls_base-plnnr.
+      lv_last_plnal = ls_base-plnal.
+      lv_last_vornr = ls_base-vornr.
 
     ENDIF.
 
-    "-----------------------------------------------------------*
-    " 2) Characteristic row + char long text (under operation)
-    "-----------------------------------------------------------*
+    "---------------------------------------------------------*
+    " 2) Characteristic header + characteristic long text
+    "    Only when "Show Characteristics" = X
+    "---------------------------------------------------------*
     IF gv_show_char = gc_true
-       AND gs_base-merknr IS NOT INITIAL.
+       AND ls_base-merknr IS NOT INITIAL.
 
-      " Characteristic “header” row
-      CLEAR gs_display.
-      MOVE-CORRESPONDING gs_base TO gs_display.
-      gs_display-row_kind = 'C'.
+      "Header row: only once per MERKNR
+      IF ls_base-merknr <> lv_last_merknr.
 
-      PERFORM derive_ci_fields
-        USING    gs_base-steuerkz
-        CHANGING gs_display.
+        CLEAR ls_disp.
+        MOVE-CORRESPONDING ls_base TO ls_disp.
+        ls_disp-row_kind = 'C'.
+        APPEND ls_disp TO gt_display.
 
-      APPEND gs_display TO gt_display.
+        lv_last_merknr = ls_base-merknr.
 
-      " Characteristic long text only when:
-      "   - Show Characteristics = ON
-      "   - Long Text = ON (level = Characteristics per FDS)
+      ENDIF.
+
+      "Characteristic long text rows only in Char+LT mode
       IF gv_show_ltxt = gc_true.
-        PERFORM append_char_longtext USING gs_base.
+        PERFORM append_char_longtext USING ls_base.
       ENDIF.
 
     ENDIF.
 
   ENDLOOP.
+
+  "Normalize fields per mode (clear columns etc.)
   PERFORM adjust_display_fields_by_state.
+
 ENDFORM.
 
+
+*&---------------------------------------------------------------------*
+*& Form ADJUST_DISPLAY_FIELDS_BY_STATE
+*&---------------------------------------------------------------------*
 FORM adjust_display_fields_by_state.
 
   FIELD-SYMBOLS: <ls_disp> TYPE ty_task_disp.
@@ -508,52 +512,65 @@ FORM adjust_display_fields_by_state.
   LOOP AT gt_display ASSIGNING <ls_disp>.
 
     "-------------------------------------------------------------*
-    " 1) Show Char = No, Show Long Text = No
-    "    → Operations only, Insp# + Description blank on op rows
+    " A) Show Char = No, Show Long Text = No
+    "    → Operations only
+    "    → Insp# + Description cleared on op rows
+    "    → No long text fields used
     "-------------------------------------------------------------*
     IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
+      "Clear any long-text leftovers (even if columns are hidden)
+      CLEAR: <ls_disp>-tdformat,
+             <ls_disp>-op_ltxt,
+             <ls_disp>-char_ltxt.
+
       IF <ls_disp>-row_kind = 'O'.
-        " Insp# + Description cleared, Method kept (per FDS)
-        CLEAR: <ls_disp>-merknr,
-               <ls_disp>-kurzt_char.
+        CLEAR: <ls_disp>-merknr,      "Inspection number
+               <ls_disp>-kurzt_char.  "Inspection description
+        "PMETHODE stays, per FDS
       ENDIF.
 
-      "-------------------------------------------------------------*
-      " 2) Show Char = No, Show Long Text = Yes
-      "    → Operation rows + OP long texts, but
-      "      Insp#, Description, Method must all be blank
-      "-------------------------------------------------------------*
+    "-------------------------------------------------------------*
+    " B) Show Char = Yes, Show Long Text = No
+    "    → Operation + characteristic rows, no long text
+    "    → Keep Insp#, Description, Method
+    "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+      "No long text in this mode
+      CLEAR: <ls_disp>-tdformat,
+             <ls_disp>-op_ltxt,
+             <ls_disp>-char_ltxt.
+
+    "-------------------------------------------------------------*
+    " C) Show Char = No, Show Long Text = Yes
+    "    → Operation rows + operation long-text rows
+    "    → FK + OP_LTXT visible
+    "    → No characteristic info at all
+    "-------------------------------------------------------------*
     ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
 
-      IF <ls_disp>-row_kind = 'O'
-      OR <ls_disp>-row_kind = 'L'.   "op long-text rows
-        CLEAR: <ls_disp>-merknr,
-               <ls_disp>-kurzt_char,
-               <ls_disp>-pmethode.
-      ENDIF.
+      CLEAR: <ls_disp>-merknr,       "Insp#
+             <ls_disp>-kurzt_char,   "Description
+             <ls_disp>-pmethode,     "Method
+             <ls_disp>-char_ltxt.    "Char long text
 
-      "-------------------------------------------------------------*
-      " 3) Show Char = Yes, Show Long Text = No
-      "    → Operation + characteristic rows, no long text
-      "       (keep current values)
-      "-------------------------------------------------------------*
-    ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-      " No changes on data level
+      "TDFORMAT + OP_LTXT stay filled for op long-text rows
 
-      "-------------------------------------------------------------*
-      " 4) Show Char = Yes, Show Long Text = Yes
-      "    → Operation + char rows + char long text
-      "       (keep current values)
-      "-------------------------------------------------------------*
+    "-------------------------------------------------------------*
+    " D) Show Char = Yes, Show Long Text = Yes
+    "    → Operation + characteristic rows + characteristic long text
+    "    → OP long text is not generated in this mode
+    "-------------------------------------------------------------*
     ELSE.
-      " No changes
-
+      "No additional clearing needed.
+      "APPEND_CHAR_LONGTEXT already clears OP_LTXT for char rows.
     ENDIF.
 
   ENDLOOP.
 
 ENDFORM.
+
 
 *---------------------------------------------------------------------*
 * Display ALV – aligned to FDS column order & names
@@ -585,11 +602,8 @@ FORM display_alv.
 
         "-----------------------------------------------------------*
         " Hide columns that are NOT in the FDS visible list
-        "  Visible columns (do NOT hide):
-        "    PLNNR, PLNAL, WERKS, VORNR,
-        "    TDFORMAT, OP_LTXT (or TDLINE), ARBPL_O, ARBEI,
-        "    KURZT_CHAR, PMETHODE, CHAR_LTXT
         "-----------------------------------------------------------*
+
         " Technical
         PERFORM hide_column USING 'ROW_KIND'.
 
@@ -635,9 +649,10 @@ FORM display_alv.
         PERFORM hide_column USING 'EKORG'.
         PERFORM hide_column USING 'EKGRP'.
         PERFORM hide_column USING 'TXTSP_OP'.
+        PERFORM hide_column USING 'TDLINE'.
         PERFORM hide_column USING 'LOEKZ_O'.
 
-        " Characteristic to hide (keep KURZT_CHAR, PMETHODE)
+        " Characteristic to hide (keep MERKNR, KURZT_CHAR, PMETHODE)
         PERFORM hide_column USING 'VERWMERKM'.
         PERFORM hide_column USING 'LTEXTKZ'.
         PERFORM hide_column USING 'TOLERANZUN'.
@@ -663,36 +678,21 @@ FORM display_alv.
         PERFORM hide_column USING 'CI_DOC_REQ'.
         PERFORM hide_column USING 'CI_CATEGORY'.
 
-        " NOTE: Do NOT hide TDFORMAT, OP_LTXT, CHAR_LTXT, TDLINE.
-        " If your structure still uses TDLINE instead of OP_LTXT/CHAR_LTXT,
-        " the hide_column calls above will simply ignore non-existing fields.
-
         "-----------------------------------------------------------*
-        " FDS column order (using columns->set_column_position)
-        "  1  Group              (PLNNR)
-        "  2  Counter            (PLNAL)
-        "  3  Plant              (WERKS)
-        "  4  Operation          (VORNR)
-        "  5  Format Key         (TDFORMAT)
-        "  6  Op Long Text       (OP_LTXT / TDLINE)
-        "  7  Work Center        (ARBPL_O)
-        "  8  Work               (ARBEI)
-        "  9  Insp. Description  (KURZT_CHAR)
-        " 10  Insp. Method       (PMETHODE)
-        " 11  Char Long Text     (CHAR_LTXT)
+        " FDS column order
         "-----------------------------------------------------------*
-        PERFORM set_position USING 'PLNNR'      1.
-        PERFORM set_position USING 'PLNAL'      2.
-        PERFORM set_position USING 'WERKS'      3.
-        PERFORM set_position USING 'VORNR'      4.
-        PERFORM set_position USING 'TDFORMAT'   5.
-        PERFORM set_position USING 'OP_LTXT'    6.
-        PERFORM set_position USING 'ARBPL_O'    7.
-        PERFORM set_position USING 'ARBEI'      8.
-        PERFORM set_position USING 'MERKNR'     9.
-        PERFORM set_position USING 'KURZT_CHAR'10.
-        PERFORM set_position USING 'PMETHODE'  11.
-        PERFORM set_position USING 'CHAR_LTXT' 12.
+        PERFORM set_position USING 'PLNNR'      1.   "Group
+        PERFORM set_position USING 'PLNAL'      2.   "Counter
+        PERFORM set_position USING 'WERKS'      3.   "Plant
+        PERFORM set_position USING 'VORNR'      4.   "Operation
+        PERFORM set_position USING 'ARBPL_O'    5.   "WC
+        PERFORM set_position USING 'ARBEI'      6.   "Work
+        PERFORM set_position USING 'KURZT_CHAR' 7.   "Description
+        PERFORM set_position USING 'PMETHODE'   8.   "Insp. Method
+        PERFORM set_position USING 'MERKNR'     9.   "Insp#
+        PERFORM set_position USING 'TDFORMAT'  10.   "FK
+        PERFORM set_position USING 'OP_LTXT'   11.   "Op Long Text
+        PERFORM set_position USING 'CHAR_LTXT' 12.   "Char Long Text
 
         "-----------------------------------------------------------*
         " Column texts – FDS-friendly captions
@@ -747,7 +747,7 @@ FORM display_alv.
 
         TRY.
             lo_column ?= lo_columns->get_column( 'ARBPL_O' ).
-            lo_column->set_short_text(  |Work Ctr| ).
+            lo_column->set_short_text(  |WC| ).
             lo_column->set_medium_text( |Work Center| ).
             lo_column->set_long_text(   |Work Center| ).
           CATCH cx_salv_not_found.
@@ -755,7 +755,7 @@ FORM display_alv.
 
         TRY.
             lo_column ?= lo_columns->get_column( 'ARBEI' ).
-            lo_column->set_short_text(  |Wrk| ).
+            lo_column->set_short_text(  |Work| ).
             lo_column->set_medium_text( |Work| ).
             lo_column->set_long_text(   |Work| ).
           CATCH cx_salv_not_found.
@@ -763,7 +763,7 @@ FORM display_alv.
 
         TRY.
             lo_column ?= lo_columns->get_column( 'KURZT_CHAR' ).
-            lo_column->set_short_text(  |Insp Desc| ).
+            lo_column->set_short_text(  |Descrip| ).
             lo_column->set_medium_text( |Insp. Description| ).
             lo_column->set_long_text(   |Inspection Description| ).
           CATCH cx_salv_not_found.
@@ -778,10 +778,10 @@ FORM display_alv.
         ENDTRY.
 
         TRY.
-            lo_column ?= lo_columns->get_column( |MERKNR| ).
-            lo_column->set_short_text(  |Insp Meth| ).
-            lo_column->set_medium_text( |Inspection Method| ).
-            lo_column->set_long_text(   |Inspection Method| ).
+            lo_column ?= lo_columns->get_column( 'MERKNR' ).
+            lo_column->set_short_text(  |Insp#| ).
+            lo_column->set_medium_text( |Inspection No.| ).
+            lo_column->set_long_text(   |Inspection Number| ).
           CATCH cx_salv_not_found.
         ENDTRY.
 
@@ -1095,43 +1095,76 @@ FORM set_column_technical USING pv_col  TYPE lvc_fname
 ENDFORM.
 
 
+*&---------------------------------------------------------------------*
+*& Form SET_COLUMN_VISIBILITY_BY_STATE
+*&---------------------------------------------------------------------*
 FORM set_column_visibility_by_state.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
 
   IF lo_alv IS INITIAL.
     RETURN.
   ENDIF.
 
-  " Start from all three visible
-  PERFORM set_column_technical USING 'TDFORMAT' abap_false.
-  PERFORM set_column_technical USING 'OP_LTXT'  abap_false.
-  PERFORM set_column_technical USING 'CHAR_LTXT' abap_false.
+  lo_columns = lo_alv->get_columns( ).
 
-  " Now apply the 4 combinations
+  " Helper macro: show column
+  DEFINE show_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_technical( abap_false ).
+        lo_col->set_visible(   abap_true  ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  " Helper macro: hide column
+  DEFINE hide_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_technical( abap_true ).
+        lo_col->set_visible(   abap_false ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+
+  "==========================
+  " CASE A — No Char, No LT
+  "==========================
   IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
-    " A) No char, no long text
-    PERFORM set_column_technical USING 'TDFORMAT' abap_true.
-    PERFORM set_column_technical USING 'OP_LTXT'  abap_true.
-    PERFORM set_column_technical USING 'CHAR_LTXT' abap_true.
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
 
+    "==========================
+    " CASE B — Char only
+    "==========================
   ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
 
-    " B) Char only, no long text
-    PERFORM set_column_technical USING 'TDFORMAT' abap_true.
-    PERFORM set_column_technical USING 'OP_LTXT'  abap_true.
-    PERFORM set_column_technical USING 'CHAR_LTXT' abap_true.
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
 
+    "==========================
+    " CASE C — LT only
+    "==========================
   ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
 
-    " C) Op long text only
-    "    → FK + OP_LTXT visible, CHAR_LTXT hidden
-    PERFORM set_column_technical USING 'CHAR_LTXT' abap_true.
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
 
+    "==========================
+    " CASE D — Char + LT
+    "==========================
   ELSE.
 
-    " D) Char + char long text
-    "    → FK + CHAR_LTXT visible, OP_LTXT hidden
-    PERFORM set_column_technical USING 'OP_LTXT' abap_true.
+    show_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
 
   ENDIF.
 
