@@ -4,47 +4,61 @@ FORM adjust_display_fields_by_state.
 
   LOOP AT gt_display ASSIGNING <ls_disp>.
 
-    CASE gv_show_char && gv_show_ltxt.
+    "-------------------------------------------------------------*
+    " A) Show Char = No, Show Long Text = No
+    "    → Operations only
+    "    → Insp# + Description cleared on op rows
+    "    → No long text fields used
+    "-------------------------------------------------------------*
+    IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
-      WHEN gc_false && gc_false.
-        "Show Char = No, Show LT = No
-        "Keep only header/operation fields
-        CLEAR: <ls_disp>-tdformat,
-               <ls_disp>-op_ltxt,
-               <ls_disp>-merk_nr,
-               <ls_disp>-kurzt_char,
-               <ls_disp>-pmethode,
-               <ls_disp>-char_ltxt.
+      "Clear any long-text leftovers (even if columns are hidden)
+      CLEAR: <ls_disp>-tdformat,
+             <ls_disp>-op_ltxt,
+             <ls_disp>-char_ltxt.
 
-      WHEN gc_true && gc_false.
-        "Show Char = Yes, Show LT = No
-        "Keep only characteristic fields, no long text at all
-        CLEAR: <ls_disp>-tdformat,
-               <ls_disp>-op_ltxt,
-               <ls_disp>-char_ltxt.
+      IF <ls_disp>-row_kind = 'O'.
+        CLEAR: <ls_disp>-merknr,      "Inspection number
+               <ls_disp>-kurzt_char.  "Inspection description
+        "PMETHODE stays, per FDS
+      ENDIF.
 
-      WHEN gc_false && gc_true.
-        "Show Char = No, Show LT = Yes
-        "We want ONLY operation long text:
-        "FK + OP_LTXT visible, NO characteristic info
-        CLEAR: <ls_disp>-merk_nr,
-               <ls_disp>-kurzt_char,
-               <ls_disp>-pmethode,
-               <ls_disp>-char_ltxt.
+    "-------------------------------------------------------------*
+    " B) Show Char = Yes, Show Long Text = No
+    "    → Operation + characteristic rows, no long text
+    "    → Keep Insp#, Description, Method
+    "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
 
-      WHEN gc_true && gc_true.
-        "Show Char = Yes, Show LT = Yes
-        "Characteristics + their long text.
-        "Operation-long-text rows should *not* show
-        "characteristic info
-        IF <ls_disp>-row_kind = gc_row_op_longtxt.
-          CLEAR: <ls_disp>-merk_nr,
-                 <ls_disp>-kurzt_char,
-                 <ls_disp>-pmethode,
-                 <ls_disp>-char_ltxt.
-        ENDIF.
+      "No long text in this mode
+      CLEAR: <ls_disp>-tdformat,
+             <ls_disp>-op_ltxt,
+             <ls_disp>-char_ltxt.
 
-    ENDCASE.
+    "-------------------------------------------------------------*
+    " C) Show Char = No, Show Long Text = Yes
+    "    → Operation rows + operation long-text rows
+    "    → FK + OP_LTXT visible
+    "    → No characteristic info at all
+    "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+      CLEAR: <ls_disp>-merknr,       "Insp#
+             <ls_disp>-kurzt_char,   "Description
+             <ls_disp>-pmethode,     "Method
+             <ls_disp>-char_ltxt.    "Char long text
+
+      "TDFORMAT + OP_LTXT stay filled for op long-text rows
+
+    "-------------------------------------------------------------*
+    " D) Show Char = Yes, Show Long Text = Yes
+    "    → Operation + characteristic rows + characteristic long text
+    "    → OP long text is not generated in this mode
+    "-------------------------------------------------------------*
+    ELSE.
+      "No additional clearing needed.
+      "APPEND_CHAR_LONGTEXT already clears OP_LTXT for char rows.
+    ENDIF.
 
   ENDLOOP.
 
