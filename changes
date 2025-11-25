@@ -1,120 +1,110 @@
-    "--------------------------------------------------------------*
-    " Control Indicators (STEUERKZ – characters 1..27, FDS)
-    "--------------------------------------------------------------*
-    ci_quant          TYPE c LENGTH 1,  " Char 01 - Quantitative / Qualitative
-    ci_meas_required  TYPE c LENGTH 1,  " Char 02 - Measured values must be recorded
-    ci_attr_ref       TYPE c LENGTH 1,  " Char 03 - Reference to characteristic attribute required
-    ci_ulim_ind       TYPE c LENGTH 1,  " Char 04 - Upper Spec Limit Indicator
-    ci_llim_ind       TYPE c LENGTH 1,  " Char 05 - Lower Spec Limit Indicator
-    ci_chk_tgt        TYPE c LENGTH 1,  " Char 06 - Check Target Value / Tolerance
-    ci_scope          TYPE c LENGTH 1,  " Char 07 - Scope of inspection
-    ci_long_term      TYPE c LENGTH 1,  " Char 08 - Long-term inspection
-    ci_rec_type       TYPE c LENGTH 1,  " Char 09 - Recording type (+/-/*/ )
-    ci_doc_req        TYPE c LENGTH 1,  " Char 10 - Documentation required
-    ci_category       TYPE c LENGTH 1,  " Char 11 - Catalogue attribute category
-    ci_syncro         TYPE c LENGTH 1,  " Char 12 - Synchronization active
-    ci_add_samp_qty   TYPE c LENGTH 1,  " Char 13 - Additional sample quantity
-    ci_destructive    TYPE c LENGTH 1,  " Char 14 - Destructive inspection
-    ci_calc_char      TYPE c LENGTH 1,  " Char 15 - Calculated characteristic
-    ci_samp_proc_req  TYPE c LENGTH 1,  " Char 16 - Sampling procedure required
-    ci_score_scrap    TYPE c LENGTH 1,  " Char 17 - QM score / scrap relevant
-    ci_ci_fixed       TYPE c LENGTH 1,  " Char 18 - Control indicators cannot be changed
-    ci_def_count      TYPE c LENGTH 1,  " Char 19 - Defects recording with count
-    ci_spec_change    TYPE c LENGTH 1,  " Char 20 - Specification change allowed
-    ci_testeq_req     TYPE c LENGTH 1,  " Char 21 - Test equipment required
-    ci_def_auto       TYPE c LENGTH 1,  " Char 22 - Automatic defect recording
-    ci_change_docs    TYPE c LENGTH 1,  " Char 23 - Change documents required
-    ci_spc_char       TYPE c LENGTH 1,  " Char 24 - SPC characteristic
-    ci_print_ind      TYPE c LENGTH 1,  " Char 25 - Print indicator
-    ci_param_char     TYPE c LENGTH 1,  " Char 26 - Parameter characteristic (set)
-    ci_proc_char      TYPE c LENGTH 1,  " Char 27 - Process characteristic
+FORM set_columns_enhanced USING io_columns TYPE REF TO cl_salv_columns_table.
 
+  DATA lo_col TYPE REF TO cl_salv_column_table.
 
+  "--- Hide technical fields
+  DATA lt_hidden TYPE STANDARD TABLE OF lvc_fname WITH EMPTY KEY.
+  APPEND 'ROW_TYPE'        TO lt_hidden.
+  APPEND 'PARENT_PLAN'     TO lt_hidden.
+  APPEND 'ICON'            TO lt_hidden.
+  APPEND 'IS_EXPANDED_OBJ' TO lt_hidden.
+  APPEND 'IS_EXPANDED_TXT' TO lt_hidden.
+  APPEND 'ROW_COLOR'       TO lt_hidden.
+  LOOP AT lt_hidden INTO DATA(lv_hidden).
+    TRY.
+        lo_col ?= io_columns->get_column( lv_hidden ).
+        lo_col->set_technical( abap_true ).
+        lo_col->set_visible( abap_false ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  ENDLOOP.
 
+  "===============================================================
+  "  DISPLAY MODE HANDLING
+  "===============================================================
 
+  "###############################################################
+  "  MODE 1: Show Char = NO | Show LT = NO
+  "###############################################################
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
 
+    "--- hide char columns
+    PERFORM hide_cols USING io_columns 'MERKNR' 'VERWMERKM' 'KURZTEXT'
+                                 'LTEXTKZ' 'TOLERANZUN' 'TOLERANZOB'
+                                 'METHODE' 'STICHPRVER'
+                                 'CHAR_LONGTEXT' 'CHAR_FK'.
 
-*---------------------------------------------------------------------*
-* FORM derive_ci_fields
-*   Map PLMK-STEUERKZ characters into CI_* fields in gs_display
-*---------------------------------------------------------------------*
-FORM derive_ci_fields
-  USING    iv_steuerkz TYPE plmk-steuerkz
-  CHANGING cs_display  TYPE ty_task_disp.
+    "--- hide operation long text
+    PERFORM hide_cols USING io_columns 'OP_LONGTEXT' 'OP_FK'.
 
-  DATA: lv_len TYPE i,
-        lv_str TYPE string.
+    "--- ensure insp#, description visible
+    PERFORM show_cols USING io_columns 'INSP_POINT' 'DESCRIPTION' 'INSP_METHOD'.
 
-  CLEAR: cs_display-ci_quant,
-         cs_display-ci_meas_required,
-         cs_display-ci_attr_ref,
-         cs_display-ci_ulim_ind,
-         cs_display-ci_llim_ind,
-         cs_display-ci_chk_tgt,
-         cs_display-ci_scope,
-         cs_display-ci_long_term,
-         cs_display-ci_rec_type,
-         cs_display-ci_doc_req,
-         cs_display-ci_category,
-         cs_display-ci_syncro,
-         cs_display-ci_add_samp_qty,
-         cs_display-ci_destructive,
-         cs_display-ci_calc_char,
-         cs_display-ci_samp_proc_req,
-         cs_display-ci_score_scrap,
-         cs_display-ci_ci_fixed,
-         cs_display-ci_def_count,
-         cs_display-ci_spec_change,
-         cs_display-ci_testeq_req,
-         cs_display-ci_def_auto,
-         cs_display-ci_change_docs,
-         cs_display-ci_spc_char,
-         cs_display-ci_print_ind,
-         cs_display-ci_param_char,
-         cs_display-ci_proc_char.
-
-  IF iv_steuerkz IS INITIAL.
-    RETURN.
   ENDIF.
 
-  lv_str = iv_steuerkz.
-  lv_len = strlen( lv_str ).
 
-  " Helper macro to safely pick a character (1-based index)
-  DEFINE get_ci_char.
-    IF lv_len >= &1.
-      &2 = lv_str+(&1 - 1)(1).
-    ENDIF.
-  END-OF-DEFINITION.
+  "###############################################################
+  "  MODE 2: Show Char = YES | Show LT = NO
+  "###############################################################
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
 
-  " According to FDS: characters 1..27 of PLMK-STEUERKZ
-  get_ci_char 1  cs_display-ci_quant.          " Quantitative / Qualitative
-  get_ci_char 2  cs_display-ci_meas_required.  " Measured values must be recorded
-  get_ci_char 3  cs_display-ci_attr_ref.       " Ref. to characteristic attribute
-  get_ci_char 4  cs_display-ci_ulim_ind.       " Upper limit indicator
-  get_ci_char 5  cs_display-ci_llim_ind.       " Lower limit indicator
-  get_ci_char 6  cs_display-ci_chk_tgt.        " Check target value / tolerance
-  get_ci_char 7  cs_display-ci_scope.          " Scope of inspection
-  get_ci_char 8  cs_display-ci_long_term.      " Long-term inspection
-  get_ci_char 9  cs_display-ci_rec_type.       " Recording type (+/-/*/ )
-  get_ci_char 10 cs_display-ci_doc_req.        " Documentation required
-  get_ci_char 11 cs_display-ci_category.       " Catalogue attribute category
-  get_ci_char 12 cs_display-ci_syncro.         " Synchronization active
-  get_ci_char 13 cs_display-ci_add_samp_qty.   " Additional sample quantity
-  get_ci_char 14 cs_display-ci_destructive.    " Destructive indicator
-  get_ci_char 15 cs_display-ci_calc_char.      " Calculated characteristic
-  get_ci_char 16 cs_display-ci_samp_proc_req.  " Sampling procedure required
-  get_ci_char 17 cs_display-ci_score_scrap.    " QM score / scrap relevant
-  get_ci_char 18 cs_display-ci_ci_fixed.       " Control indicators fixed (no change)
-  get_ci_char 19 cs_display-ci_def_count.      " Defects recording with count
-  get_ci_char 20 cs_display-ci_spec_change.    " Specification change allowed
-  get_ci_char 21 cs_display-ci_testeq_req.     " Test equipment required
-  get_ci_char 22 cs_display-ci_def_auto.       " Automatic defect recording
-  get_ci_char 23 cs_display-ci_change_docs.    " Change documents required
-  get_ci_char 24 cs_display-ci_spc_char.       " SPC characteristic
-  get_ci_char 25 cs_display-ci_print_ind.      " Print indicator
-  get_ci_char 26 cs_display-ci_param_char.     " Parameter characteristic set
-  get_ci_char 27 cs_display-ci_proc_char.      " Process characteristic
+    "--- char columns visible
+    PERFORM show_cols USING io_columns 'MERKNR' 'VERWMERKM' 'KURZTEXT'
+                                 'LTEXTKZ' 'TOLERANZUN' 'TOLERANZOB'
+                                 'METHODE' 'STICHPRVER'.
+
+    "--- hide op-long text
+    PERFORM hide_cols USING io_columns 'OP_LONGTEXT' 'OP_FK'.
+
+    "--- hide char-long text
+    PERFORM hide_cols USING io_columns 'CHAR_LONGTEXT' 'CHAR_FK'.
+
+    "--- insp#, desc visible
+    PERFORM show_cols USING io_columns 'INSP_POINT' 'DESCRIPTION' 'INSP_METHOD'.
+
+  ENDIF.
+
+
+  "###############################################################
+  "  MODE 3: Show Char = NO | Show LT = YES
+  "###############################################################
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+
+    "--- show op long text
+    PERFORM show_cols USING io_columns 'OP_LONGTEXT' 'OP_FK'.
+
+    "--- hide all characteristics columns
+    PERFORM hide_cols USING io_columns 'MERKNR' 'VERWMERKM' 'KURZTEXT'
+                                 'LTEXTKZ' 'TOLERANZUN' 'TOLERANZOB'
+                                 'METHODE' 'STICHPRVER'
+                                 'CHAR_LONGTEXT' 'CHAR_FK'.
+
+    "--- insp#, desc must be BLANK (FDS)
+    PERFORM blank_columns USING 'INSP_POINT' 'DESCRIPTION' 'INSP_METHOD'.
+
+  ENDIF.
+
+
+  "###############################################################
+  "  MODE 4: Show Char = YES | Show LT = YES
+  "###############################################################
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
+
+    "--- hide op long text (FDS)
+    PERFORM hide_cols USING io_columns 'OP_LONGTEXT' 'OP_FK'.
+
+    "--- char columns visible
+    PERFORM show_cols USING io_columns 'MERKNR' 'VERWMERKM' 'KURZTEXT'
+                                 'LTEXTKZ' 'TOLERANZUN' 'TOLERANZOB'
+                                 'METHODE' 'STICHPRVER'.
+
+    "--- show char long text
+    PERFORM show_cols USING io_columns 'CHAR_LONGTEXT' 'CHAR_FK'.
+
+    "--- insp# and description visible
+    PERFORM show_cols USING io_columns 'INSP_POINT' 'DESCRIPTION' 'INSP_METHOD'.
+
+  ENDIF.
 
 ENDFORM.
 
@@ -123,74 +113,68 @@ ENDFORM.
 
 
 
+FORM hide_cols USING io_columns TYPE REF TO cl_salv_columns_table
+                      col1 col2 col3 col4 col5 col6 col7 col8 col9 col10.
+
+  DATA lo TYPE REF TO cl_salv_column_table.
+  DATA cols TYPE STANDARD TABLE OF string.
+
+  APPEND col1 TO cols. APPEND col2 TO cols. APPEND col3 TO cols.
+  APPEND col4 TO cols. APPEND col5 TO cols. APPEND col6 TO cols.
+  APPEND col7 TO cols. APPEND col8 TO cols. APPEND col9 TO cols.
+  APPEND col10 TO cols.
+
+  LOOP AT cols INTO DATA(c).
+    TRY.
+        lo ?= io_columns->get_column( c ).
+        lo->set_visible( abap_false ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  ENDLOOP.
+
+ENDFORM.
 
 
-  "-------------------------------------------------------------------*
-  " FDS logic for Operation Long Text Indicator (PLPO-TXTSP)
-  "-------------------------------------------------------------------*
-  IF p_oltin = abap_true.
-    " Checkbox ON: show operations that HAVE long text (TXTSP not blank)
-    DELETE gt_base WHERE txtsp_op IS INITIAL.
-  ELSE.
-    " Checkbox OFF: show operations with NO operation long text (TXTSP blank)
-    DELETE gt_base WHERE txtsp_op IS NOT INITIAL.
-  ENDIF.
+FORM show_cols USING io_columns TYPE REF TO cl_salv_columns_table
+                       col1 col2 col3 col4 col5 col6 col7 col8 col9 col10.
+
+  DATA lo TYPE REF TO cl_salv_column_table.
+  DATA cols TYPE STANDARD TABLE OF string.
+
+  APPEND col1 TO cols. APPEND col2 TO cols. APPEND col3 TO cols.
+  APPEND col4 TO cols. APPEND col5 TO cols. APPEND col6 TO cols.
+  APPEND col7 TO cols. APPEND col8 TO cols. APPEND col9 TO cols.
+  APPEND col10 TO cols.
+
+  LOOP AT cols INTO DATA(c).
+    TRY.
+        lo ?= io_columns->get_column( c ).
+        lo->set_visible( abap_true ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+FORM blank_columns USING col1 col2 col3.
+
+  LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<r>).
+    ASSIGN COMPONENT col1 OF STRUCTURE <r> TO FIELD-SYMBOL(<a1>).
+    IF <a1> IS ASSIGNED. CLEAR <a1>. ENDIF.
+
+    ASSIGN COMPONENT col2 OF STRUCTURE <r> TO FIELD-SYMBOL(<a2>).
+    IF <a2> IS ASSIGNED. CLEAR <a2>. ENDIF.
+
+    ASSIGN COMPONENT col3 OF STRUCTURE <r> TO FIELD-SYMBOL(<a3>).
+    IF <a3> IS ASSIGNED. CLEAR <a3>. ENDIF.
+  ENDLOOP.
+
+ENDFORM.
 
 
 
 
 
-
-SELECT-OPTIONS: so_slwbez FOR plko-slwbez.   "Inspection Points Indicator
-SELECT-OPTIONS: so_wc_hd FOR crhd-arbpl.   "Header Work Center
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Report  ZRE_A2R_VALID_TASKLIST
-*&---------------------------------------------------------------------*
-*& RICEFW ID.........: <enter RICEFW ID>
-*& TR Number.........: <enter Transport Number>
-*& Version...........: <enter Version No.>
-*& Program...........: ZRE_A2R_VALID_TASKLIST
-*& Transaction Code..: <enter T-Code if applicable>
-*& Author............: <enter SAP User ID>
-*& Date..............: <DD.MM.YYYY>
-*&---------------------------------------------------------------------*
-*& Description:
-*&   Report to validate and display Maintenance Task Lists (PLKO/PLPO/PLMK)
-*&   with support for:
-*&     - Header, Operation, and Characteristic-level filtering
-*&     - Operation & Characteristic Long Text extraction via READ_TEXT
-*&     - Dynamic display level switching (Operations / Characteristics)
-*&     - Show/Hide Characteristics & Long Text custom toolbar buttons
-*&     - CI (Control Indicator) Derivation from PLMK-STEUERKZ
-*&     - FDS-aligned ALV output with multi-line long text formatting
-*&---------------------------------------------------------------------*
-*& Functional Summary:
-*&   - Selects Task Lists based on user filters (PLNTY/PLNNR/PLNAL/etc.)
-*&   - Applies key date validity and deletion flag logic
-*&   - Retrieves Operations (PLPO) and Characteristics (PLMK)
-*&   - Builds ALV rows:
-*&        O = Operation row
-*&        C = Characteristic row
-*&        L = Long Text line row (Op/Char)
-*&   - Displays long texts by level according to FDS rules:
-*&        • Operations only → Operation Long Text
-*&        • Characteristics shown → Characteristic Long Text
-*&   - Provides toolbar toggles for:
-*&        • Show/Hide Characteristics
-*&        • Show/Hide Long Text
-*&   - Outputs FDS-specified columns:
-*&        Group, Counter, Plant, Operation, Format Key,
-*&        Op Long Text, Work Center, Work,
-*&        Insp. Description, Insp. Method, Char Long Text
-*&---------------------------------------------------------------------*
-*& Modification Log
-*&---------------------------------------------------------------------*
-*& Date        Author      TR Number      Description
-*& <DD.MM.YYYY>  <User>    <Transport>    Initial Version
-*& <DD.MM.YYYY>  <User>    <Transport>    Enhancements/Corrections
-*&---------------------------------------------------------------------*
-*---------------------------------------------------------------------*
+a
