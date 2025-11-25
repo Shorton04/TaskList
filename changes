@@ -1,202 +1,28 @@
-*&---------------------------------------------------------------------*
-*&  Include ZRE_A2R_VALID_TASKLIST_TOP
-*&---------------------------------------------------------------------*
-
-TABLES: plko,
-        plpo,
-        plmk,
-        tapl,
-        eapl,
-        crhd.
-
-*---------------------------------------------------------------------*
-*  Base structure – raw DB data (PLKO/PLPO/PLMK/TAPL/EAPL/CRHD)
-*  Aligned with TaskList FDS mapping
-*---------------------------------------------------------------------*
-TYPES: BEGIN OF ty_task_base,
-
-         "---------------- Header (PLKO + TAPL/EAPL/CRHD) ---------------
-         plnty           TYPE plko-plnty,
-         plnnr           TYPE plko-plnnr,
-         plnal           TYPE plko-plnal,
-         datuv           TYPE plko-datuv,
-         werks           TYPE plko-werks,
-         ktext           TYPE plko-ktext,
-         arbpl_h         TYPE crhd-arbpl,
-         vagrp           TYPE plko-vagrp,
-         verwe           TYPE plko-verwe,
-         stat_h          TYPE plko-statu,
-         anlzu_h         TYPE plko-anlzu,
-         strat           TYPE plko-strat,
-         istru_h         TYPE plko-istru,
-         adpsp           TYPE plko-adpsp,
-         slwbez          TYPE plko-slwbez,
-         andat           TYPE plko-andat,
-         annam           TYPE plko-annam,
-         aedat           TYPE plko-aedat,
-         aenam           TYPE plko-aenam,
-         tplnr           TYPE tapl-tplnr,
-         equnr           TYPE eapl-equnr,
-
-         "---------------- Operation (PLPO + CRHD) ----------------------
-         plnkn           TYPE plpo-plnkn,
-         zaehl           TYPE plpo-zaehl,
-         vornr           TYPE plpo-vornr,
-         ltxa1           TYPE plpo-ltxa1,
-         steus           TYPE plpo-steus,
-         arbpl_o         TYPE crhd-arbpl,
-         ktsch           TYPE plpo-ktsch,
-         arbei           TYPE plpo-arbei,
-         arbeh           TYPE plpo-arbeh,
-         dauno           TYPE plpo-dauno,
-         daune           TYPE plpo-daune,
-         kalid           TYPE plpo-kalid,
-         execution_stage TYPE plpo-execution_stage,
-         anlzu_o         TYPE plpo-anlzu,
-         istru_o         TYPE plpo-istru,
-         larnt           TYPE plpo-larnt,
-         ebeln           TYPE plpo-ebeln,
-         ebelp           TYPE plpo-ebelp,
-         lifnr           TYPE plpo-lifnr,
-         preis           TYPE plpo-preis,
-         waers           TYPE plpo-waers,
-         sakto           TYPE plpo-sakto,
-         ekorg           TYPE plpo-ekorg,
-         ekgrp           TYPE plpo-ekgrp,
-         txtsp_op        TYPE plpo-txtsp,
-         loekz_o         TYPE plpo-loekz,
-
-         "---------------- Characteristic (PLMK) ------------------------
-         merknr          TYPE plmk-merknr,      "Inspection Number
-         verwmerkm       TYPE plmk-verwmerkm,   "Master Insp. Char
-         kurzt_char      TYPE plmk-kurztext,    "Char short text
-         ltextkz         TYPE plmk-ltextkz,     "Long text indicator
-         toleranzun      TYPE plmk-toleranzun,  "Lower spec limit
-         toleranzob      TYPE plmk-toleranzob,  "Upper spec limit
-         pmethode        TYPE plmk-pmethode,    "Inspection method
-         stichprver      TYPE plmk-stichprver,  "Sample procedure
-         pruefeinh       TYPE plmk-pruefeinh,   "Inspection unit
-         katalgart1      TYPE plmk-katalgart1,  "Catalog type
-         auswmenge1      TYPE plmk-auswmenge1,  "Selected set
-         steuerkz        TYPE plmk-steuerkz,    "Control indicators
-         ltxtspr         TYPE plmk-ltextspr,    "Long text language
-         loekz_c         TYPE plmk-loekz,       "Char deletion flag
-
-       END OF ty_task_base.
-
-*---------------------------------------------------------------------*
-*  Display structure – one line per row_kind
-*    row_kind = 'O'  Operation
-*             = 'C'  Characteristic header line
-*             = 'L'  Long text line (op or char)
-*---------------------------------------------------------------------*
-TYPES: BEGIN OF ty_task_disp,
-
-         row_kind        TYPE char1,
-
-         "---------------- Header (copied from base) --------------------
-         plnty           TYPE plko-plnty,
-         plnnr           TYPE plko-plnnr,
-         plnal           TYPE plko-plnal,
-         datuv           TYPE plko-datuv,
-         werks           TYPE plko-werks,
-         ktext           TYPE plko-ktext,
-         arbpl_h         TYPE crhd-arbpl,
-         vagrp           TYPE plko-vagrp,
-         verwe           TYPE plko-verwe,
-         stat_h          TYPE plko-statu,
-         anlzu_h         TYPE plko-anlzu,
-         strat           TYPE plko-strat,
-         istru_h         TYPE plko-istru,
-         adpsp           TYPE plko-adpsp,
-         slwbez          TYPE plko-slwbez,
-         andat           TYPE plko-andat,
-         annam           TYPE plko-annam,
-         aedat           TYPE plko-aedat,
-         aenam           TYPE plko-aenam,
-         tplnr           TYPE tapl-tplnr,
-         equnr           TYPE eapl-equnr,
-
-         "---------------- Operation (copied from base) -----------------
-         plnkn           TYPE plpo-plnkn,
-         zaehl           TYPE plpo-zaehl,
-         vornr           TYPE plpo-vornr,
-         ltxa1           TYPE plpo-ltxa1,
-         steus           TYPE plpo-steus,
-         arbpl_o         TYPE crhd-arbpl,
-         ktsch           TYPE plpo-ktsch,
-         arbei           TYPE plpo-arbei,
-         arbeh           TYPE plpo-arbeh,
-         dauno           TYPE plpo-dauno,
-         daune           TYPE plpo-daune,
-         kalid           TYPE plpo-kalid,
-         execution_stage TYPE plpo-execution_stage,
-         anlzu_o         TYPE plpo-anlzu,
-         istru_o         TYPE plpo-istru,
-         larnt           TYPE plpo-larnt,
-         ebeln           TYPE plpo-ebeln,
-         ebelp           TYPE plpo-ebelp,
-         lifnr           TYPE plpo-lifnr,
-         preis           TYPE plpo-preis,
-         waers           TYPE plpo-waers,
-         sakto           TYPE plpo-sakto,
-         ekorg           TYPE plpo-ekorg,
-         ekgrp           TYPE plpo-ekgrp,
-         txtsp_op        TYPE plpo-txtsp,
-         loekz_o         TYPE plpo-loekz,
-
-         "---------------- Characteristic (Insp# / description) ---------
-         merknr          TYPE plmk-merknr,      "Inspection Number
-         verwmerkm       TYPE plmk-verwmerkm,
-         kurzt_char      TYPE plmk-kurztext,
-         ltextkz         TYPE plmk-ltextkz,
-         toleranzun      TYPE plmk-toleranzun,
-         toleranzob      TYPE plmk-toleranzob,
-         pmethode        TYPE plmk-pmethode,
-         stichprver      TYPE plmk-stichprver,
-         pruefeinh       TYPE plmk-pruefeinh,
-         katalgart1      TYPE plmk-katalgart1,
-         auswmenge1      TYPE plmk-auswmenge1,
-         steuerkz        TYPE plmk-steuerkz,
-         ltxtspr         TYPE plmk-ltextspr,
-         loekz_c         TYPE plmk-loekz,
-
-         "---------------- CI helper fields (from STEUERKZ) -------------
-         ci_quant        TYPE abap_bool,  "CI: Quantitative Char
-         ci_meas_rec     TYPE abap_bool,  "CI: Measured values must be rec.
-         ci_ref_attr     TYPE abap_bool,  "CI: Ref. to char attribute req.
-         ci_sample_proc  TYPE abap_bool,  "CI: Sample procedure required
-
-         "---------------- Long text columns for ALV --------------------
-         op_ltxt         TYPE tdline,          "Operation long text line
-         char_ltxt       TYPE tdline,          "Characteristic long text line
-         tdformat        TYPE tline-tdformat,  "Format key
-         tdline          TYPE tline-tdline,    "Raw long text line
-
-       END OF ty_task_disp.
-
-*---------------------------------------------------------------------*
-*  Internal tables
-*---------------------------------------------------------------------*
-DATA: gt_base    TYPE STANDARD TABLE OF ty_task_base,
-      gs_base    TYPE ty_task_base,
-      gt_display TYPE STANDARD TABLE OF ty_task_disp,
-      gs_display TYPE ty_task_disp.
-
-*---------------------------------------------------------------------*
-*  ALV & state
-*---------------------------------------------------------------------*
-DATA: lo_alv      TYPE REF TO cl_salv_table,
-      gv_show_char TYPE abap_bool,
-      gv_show_ltxt TYPE abap_bool.
-
-*---------------------------------------------------------------------*
-*  Local event handler for SALV user command (buttons)
-*---------------------------------------------------------------------*
-CLASS lcl_event_handler DEFINITION.
-  PUBLIC SECTION.
-    CLASS-METHODS:
-      on_user_command
-        FOR EVENT added_function OF cl_salv_events
-        IMPORTING e_salv_function.
-ENDCLASS.
+cs_disp-ci_quantitative,
+         cs_disp-ci_meas_values_must_be_recorded,
+         cs_disp-ci_reference_to_char_attr_required,
+         cs_disp-ci_upper_spec_limit_indicator,
+         cs_disp-ci_lower_spec_limit_indicator,
+         cs_disp-ci_check_target_value,
+         cs_disp-ci_inspection_scope,
+         cs_disp-ci_long_term_inspection,
+         cs_disp-ci_recording_type,
+         cs_disp-ci_document_required_for_results,
+         cs_disp-ci_characteristic_category,
+         cs_disp-ci_synchronization_is_active,
+         cs_disp-ci_sample_quantity_is_added,
+         cs_disp-ci_destructive_inspection,
+         cs_disp-ci_calculated_characteristic,
+         cs_disp-ci_sampling_proc_is_required,
+         cs_disp-ci_relevant_for_quality_score,
+         cs_disp-ci_default_ci_cannot_be_changed,
+         cs_disp-ci_recording_number_of_defects,
+         cs_disp-ci_qm_subsystem,
+         cs_disp-ci_specs_can_be_changed,
+         cs_disp-ci_test_equipment_required,
+         cs_disp-ci_defects_recording_auto_called,
+         cs_disp-ci_change_doc_on_results,
+         cs_disp-ci_spc_characteristic,
+         cs_disp-ci_print_indicator,
+         cs_disp-ci_parameter_characteristic,
+         cs_disp-ci_process_characteristic.
