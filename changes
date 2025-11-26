@@ -1,32 +1,43 @@
 "==============================================================*
-"* KEY DATE VALIDITY CHECK — FDS & IA39 LOGIC (CORRECT VERSION)
+"* KEY DATE VALIDITY CHECK — FDS & IA39 LOGIC (FINAL VERSION)
 "==============================================================*
 
-"--- PLKO (Header)
+"--- PLKO (HEADER) ---------------------------------------------
+
+"Valid-from (DATUV ≤ keydate)
 IF gs_base-datuv > so_keydt-low.
-  CONTINUE.  "valid-from fail
+  CONTINUE.
 ENDIF.
 
+"Valid-to   (VALID_TO ≥ keydate)
 IF gs_base-valid_to < so_keydt-low.
-  CONTINUE.  "valid-to fail
+  CONTINUE.
 ENDIF.
 
-"--- PLPO (Operation)
+
+"--- PLPO (OPERATION) ------------------------------------------
+
+"Valid-from (DATUV_O ≤ keydate)
 IF gs_base-datuv_o > so_keydt-low.
   CONTINUE.
 ENDIF.
 
+"Valid-to   (VALID_TO_O ≥ keydate)
 IF gs_base-valid_to_o < so_keydt-low.
   CONTINUE.
 ENDIF.
 
-"--- PLMK (Characteristic) — only when Char mode is ON
+
+"--- PLMK (CHARACTERISTIC) -------------------------------------
+"Only check when characteristics are displayed
 IF gv_show_char = gc_true.
 
+  "Valid-from
   IF gs_base-gueltigab > so_keydt-low.
     CONTINUE.
   ENDIF.
 
+  "Valid-to
   IF gs_base-valid_to_c < so_keydt-low.
     CONTINUE.
   ENDIF.
