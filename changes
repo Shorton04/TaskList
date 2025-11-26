@@ -1,28 +1,33 @@
-"===================================================================*
-"* TASK LIST SELECTION FILTERS (Critical)
-"===================================================================*
+"==============================================================*
+"* VALIDITY CHECK — EXACTLY SAME LOGIC AS IA39
+"==============================================================*
 
-"Functional Location
-IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
-  CONTINUE.
-ENDIF.
-
-"Equipment
-IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
-  CONTINUE.
-ENDIF.
-
-"Group (PLNNR)
-IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
-  CONTINUE.
-ENDIF.
-
-"Group Counter (PLNAL)
-IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
-  CONTINUE.
-ENDIF.
-
-"Key Date (PLKO)
+"PLKO valid-from
 IF gs_base-datuv > so_keydt-low.
+  CONTINUE.
+ENDIF.
+
+"PLKO valid-to
+IF gs_base-datub < so_keydt-low.
+  CONTINUE.
+ENDIF.
+
+"PLPO valid-from
+IF gs_base-datuv_op > so_keydt-low.
+  CONTINUE.
+ENDIF.
+
+"PLPO valid-to
+IF gs_base-datub_op < so_keydt-low.
+  CONTINUE.
+ENDIF.
+
+"PLMK valid-from
+IF gs_base-gueltigab > so_keydt-low.
+  CONTINUE.
+ENDIF.
+
+"PLMK valid-to
+IF gs_base-valid_to_on_db < so_keydt-low.
   CONTINUE.
 ENDIF.
