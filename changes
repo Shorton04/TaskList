@@ -1,75 +1,5 @@
 *---------------------------------------------------------------------*
-*  FORM set_column_order_by_state - FINAL LOGIC
-*---------------------------------------------------------------------*
-FORM set_column_order_by_state.
-
-  DATA lo_cols TYPE REF TO cl_salv_columns_table.
-  DATA lo_col  TYPE REF TO cl_salv_column_table.
-
-  IF lo_alv IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  lo_cols = lo_alv->get_columns( ).
-
-  "Helper macro
-  DEFINE pos.
-    TRY.
-        lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_position( &2 ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
-
-  "====================================================================
-  " MODE 1: HIDE CHARACTERISTICS + SHOW LONG TEXT
-  "====================================================================
-  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
-
-    pos 'PLNNR'        1.  "Group
-    pos 'PLNAL'        2.  "Counter
-    pos 'WERKS'        3.  "Plant
-    pos 'VORNR'        4.  "Operation
-    pos 'TDFORMAT'     5.  "FK
-    pos 'OP_LTXT'      6.  "Op Long Text
-    pos 'ARBPL_O'      7.  "WC
-    pos 'ARBEI'        8.  "Work
-    pos 'KURZT_CHAR'   9.  "Description
-    pos 'PMETHODE'    10.  "Inspection Method
-    pos 'MERKNR'      11.  "Inspection Number
-    pos 'CHAR_LTXT'   12.  "Characteristic LT
-
-    RETURN.
-  ENDIF.
-
-
-  "====================================================================
-  " MODE 2: SHOW CHARACTERISTICS + SHOW LONG TEXT
-  "====================================================================
-  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
-
-    pos 'PLNNR'        1.   "Group
-    pos 'PLNAL'        2.   "Counter
-    pos 'WERKS'        3.   "Plant
-    pos 'VORNR'        4.   "Operation
-    pos 'ARBPL_O'      5.   "WC
-    pos 'ARBEI'        6.   "Work
-    pos 'KURZT_CHAR'   7.   "Description
-    pos 'PMETHODE'     8.   "Inspection Method
-    pos 'MERKNR'       9.   "Inspection Number
-    pos 'TDFORMAT'    10.   "FK
-    pos 'OP_LTXT'     11.   "Op LT
-    pos 'CHAR_LTXT'   12.   "Char LT
-
-    RETURN.
-  ENDIF.
-
-ENDFORM.
-
-
-
-*---------------------------------------------------------------------*
-*  FORM set_column_visibility_by_state - FINAL VERSION
+*  FORM set_column_visibility_by_state - FINAL (VISIBILITY + ORDER)
 *---------------------------------------------------------------------*
 FORM set_column_visibility_by_state.
 
@@ -83,9 +13,9 @@ FORM set_column_visibility_by_state.
 
   lo_cols = lo_alv->get_columns( ).
 
-  "===========================================================
-  " Helper macros for show/hide
-  "===========================================================
+  "--------------------------------------------------------------*
+  " Helper macros
+  "--------------------------------------------------------------*
   DEFINE hide_col.
     TRY.
         lo_col ?= lo_cols->get_column( &1 ).
@@ -104,37 +34,40 @@ FORM set_column_visibility_by_state.
     ENDTRY.
   END-OF-DEFINITION.
 
+  DEFINE pos.
+    TRY.
+        lo_col ?= lo_cols->get_column( &1 ).
+        lo_col->set_position( &2 ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
 
-  "===========================================================
-  " HIDE ALL GHOST / UNUSED / TECHNICAL COLUMNS
-  "===========================================================
 
-  " --- ALWAYS HIDE STATUS AS REQUESTED ---
-  hide_col 'STAT_H'.       "status field from PLKO
-  hide_col 'STATUS'.       "in case SALV creates STATUS column
-  hide_col 'STATS'.        "in case system adds STATS technical field
+  "--------------------------------------------------------------*
+  " 1. HIDE ALL INTERNAL / GHOST / UNUSED FIELDS
+  "--------------------------------------------------------------*
 
-  " --- ALWAYS HIDE LONG TEXT TECH FIELDS ---
-  hide_col 'TDFORMAT'.      
+  " Hide STATUS completely (FDS says do NOT show)
+  hide_col 'STAT_H'.
+  hide_col 'STATUS'.
+  hide_col 'STATS'.
+
+  " Technical / internal
   hide_col 'ROW_KIND'.
-
-  " --- INTERNAL / TECHNICAL FIELDS ---
+  hide_col 'TDFORMAT'.   "will be shown by mode later
   hide_col 'DATUV'.
   hide_col 'VALID_TO'.
   hide_col 'DATUV_O'.
   hide_col 'VALID_TO_O'.
   hide_col 'GUELTIGAB'.
   hide_col 'VALID_TO_C'.
-  hide_col 'LOEKZ_H'.
-  hide_col 'LOEKZ_O'.
-  hide_col 'LOEKZ_C'.
 
-  " --- HIDE CI1–CI28 (ghost columns) ---
+  " Hide ALL CI fields (CI1–CI28)
   DO 28 TIMES.
     hide_col |CI{ sy-index }|.
   ENDDO.
 
-  " --- HIDE ALL HEADER FIELDS (PLKO) ---
+  " HEADER fields not in FDS
   hide_col 'PLNTY'.
   hide_col 'KTEXT'.
   hide_col 'TPLNR'.
@@ -151,12 +84,11 @@ FORM set_column_visibility_by_state.
   hide_col 'AEDAT'.
   hide_col 'AENAM'.
 
-  " --- HIDE ALL OPERATION FIELDS (PLPO) NOT IN FDS ---
+  " OPERATION fields not in FDS
   hide_col 'PLNKN'.
   hide_col 'ZAEHL'.
-  hide_col 'LT XA1'.
   hide_col 'STEUS'.
-  hide_col 'WERKS_O'.     "we only use ARBPL_O + main plant
+  hide_col 'WERKS_O'.
   hide_col 'KTSCH'.
   hide_col 'ARBEH'.
   hide_col 'DAUNO'.
@@ -175,8 +107,9 @@ FORM set_column_visibility_by_state.
   hide_col 'EKORG'.
   hide_col 'EKGRP'.
   hide_col 'TXTSP_OP'.
+  hide_col 'LOEKZ_O'.
 
-  " --- HIDE ALL CHARACTERISTIC FIELDS NOT IN FDS ---
+  " CHARACTERISTIC FIELDS not in FDS
   hide_col 'VERWMERKM'.
   hide_col 'LTEXTKZ'.
   hide_col 'TOLERANZUN'.
@@ -186,53 +119,83 @@ FORM set_column_visibility_by_state.
   hide_col 'KATALGART1'.
   hide_col 'AUSWMENGE1'.
   hide_col 'STEUERKZ'.
+  hide_col 'LOEKZ_C'.
 
-  "-----------------------------------------------------------
-  " SHOW ONLY THE FIELDS THAT MUST APPEAR (MASTER LIST)
-  "-----------------------------------------------------------
+  "--------------------------------------------------------------*
+  " 2. SHOW ONLY FDS-APPROVED FIELDS
+  "--------------------------------------------------------------*
 
   show_col 'PLNNR'.         "Group
   show_col 'PLNAL'.         "Counter
   show_col 'WERKS'.         "Plant
   show_col 'VORNR'.         "Operation
   show_col 'ARBPL_O'.       "Work Center
-  show_col 'ARBEI'.         "Work (Labor)
+  show_col 'ARBEI'.         "Work
   show_col 'KURZT_CHAR'.    "Description
   show_col 'PMETHODE'.      "Inspection Method
   show_col 'MERKNR'.        "Inspection Number
-  show_col 'TDFORMAT'.      "FK (format)
-  show_col 'OP_LTXT'.       "Operation Long Text
-  show_col 'CHAR_LTXT'.     "Characteristic Long Text
+  show_col 'TDFORMAT'.      "FK
+  show_col 'OP_LTXT'.       "Operation LT
+  show_col 'CHAR_LTXT'.     "Characteristic LT
 
 
-  "===========================================================
-  " Mode-specific adjustments
-  "===========================================================
+  "--------------------------------------------------------------*
+  " 3. APPLY MODE-BASED HIDE/SHOW LOGIC
+  "--------------------------------------------------------------*
 
-  " MODE 1 — Hide Characteristics + Show Long Text
+  "* MODE 1: Hide Characteristics + Show Long Text
   IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
 
-    "Char-specific fields should remain hidden
     hide_col 'KURZT_CHAR'.
     hide_col 'PMETHODE'.
     hide_col 'MERKNR'.
+
     show_col 'OP_LTXT'.
     show_col 'CHAR_LTXT'.
 
+    "COLUMN ORDER
+    pos 'PLNNR'        1.
+    pos 'PLNAL'        2.
+    pos 'WERKS'        3.
+    pos 'VORNR'        4.
+    pos 'TDFORMAT'     5.   "FK
+    pos 'OP_LTXT'      6.   "Op LT
+    pos 'ARBPL_O'      7.   "WC
+    pos 'ARBEI'        8.   "Work
+    pos 'KURZT_CHAR'   9.   "Description
+    pos 'PMETHODE'    10.   "Insp Method
+    pos 'MERKNR'      11.   "Insp#
+    pos 'CHAR_LTXT'   12.   "Char LT
+
+    RETURN.
   ENDIF.
 
-  " MODE 2 — Show Characteristics + Show Long Text
+
+  "* MODE 2: Show Characteristics + Show Long Text
   IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
 
-    "Ensure char data appears
     show_col 'KURZT_CHAR'.
     show_col 'PMETHODE'.
     show_col 'MERKNR'.
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
     show_col 'CHAR_LTXT'.
 
-    "Operation LT is shown too
-    show_col 'OP_LTXT'.
+    "COLUMN ORDER
+    pos 'PLNNR'        1.
+    pos 'PLNAL'        2.
+    pos 'WERKS'        3.
+    pos 'VORNR'        4.
+    pos 'ARBPL_O'      5.   "WC
+    pos 'ARBEI'        6.   "Work
+    pos 'KURZT_CHAR'   7.   "Description
+    pos 'PMETHODE'     8.   "Insp Method
+    pos 'MERKNR'       9.   "Insp#
+    pos 'TDFORMAT'    10.   "FK
+    pos 'OP_LTXT'     11.   "Op LT
+    pos 'CHAR_LTXT'   12.   "Char LT
 
+    RETURN.
   ENDIF.
 
 ENDFORM.
