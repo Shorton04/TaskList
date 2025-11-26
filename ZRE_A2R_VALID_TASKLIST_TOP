@@ -1,245 +1,122 @@
 *---------------------------------------------------------------------*
-*  Include ZRE_A2R_VALID_TASKLIST_TOP
+*  Include ZRE_A2R_VALID_TASKLIST_SEL
 *---------------------------------------------------------------------*
 
-TABLES: plko, plpo, plmk, tapl, eapl, crhd.
-
-TYPES: char132 TYPE c LENGTH 132.
-
 *======================================================================*
-* TYPES – BASE DATA STRUCTURE (FDS 5.3.3)
+* BLOCK 1: TASK LIST TYPE (checkbox group)
 *======================================================================*
-TYPES: BEGIN OF ty_task_base,
+SELECTION-SCREEN BEGIN OF BLOCK b_ttype WITH FRAME TITLE TEXT-001.
 
-         "------------- Header Fields (PLKO) --------------------------
-         plnty           TYPE plko-plnty,
-         plnnr           TYPE plko-plnnr,
-         plnal           TYPE plko-plnal,
-         datuv           TYPE plko-datuv,
-         valid_to        TYPE plko-valid_to,
-         werks           TYPE plko-werks,
-         ktext           TYPE plko-ktext,
-         verwe           TYPE plko-verwe,
-         vagrp           TYPE plko-vagrp,
-         statu_h         TYPE plko-statu,
-         anlzu_h         TYPE plko-anlzu,
-         strat           TYPE plko-strat,
-         istru_h         TYPE plko-istru,
-         adpsp           TYPE plko-adpsp,
-         slwbez          TYPE plko-slwbez,
-         loekz_h         TYPE plko-loekz,
-         andat           TYPE plko-andat,
-         annam           TYPE plko-annam,
-         aedat           TYPE plko-aedat,
-         aenam           TYPE plko-aenam,
+PARAMETERS:
+  p_ftl TYPE c AS CHECKBOX DEFAULT 'X',   "Functional Location Task List
+  p_etl TYPE c AS CHECKBOX,               "Equipment Task List
+  p_gtl TYPE c AS CHECKBOX.               "General Task List
 
-         "------------- Assignment (FL / Equipment) -------------------
-         tplnr           TYPE tapl-tplnr,
-         equnr           TYPE eapl-equnr,
-
-         "------------- Operation Fields (PLPO) -----------------------
-         plnkn           TYPE plpo-plnkn,
-         zaehl           TYPE plpo-zaehl,
-         datuv_o         TYPE plpo-datuv,
-         valid_to_o      TYPE plpo-valid_to,
-         vornr           TYPE plpo-vornr,
-         ltxa1           TYPE plpo-ltxa1,
-         steus           TYPE plpo-steus,
-         arbpl_o         TYPE crhd-arbpl,
-         werks_o         TYPE crhd-werks,
-         ktsch           TYPE plpo-ktsch,
-         arbei           TYPE plpo-arbei,
-         arbeh           TYPE plpo-arbeh,
-         dauno           TYPE plpo-dauno,
-         daune           TYPE plpo-daune,
-         kalid           TYPE plpo-kalid,
-         execution_stage TYPE plpo-execution_stage,
-         anlzu_o         TYPE plpo-anlzu,
-         istru_o         TYPE plpo-istru,
-         larnt           TYPE plpo-larnt,
-         ebeln           TYPE plpo-ebeln,
-         ebelp           TYPE plpo-ebelp,
-         lifnr           TYPE plpo-lifnr,
-         preis           TYPE plpo-preis,
-         waers           TYPE plpo-waers,
-         sakto           TYPE plpo-sakto,
-         ekorg           TYPE plpo-ekorg,
-         ekgrp           TYPE plpo-ekgrp,
-         txtsp_op        TYPE plpo-txtsp,
-         loekz_o         TYPE plpo-loekz,
-
-         "------------- Characteristic Fields (PLMK) -----------------
-         merknr          TYPE plmk-merknr,
-         verwmerkm       TYPE plmk-verwmerkm,
-         kurzt_char      TYPE plmk-kurztext,
-         ltextkz         TYPE plmk-ltextkz,
-         toleranzun      TYPE plmk-toleranzun,
-         toleranzob      TYPE plmk-toleranzob,
-         pruefeinh       TYPE plmk-pruefeinh,
-         stichprver      TYPE plmk-stichprver,
-         pmethode        TYPE plmk-pmethode,
-         katalgart1      TYPE plmk-katalgart1,
-         auswmenge1      TYPE plmk-auswmenge1,
-         steuerkz        TYPE plmk-steuerkz,
-         loekz_c         TYPE plmk-loekz,
-         gueltigab       TYPE plmk-gueltigab,
-         valid_to_c      TYPE plmk-valid_to_on_db,
-
-       END OF ty_task_base.
+SELECTION-SCREEN END OF BLOCK b_ttype.
 
 
 *======================================================================*
-* TYPES – DISPLAY STRUCTURE (ALV row)
+* BLOCK 2: TASK LIST SELECTION (Main grouping)
 *======================================================================*
-TYPES: BEGIN OF ty_task_disp,
+SELECTION-SCREEN BEGIN OF BLOCK b_tl WITH FRAME TITLE TEXT-002.
 
-         "Header section
-         plnty            TYPE plko-plnty,
-         plnnr            TYPE plko-plnnr,
-         plnal            TYPE plko-plnal,
-         datuv            TYPE plko-datuv,
-         werks            TYPE plko-werks,
-         ktext            TYPE plko-ktext,
-         tplnr            TYPE tapl-tplnr,
-         equnr            TYPE eapl-equnr,
-         verwe            TYPE plko-verwe,
-         vagrp            TYPE plko-vagrp,
-         statu_h          TYPE plko-statu,
-         anlzu_h          TYPE plko-anlzu,
-         strat            TYPE plko-strat,
-         istru_h          TYPE plko-istru,
-         adpsp            TYPE plko-adpsp,
-         slwbez           TYPE plko-slwbez,
-         loekz_h          TYPE plko-loekz,
-         andat            TYPE plko-andat,
-         annam            TYPE plko-annam,
-         aedat            TYPE plko-aedat,
-         aenam            TYPE plko-aenam,
+SELECT-OPTIONS:
+  so_tplnr FOR tapl-tplnr,      "Functional Location
+  so_equnr FOR eapl-equnr,      "Equipment
+  so_plnnr FOR plko-plnnr,      "Group
+  so_plnal FOR plko-plnal,      "Group Counter
+  so_keydt FOR plko-datuv OBLIGATORY.  "Key Date (required)
 
-         "Operations
-         vornr            TYPE plpo-vornr,
-         ltxa1            TYPE plpo-ltxa1,
-         steus            TYPE plpo-steus,
-         arbpl_o          TYPE crhd-arbpl,
-         werks_o          TYPE crhd-werks,
-         ktsch            TYPE plpo-ktsch,
-         arbei            TYPE plpo-arbei,
-         arbeh            TYPE plpo-arbeh,
-         dauno            TYPE plpo-dauno,
-         daune            TYPE plpo-daune,
-         kalid            TYPE plpo-kalid,
-         execution_stage  TYPE plpo-execution_stage,
-         anlzu_o          TYPE plpo-anlzu,
-         istru_o          TYPE plpo-istru,
-         larnt            TYPE plpo-larnt,
-         ebeln            TYPE plpo-ebeln,
-         ebelp            TYPE plpo-ebelp,
-         lifnr            TYPE plpo-lifnr,
-         preis            TYPE plpo-preis,
-         waers            TYPE plpo-waers,
-         sakto            TYPE plpo-sakto,
-         ekorg            TYPE plpo-ekorg,
-         ekgrp            TYPE plpo-ekgrp,
-         txtsp_op         TYPE plpo-txtsp,
-         loekz_o          TYPE plpo-loekz,
-
-         "Characteristics
-         merknr           TYPE plmk-merknr,
-         verwmerkm        TYPE plmk-verwmerkm,
-         kurzt_char         TYPE plmk-kurztext,
-         ltextkz          TYPE plmk-ltextkz,
-         toleranzun       TYPE plmk-toleranzun,
-         toleranzob       TYPE plmk-toleranzob,
-         pruefeinh        TYPE plmk-pruefeinh,
-         stichprver       TYPE plmk-stichprver,
-         pmethode         TYPE plmk-pmethode,
-         katalgart1       TYPE plmk-katalgart1,
-         auswmenge1       TYPE plmk-auswmenge1,
-         steuerkz         TYPE plmk-steuerkz,
-         loekz_c          TYPE plmk-loekz,
-
-         "CI fields 1–28 (all CHAR1)
-         ci1  TYPE c LENGTH 1,
-         ci2  TYPE c LENGTH 1,
-         ci3  TYPE c LENGTH 1,
-         ci4  TYPE c LENGTH 1,
-         ci5  TYPE c LENGTH 1,
-         ci6  TYPE c LENGTH 1,
-         ci7  TYPE c LENGTH 1,
-         ci8  TYPE c LENGTH 1,
-         ci9  TYPE c LENGTH 1,
-         ci10 TYPE c LENGTH 1,
-         ci11 TYPE c LENGTH 1,
-         ci12 TYPE c LENGTH 1,
-         ci13 TYPE c LENGTH 1,
-         ci14 TYPE c LENGTH 1,
-         ci15 TYPE c LENGTH 1,
-         ci16 TYPE c LENGTH 1,
-         ci17 TYPE c LENGTH 1,
-         ci18 TYPE c LENGTH 1,
-         ci19 TYPE c LENGTH 1,
-         ci20 TYPE c LENGTH 1,
-         ci21 TYPE c LENGTH 1,
-         ci22 TYPE c LENGTH 1,
-         ci23 TYPE c LENGTH 1,
-         ci24 TYPE c LENGTH 1,
-         ci25 TYPE c LENGTH 1,
-         ci26 TYPE c LENGTH 1,
-         ci27 TYPE c LENGTH 1,
-         ci28 TYPE c LENGTH 1,
-
-         "Long Text
-         row_kind         TYPE c LENGTH 1,
-         tdformat         TYPE tline-tdformat,
-         op_ltxt          TYPE tline-tdline,
-         char_ltxt        TYPE tline-tdline,
-
-       END OF ty_task_disp.
-
-
+SELECTION-SCREEN END OF BLOCK b_tl.
 
 
 *======================================================================*
-* GLOBAL DATA
+* BLOCK 3: HEADER DATA (FDS 5.3.2 Header Section)
 *======================================================================*
-DATA: gt_base    TYPE STANDARD TABLE OF ty_task_base,
-      gs_base    TYPE ty_task_base,
-      gt_display TYPE STANDARD TABLE OF ty_task_disp,
-      gs_display TYPE ty_task_disp.
+SELECTION-SCREEN BEGIN OF BLOCK b_hd WITH FRAME TITLE TEXT-004.
 
-DATA: go_container TYPE REF TO cl_gui_custom_container.
+SELECT-OPTIONS:
+  so_ktext FOR plko-ktext,      "Header Text
+  so_werks FOR plko-werks,      "Planning Plant
+  so_arbph FOR crhd-arbpl,      "Work Center (Header)
+  so_vagrp FOR plko-vagrp,      "Planner Group
+  so_verwe FOR plko-verwe,      "Usage
+  so_stath FOR plko-statu,      "Status
+  so_anlzh FOR plko-anlzu,      "System Condition
+  so_strat FOR plko-strat,      "Maintenance Strategy
+  so_istrh FOR plko-istru,      "Assembly
+  so_adpsp FOR plko-adpsp,      "Ref. Element PM/PS
+  so_slwbe FOR plko-slwbez,     "Inspection Points Indicator
+  so_andat FOR plko-andat,      "Created On
+  so_annam FOR plko-annam MATCHCODE OBJECT user_addr,  "Created By
+  so_aedat FOR plko-aedat,      "Changed On
+  so_aenam FOR plko-aenam MATCHCODE OBJECT user_addr.  "Changed By
 
-* SALV
-DATA: lo_alv        TYPE REF TO cl_salv_table,
-      lo_columns    TYPE REF TO cl_salv_columns_table,
-      lo_column     TYPE REF TO cl_salv_column_table,
-      lo_events     TYPE REF TO cl_salv_events_table,
-      lo_funcs      TYPE REF TO cl_salv_functions_list,
-      lo_layout     TYPE REF TO cl_salv_layout,
-      lo_disp       TYPE REF TO cl_salv_display_settings,
-      lo_sel        TYPE REF TO cl_salv_selections,
-      ls_layout_key TYPE salv_s_layout_key.
+SELECTION-SCREEN END OF BLOCK b_hd.
 
-* STATE
-DATA: gv_show_char TYPE abap_bool,
-      gv_show_ltxt TYPE abap_bool.
 
-CONSTANTS: gc_true  TYPE abap_bool VALUE abap_true,
-           gc_false TYPE abap_bool VALUE abap_false.
+*======================================================================*
+* BLOCK 4: OPERATION DATA (FDS 5.3.2 Operation Line)
+*======================================================================*
+SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE TEXT-003.
 
-* Function Codes
-CONSTANTS:
-  gc_func_clist_s TYPE salv_de_function VALUE '&CLISTS',
-  gc_func_clist_h TYPE salv_de_function VALUE '&CLISTH',
-  gc_func_ltxt_s  TYPE salv_de_function VALUE '&LTXTS',
-  gc_func_ltxt_h  TYPE salv_de_function VALUE '&LTXTH'.
+SELECT-OPTIONS:
+  so_vornr FOR plpo-vornr,            "Operation
+  so_uvorn FOR plpo-vornr,            "Suboperation (same domain)
+  so_otext FOR plpo-ltxa1.            "Operation Short Text
 
-*---------------------------------------------------------------------*
-* EVENT HANDLER
-*---------------------------------------------------------------------*
-CLASS lcl_event_handler DEFINITION.
-  PUBLIC SECTION.
-    CLASS-METHODS on_user_command
-      FOR EVENT added_function OF cl_salv_events_table
-      IMPORTING e_salv_function.
-ENDCLASS.
+PARAMETERS:
+  so_opltx TYPE c LENGTH 132,              "Operation Long Text content
+  p_oltin  TYPE c AS CHECKBOX.        "Operation Long Text Indicator
+
+SELECT-OPTIONS:
+  so_steus FOR plpo-steus,            "Control Key
+  so_arbpo FOR crhd-arbpl,            "Work Center (Operation)
+  so_werop FOR crhd-werks,            "WC Plant
+  so_optpl FOR tapl-tplnr,            "Functional Location (Op-level)
+  so_opequ FOR eapl-equnr,            "Equipment (Op-level)
+  so_ktsch FOR plpo-ktsch,            "Standard Text Key
+  so_exsta FOR plpo-execution_stage,  "Execution Stage
+  so_anlzo FOR plpo-anlzu,            "System Condition
+  so_istru FOR plpo-istru,            "Assembly
+  so_larnt FOR plpo-larnt,            "Activity Type
+  so_ebeln FOR plpo-ebeln,            "Outline Agreement
+  so_ebelp FOR plpo-ebelp,            "Outline Agreement Item
+  so_lifnr FOR plpo-lifnr.            "Supplier
+
+SELECTION-SCREEN END OF BLOCK b_op.
+
+
+*======================================================================*
+* BLOCK 5: CHARACTERISTIC DATA (FDS 5.3.2)
+*======================================================================*
+SELECTION-SCREEN BEGIN OF BLOCK b_ch WITH FRAME TITLE TEXT-005.
+
+SELECT-OPTIONS:
+  so_merkn FOR plmk-merknr,        "Characteristic #
+  so_mic   FOR plmk-verwmerkm,     "Master Inspection Char
+  so_cktxt FOR plmk-kurztext,      "Characteristic Short Text
+  so_ltxtk FOR plmk-ltextkz.       "Long Text Indicator (Char-level)
+
+PARAMETERS:
+  so_chltx TYPE char132,           "Characteristic Long Text value
+  so_tolun TYPE char16,            "Lower Tolerance
+  so_tolob TYPE char16.            "Upper Tolerance
+
+SELECT-OPTIONS:
+  so_meth  FOR plmk-pmethode,      "Inspection Method
+  so_sproc FOR plmk-stichprver.    "Sampling Procedure
+
+SELECTION-SCREEN END OF BLOCK b_ch.
+
+
+*======================================================================*
+* BLOCK 6: DETAILED VIEW (Show/Hide Buttons)
+*======================================================================*
+SELECTION-SCREEN BEGIN OF BLOCK b_det WITH FRAME TITLE TEXT-006.
+
+PARAMETERS:
+  p_showc TYPE c AS CHECKBOX,     "Show Characteristics
+  p_showl TYPE c AS CHECKBOX.     "Show Long Text
+
+SELECTION-SCREEN END OF BLOCK b_det.
