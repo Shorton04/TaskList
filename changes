@@ -1,129 +1,3 @@
-TYPES: BEGIN OF ty_task_disp,
-
-  "===========================================================
-  " FDS MANDATED ORDER (Works for both Case C and Case D)
-  "===========================================================
-
-  plnnr          TYPE plko-plnnr,       "1 Group
-  plnal          TYPE plko-plnal,       "2 Counter
-  werks          TYPE plko-werks,       "3 Plant
-  vornr          TYPE plpo-vornr,       "4 Operation
-
-  tdformat       TYPE tline-tdformat,   "5 FK (Hidden in Case A/B)
-  op_ltxt        TYPE tline-tdline,     "6 Op LT (Shown Case C, Case D)
-  arbpl_o        TYPE crhd-arbpl,       "7 Work Center
-  arbei          TYPE plpo-arbei,       "8 Work
-  kurzt_char     TYPE plmk-kurztext,    "9 Description
-  pmethode       TYPE plmk-pmethode,    "10 Insp Method
-  merknr         TYPE plmk-merknr,      "11 Insp #
-  char_ltxt      TYPE tline-tdline,     "12 Char LT (Shown Case D)
-
-  "===========================================================
-  " REMAINING FIELDS BELOW WILL ALWAYS BE HIDDEN
-  "===========================================================
-
-  row_kind       TYPE c LENGTH 1,
-  tdformat_c     TYPE tline-tdformat,
-  dummy1         TYPE c LENGTH 1,
-
-  " Header (hidden)
-  datuv          TYPE plko-datuv,
-  valid_to       TYPE plko-valid_to,
-  ktext          TYPE plko-ktext,
-  verwe          TYPE plko-verwe,
-  vagrp          TYPE plko-vagrp,
-  stat_h         TYPE plko-statu,
-  anlzu_h        TYPE plko-anlzu,
-  strat          TYPE plko-strat,
-  istru_h        TYPE plko-istru,
-  adpsp          TYPE plko-adpsp,
-  slwbez         TYPE plko-slwbez,
-  loekz_h        TYPE plko-loekz,
-  andat          TYPE plko-andat,
-  annam          TYPE plko-annam,
-  aedat          TYPE plko-aedat,
-  aenam          TYPE plko-aenam,
-
-  " OP (hidden)
-  plnkn          TYPE plpo-plnkn,
-  zaehl          TYPE plpo-zaehl,
-  datuv_o        TYPE plpo-datuv,
-  valid_to_o     TYPE plpo-valid_to,
-  steus          TYPE plpo-steus,
-  werks_o        TYPE crhd-werks,
-  ktsch          TYPE plpo-ktsch,
-  arbeh          TYPE plpo-arbeh,
-  dauno          TYPE plpo-dauno,
-  daune          TYPE plpo-daune,
-  kalid          TYPE plpo-kalid,
-  execution_stage TYPE plpo-execution_stage,
-  anlzu_o        TYPE plpo-anlzu,
-  istru_o        TYPE plpo-istru,
-  larnt          TYPE plpo-larnt,
-  ebeln          TYPE plpo-ebeln,
-  ebelp          TYPE plpo-ebelp,
-  lifnr          TYPE plpo-lifnr,
-  preis          TYPE plpo-preis,
-  waers          TYPE plpo-waers,
-  sakto          TYPE plpo-sakto,
-  ekorg          TYPE plpo-ekorg,
-  ekgrp          TYPE plpo-ekgrp,
-  txtsp_op       TYPE plpo-txtsp,
-  loekz_o        TYPE plpo-loekz,
-
-  " Characteristics (hidden by set_column_visibility)
-  verwmerkm      TYPE plmk-verwmerkm,
-  ltextkz        TYPE plmk-ltextkz,
-  toleranzun     TYPE plmk-toleranzun,
-  toleranzob     TYPE plmk-toleranzob,
-  pruefeinh      TYPE plmk-pruefeinh,
-  stichprver     TYPE plmk-stichprver,
-  katalgart1     TYPE plmk-katalgart1,
-  auswmenge1     TYPE plmk-auswmenge1,
-  steuerkz       TYPE plmk-steuerkz,
-  loekz_c        TYPE plmk-loekz,
-  gueltigab      TYPE plmk-gueltigab,
-  valid_to_c     TYPE plmk-valid_to_on_db,
-
-  " CI1–CI28 (all hidden)
-  ci1 TYPE c LENGTH 1,
-  ci2 TYPE c LENGTH 1,
-  ci3 TYPE c LENGTH 1,
-  ci4 TYPE c LENGTH 1,
-  ci5 TYPE c LENGTH 1,
-  ci6 TYPE c LENGTH 1,
-  ci7 TYPE c LENGTH 1,
-  ci8 TYPE c LENGTH 1,
-  ci9 TYPE c LENGTH 1,
-  ci10 TYPE c LENGTH 1,
-  ci11 TYPE c LENGTH 1,
-  ci12 TYPE c LENGTH 1,
-  ci13 TYPE c LENGTH 1,
-  ci14 TYPE c LENGTH 1,
-  ci15 TYPE c LENGTH 1,
-  ci16 TYPE c LENGTH 1,
-  ci17 TYPE c LENGTH 1,
-  ci18 TYPE c LENGTH 1,
-  ci19 TYPE c LENGTH 1,
-  ci20 TYPE c LENGTH 1,
-  ci21 TYPE c LENGTH 1,
-  ci22 TYPE c LENGTH 1,
-  ci23 TYPE c LENGTH 1,
-  ci24 TYPE c LENGTH 1,
-  ci25 TYPE c LENGTH 1,
-  ci26 TYPE c LENGTH 1,
-  ci27 TYPE c LENGTH 1,
-  ci28 TYPE c LENGTH 1,
-
-END OF ty_task_disp.
-
-
-
-
-
-
-
-
 *---------------------------------------------------------------------*
 *  FORM set_column_visibility_by_state - FINAL WORKING VERSION
 *---------------------------------------------------------------------*
@@ -131,8 +5,6 @@ FORM set_column_visibility_by_state.
 
   DATA lo_columns TYPE REF TO cl_salv_columns_table.
   DATA lo_col     TYPE REF TO cl_salv_column_table.
-  DATA lv_idx     TYPE i.
-  DATA lv_name    TYPE char10.
 
   IF lo_alv IS INITIAL.
     RETURN.
@@ -153,7 +25,6 @@ FORM set_column_visibility_by_state.
     ENDTRY.
   END-OF-DEFINITION.
 
-
   DEFINE hide_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
@@ -166,53 +37,30 @@ FORM set_column_visibility_by_state.
 
 
   "==============================================================
-  " ALWAYS HIDE NON-FDS / GHOST / TECHNICAL FIELDS
+  " ALWAYS HIDE NON-FDS COLUMNS
   "==============================================================
 
-  " STATUS
-  hide_col 'STAT_H'.
-  hide_col 'STATUS'.
-  hide_col 'STATS'.
-
-  " CI1–CI28
-  DO 28 TIMES.
-    lv_idx = sy-index.
-    CONCATENATE 'CI' lv_idx INTO lv_name.
-    hide_col lv_name.
-  ENDDO.
-
-  " Internal technical
-  hide_col 'ROW_KIND'.
-  hide_col 'DATUV'.
-  hide_col 'VALID_TO'.
-  hide_col 'DATUV_O'.
-  hide_col 'VALID_TO_O'.
-  hide_col 'GUELTIGAB'.
-  hide_col 'VALID_TO_C'.
-  hide_col 'LOEKZ_H'.
-  hide_col 'LOEKZ_O'.
-  hide_col 'LOEKZ_C'.
-
-  " Header fields not in FDS
+  "--- Header fields not required in FDS ---
   hide_col 'PLNTY'.
   hide_col 'KTEXT'.
   hide_col 'TPLNR'.
   hide_col 'EQUNR'.
   hide_col 'VERWE'.
   hide_col 'VAGRP'.
+  hide_col 'STATU_H'.
   hide_col 'ANLZU_H'.
   hide_col 'STRAT'.
   hide_col 'ISTRU_H'.
   hide_col 'ADPSP'.
   hide_col 'SLWBEZ'.
+  hide_col 'LOEKZ_H'.
   hide_col 'ANDAT'.
   hide_col 'ANNAM'.
   hide_col 'AEDAT'.
   hide_col 'AENAM'.
 
-  " Operation fields not in FDS
-  hide_col 'PLNKN'.
-  hide_col 'ZAEHL'.
+  "--- Operation fields not required in FDS ---
+  hide_col 'LTXA1'.
   hide_col 'STEUS'.
   hide_col 'WERKS_O'.
   hide_col 'KTSCH'.
@@ -233,8 +81,9 @@ FORM set_column_visibility_by_state.
   hide_col 'EKORG'.
   hide_col 'EKGRP'.
   hide_col 'TXTSP_OP'.
+  hide_col 'LOEKZ_O'.
 
-  " Characteristics fields not in FDS
+  "--- Characteristic fields not in FDS ---
   hide_col 'VERWMERKM'.
   hide_col 'LTEXTKZ'.
   hide_col 'TOLERANZUN'.
@@ -244,11 +93,44 @@ FORM set_column_visibility_by_state.
   hide_col 'KATALGART1'.
   hide_col 'AUSWMENGE1'.
   hide_col 'STEUERKZ'.
+  hide_col 'LOEKZ_C'.
 
+  "--- CI1..CI28 ghost columns ---
+  hide_col 'CI1'.
+  hide_col 'CI2'.
+  hide_col 'CI3'.
+  hide_col 'CI4'.
+  hide_col 'CI5'.
+  hide_col 'CI6'.
+  hide_col 'CI7'.
+  hide_col 'CI8'.
+  hide_col 'CI9'.
+  hide_col 'CI10'.
+  hide_col 'CI11'.
+  hide_col 'CI12'.
+  hide_col 'CI13'.
+  hide_col 'CI14'.
+  hide_col 'CI15'.
+  hide_col 'CI16'.
+  hide_col 'CI17'.
+  hide_col 'CI18'.
+  hide_col 'CI19'.
+  hide_col 'CI20'.
+  hide_col 'CI21'.
+  hide_col 'CI22'.
+  hide_col 'CI23'.
+  hide_col 'CI24'.
+  hide_col 'CI25'.
+  hide_col 'CI26'.
+  hide_col 'CI27'.
+  hide_col 'CI28'.
+
+  "--- Internal / Technical fields ---
+  hide_col 'ROW_KIND'.
 
 
   "==============================================================
-  " SHOW ONLY CORE FDS FIELDS — ALWAYS SHOW THESE
+  " ALWAYS SHOW CORE FDS COLUMNS
   "==============================================================
   show_col 'PLNNR'.        "Group
   show_col 'PLNAL'.        "Counter
@@ -258,30 +140,26 @@ FORM set_column_visibility_by_state.
   show_col 'ARBEI'.        "Work
   show_col 'KURZT_CHAR'.   "Description
   show_col 'PMETHODE'.     "Insp Method
-  show_col 'MERKNR'.       "Insp No.
+  show_col 'MERKNR'.       "Insp Number
   show_col 'TDFORMAT'.     "FK
-  show_col 'OP_LTXT'.      "Op LT
-  show_col 'CHAR_LTXT'.    "Char LT
+  show_col 'OP_LTXT'.      "Operation Long Text
+  show_col 'CHAR_LTXT'.    "Characteristic Long Text
 
 
 
   "==============================================================
-  "  FDS VISIBILITY RULES (YOUR WORKING LOGIC)
+  " CASE A/B/C/D – Your Original Logic
   "==============================================================
 
-  "--------------------------------------------------------------
-  " CASE A — No Characteristics, No Long Text
-  "--------------------------------------------------------------
+  "CASE A – No Char, No LT
   IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
     hide_col 'TDFORMAT'.
     hide_col 'OP_LTXT'.
     hide_col 'CHAR_LTXT'.
 
-  
-  "--------------------------------------------------------------
-  " CASE B — Show Characteristics, No Long Text
-  "--------------------------------------------------------------
+
+  "CASE B – Show Char, No LT
   ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
 
     hide_col 'TDFORMAT'.
@@ -289,19 +167,15 @@ FORM set_column_visibility_by_state.
     hide_col 'CHAR_LTXT'.
 
 
-  "--------------------------------------------------------------
-  " CASE C — Hide Characteristics, Show Long Text
-  "--------------------------------------------------------------
+  "CASE C – Hide Char, Show LT
   ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
 
     show_col 'TDFORMAT'.
     show_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.    
+    hide_col 'CHAR_LTXT'.
 
 
-  "--------------------------------------------------------------
-  " CASE D — Show Characteristics + Show Long Text
-  "--------------------------------------------------------------
+  "CASE D – Char + LT
   ELSE.
 
     show_col 'TDFORMAT'.
