@@ -1,234 +1,78 @@
-"===================================================================*
-"* KEYDATE — FDS & IA39
-"===================================================================*
-IF gs_base-datuv > so_keydt-low.
-  CONTINUE.
-ENDIF.
+TYPES: BEGIN OF ty_task_base,
 
-IF gs_base-valid_to < so_keydt-low.
-  CONTINUE.
-ENDIF.
+  "==================== HEADER ====================
+    plnty        TYPE plko-plnty,
+    plnnr        TYPE plko-plnnr,
+    plnal        TYPE plko-plnal,
+    datuv        TYPE plko-datuv,
+    valid_to     TYPE plko-datub,
+    werks        TYPE plko-werks,
+    ktext        TYPE plko-ktext,
+    verwe        TYPE plko-verwe,
+    vagrp        TYPE plko-vagrp,
+    statu_h      TYPE plko-statu,
+    anlzu_h      TYPE plko-anlzu,
+    strat        TYPE plko-strat,
+    istru_h      TYPE plko-istru,
+    adpsp        TYPE plko-adpsp,
+    slwbez       TYPE plko-slwbez,
+    loekz_h      TYPE plko-loekz,
+    andat        TYPE plko-andat,
+    annam        TYPE plko-annam,
+    aedat        TYPE plko-aedat,
+    aenam        TYPE plko-aenam,
 
-IF gs_base-datuv_o > so_keydt-low.
-  CONTINUE.
-ENDIF.
+  "==================== FLOC / EQUIP ===============
+    tplnr        TYPE tapl-tplnr,
+    equnr        TYPE eapl-equnr,
 
-IF gs_base-valid_to_o < so_keydt-low.
-  CONTINUE.
-ENDIF.
+  "==================== OPERATION ==================
+    plnkn        TYPE plas-plnkn,
+    zaehl        TYPE plas-zaehl,
+    datuv_o      TYPE plpo-datuv,
+    valid_to_o   TYPE plpo-datub,
+    vornr        TYPE plpo-vornr,
+    ltxa1        TYPE plpo-ltxa1,
+    steus        TYPE plpo-steus,
+    arbpl_o      TYPE crhd-arbpl,
+    werks_o      TYPE crhd-werks,
+    ktsch        TYPE plpo-ktsch,
+    arbei        TYPE plpo-arbei,
+    arbeh        TYPE plpo-arbeh,
+    dauno        TYPE plpo-dauno,
+    daune        TYPE plpo-daune,
+    kalid        TYPE plpo-kalid,
+    execution_stage TYPE plpo-execution_stage,
+    anlzu_o      TYPE plpo-anlzu,
+    istru_o      TYPE plpo-istru,
+    larnt        TYPE plpo-larnt,
+    ebeln        TYPE plpo-ebeln,
+    ebelp        TYPE plpo-ebelp,
+    lifnr        TYPE plpo-lifnr,
+    txtsp_op     TYPE plpo-txtsp,
+    loekz_o      TYPE plpo-loekz,
 
-IF gv_show_char = gc_true.
-  IF gs_base-gueltigab > so_keydt-low.
-    CONTINUE.
-  ENDIF.
+  "==================== CHARACTERISTICS ============
+    merknr       TYPE plmk-merknr,
+    verwmerkm    TYPE plmk-verwmerkm,
+    kurzt_char   TYPE plmk-kurztext,
+    ltextkz      TYPE plmk-ltextkz,
+    toleranzun   TYPE plmk-toleranzun,
+    toleranzob   TYPE plmk-toleranzob,
+    pruefeinh    TYPE plmk-pruefeinh,
+    stichprver   TYPE plmk-stichprver,
+    pmethode     TYPE plmk-pmethode,
+    katalgart1   TYPE plmk-katalgart1,
+    auswmenge1   TYPE plmk-auswmenge1,
+    steuerkz     TYPE plmk-steuerkz,
+    loekz_c      TYPE plmk-loekz,
+    gueltigab    TYPE plmk-gueltigab,
+    valid_to_c   TYPE plmk-valid_to_on_db,
 
-  IF gs_base-valid_to_c < so_keydt-low.
-    CONTINUE.
-  ENDIF.
-ENDIF.
+  "Needed for long text
+    row_kind     TYPE c,
+    tdformat     TYPE tline-tdformat,
+    op_ltxt      TYPE tline-tdline,
+    char_ltxt    TYPE tline-tdline,
 
-
-"===================================================================*
-"* TASK LIST TYPE FILTER (FTL / ETL / GTL)
-"===================================================================*
-IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
-  CONTINUE.
-ENDIF.
-
-IF gs_base-plnty = 'B' AND p_etl IS INITIAL.
-  CONTINUE.
-ENDIF.
-
-IF gs_base-plnty = 'E' AND p_gtl IS INITIAL.
-  CONTINUE.
-ENDIF.
-
-
-"===================================================================*
-"* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
-"===================================================================*
-IF so_plnnr-low IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
-  CONTINUE.
-ENDIF.
-
-IF so_plnal-low IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
-  CONTINUE.
-ENDIF.
-
-IF so_tplnr-low IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
-  CONTINUE.
-ENDIF.
-
-IF so_equnr-low IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
-  CONTINUE.
-ENDIF.
-
-
-"===================================================================*
-"* HEADER FILTERS — FDS (SAFE VERSION)
-"===================================================================*
-IF so_werks-low IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
-  CONTINUE.
-ENDIF.
-
-IF so_verwe-low IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
-  CONTINUE.
-ENDIF.
-
-IF so_vagrp-low IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
-  CONTINUE.
-ENDIF.
-
-IF so_stath-low IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
-  CONTINUE.
-ENDIF.
-
-IF so_anlzh-low IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
-  CONTINUE.
-ENDIF.
-
-IF so_strat-low IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
-  CONTINUE.
-ENDIF.
-
-IF so_istrh-low IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
-  CONTINUE.
-ENDIF.
-
-IF so_adpsp-low IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
-  CONTINUE.
-ENDIF.
-
-IF so_slwbe-low IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
-  CONTINUE.
-ENDIF.
-
-IF so_aedat-low IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
-  CONTINUE.
-ENDIF.
-
-IF so_aenam-low IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
-  CONTINUE.
-ENDIF.
-
-
-"===================================================================*
-"* OPERATION FILTERS — FDS (SAFE VERSION)
-"===================================================================*
-IF so_vornr-low IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
-  CONTINUE.
-ENDIF.
-
-IF so_otext-low IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
-  CONTINUE.
-ENDIF.
-
-IF so_steus-low IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
-  CONTINUE.
-ENDIF.
-
-IF so_arbpo-low IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
-  CONTINUE.
-ENDIF.
-
-IF so_werop-low IS NOT INITIAL AND gs_base-werks_o NOT IN so_werop.
-  CONTINUE.
-ENDIF.
-
-IF so_optpl-low IS NOT INITIAL AND gs_base-tplnr NOT IN so_optpl.
-  CONTINUE.
-ENDIF.
-
-IF so_opequ-low IS NOT INITIAL AND gs_base-equnr NOT IN so_opequ.
-  CONTINUE.
-ENDIF.
-
-IF so_ktsch-low IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
-  CONTINUE.
-ENDIF.
-
-IF so_exsta-low IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
-  CONTINUE.
-ENDIF.
-
-IF so_anlzo-low IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
-  CONTINUE.
-ENDIF.
-
-IF so_istru-low IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
-  CONTINUE.
-ENDIF.
-
-IF so_larnt-low IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
-  CONTINUE.
-ENDIF.
-
-IF so_ebeln-low IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
-  CONTINUE.
-ENDIF.
-
-IF so_ebelp-low IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
-  CONTINUE.
-ENDIF.
-
-IF so_lifnr-low IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
-  CONTINUE.
-ENDIF.
-
-
-"===================================================================*
-"* OPERATION LONG TEXT INDICATOR FILTER
-"===================================================================*
-IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
-  CONTINUE.
-ENDIF.
-
-
-"===================================================================*
-"* CHARACTERISTIC FILTERS (ONLY IF SHOW CHAR IS ON)
-"===================================================================*
-IF gv_show_char = gc_true.
-
-  IF so_merkn-low IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
-    CONTINUE.
-  ENDIF.
-
-  IF so_mic-low IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
-    CONTINUE.
-  ENDIF.
-
-  IF so_cktxt-low IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
-    CONTINUE.
-  ENDIF.
-
-  IF so_ltxtk-low IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
-    CONTINUE.
-  ENDIF.
-
-  IF so_meth-low IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
-    CONTINUE.
-  ENDIF.
-
-  IF so_sproc-low IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
-    CONTINUE.
-  ENDIF.
-
-ENDIF.
-
-
-"===================================================================*
-"* TOLERANCE FILTERS
-"===================================================================*
-IF so_tolun-low IS NOT INITIAL AND gs_base-toleranzun <> so_tolun-low.
-  CONTINUE.
-ENDIF.
-
-IF so_tolob-low IS NOT INITIAL AND gs_base-toleranzob <> so_tolob-low.
-  CONTINUE.
-ENDIF.
-
-
-"===================================================================*
-"* PASSED ALL FILTERS
-"===================================================================*
-APPEND gs_base TO lt_filtered.
+  END OF ty_task_base.
