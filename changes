@@ -1,20 +1,11 @@
-IF gv_show_char = gc_true AND ls_base-merknr IS NOT INITIAL.
+CLEAR gs_display.
+MOVE-CORRESPONDING is_base TO gs_display.
 
-  " New characteristic row under same operation
-  IF ls_base-merknr <> lv_last_merknr.
+gs_display-row_kind = 'L'.
+gs_display-op_ltxt  = ls_line-tdline.
+gs_display-tdformat = ls_line-tdformat.
 
-    CLEAR ls_disp.
-    MOVE-CORRESPONDING ls_base TO ls_disp.
-    ls_disp-row_kind = 'C'.
-    APPEND ls_disp TO gt_display.
+"--- Indent LT under operation ---
+CONCATENATE '   ' gs_display-op_ltxt INTO gs_display-op_ltxt.
 
-    lv_last_merknr = ls_base-merknr.
-
-  ENDIF.
-
-  " Characteristic long text (only in CHAR+LTXT mode)
-  IF gv_show_ltxt = gc_true.
-    PERFORM append_char_longtext USING ls_base.
-  ENDIF.
-
-ENDIF.
+APPEND gs_display TO gt_display.
