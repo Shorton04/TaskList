@@ -1,22 +1,225 @@
-FORM hide_column USING pv_col TYPE lvc_fname.
-  TRY.
-      lo_column ?= lo_columns->get_column( pv_col ).
+*---------------------------------------------------------------------*
+*  BUILD_DISPLAY  — Operation → Characteristics → Long Text
+*---------------------------------------------------------------------*
+FORM build_display.
 
-      "Hide from initial display but still available in Change Layout
-      lo_column->set_visible( abap_false ).
-      lo_column->set_technical( abap_false ).  "IMPORTANT
+  DATA: ls_base TYPE ty_task_base,
+        ls_disp TYPE ty_task_display,
+        lv_last_plnty TYPE plnty,
+        lv_last_plnnr TYPE plnnr,
+        lv_last_plnal TYPE plnal,
+        lv_last_vornr TYPE plnkn,
+        lv_last_merknr TYPE merknr,
+        ls_color TYPE lvc_s_scol,
+        lv_indent TYPE string.
 
-    CATCH cx_salv_not_found.
-  ENDTRY.
+  CLEAR: gt_display,
+         lv_last_plnty,
+         lv_last_plnnr,
+         lv_last_plnal,
+         lv_last_vornr,
+         lv_last_merknr.
+
+  LOOP AT gt_base INTO ls_base.
+
+    "—————————————————————————————
+    " NEW OPERATION GROUP
+    "—————————————————————————————
+    IF ls_base-vornr <> lv_last_vornr
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
+
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+      ls_disp-row_kind = 'O'.
+
+      "Row color (blue)
+      CLEAR ls_color.
+      ls_color-color-col = 3.
+      APPEND ls_color TO ls_disp-row_color.
+
+      APPEND ls_disp TO gt_display.
+
+      "Operation long text only if CHAR OFF and LTXT ON
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING ls_base.
+      ENDIF.
+
+      "Reset last characteristic
+      CLEAR lv_last_merknr.
+
+      "Track operation grouping keys
+      lv_last_plnty = ls_base-plnty.
+      lv_last_plnnr = ls_base-plnnr.
+      lv_last_plnal = ls_base-plnal.
+      lv_last_vornr = ls_base-vornr.
+
+    ENDIF.
+
+
+    "—————————————————————————————
+    " CHARACTERISTICS
+    "—————————————————————————————
+    IF gv_show_char = abap_true AND ls_base-merknr IS NOT INITIAL.
+
+      IF ls_base-merknr <> lv_last_merknr.
+
+        CLEAR ls_disp.
+        MOVE-CORRESPONDING ls_base TO ls_disp.
+        ls_disp-row_kind = 'C'.
+
+        "--- Hard-space indentation ---
+        lv_indent = cl_abap_char_utilities=>hard_space &&
+                    cl_abap_char_utilities=>hard_space &&
+                    cl_abap_char_utilities=>hard_space.
+
+        CONCATENATE lv_indent ls_disp-kurzt_char INTO ls_disp-kurzt_char.
+        CONCATENATE lv_indent ls_disp-merknr     INTO ls_disp-merknr.
+
+        "Row color (yellow)
+        CLEAR ls_color.
+        ls_color-color-col = 5.
+        ls_color-color-int = 1.
+        APPEND ls_color TO ls_disp-row_color.
+
+        APPEND ls_disp TO gt_display.
+
+        lv_last_merknr = ls_base-merknr.
+
+      ENDIF.
+
+      "Characteristic Long Text
+      IF gv_show_ltxt = abap_true.
+        PERFORM append_char_longtext USING ls_base.
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
+
 ENDFORM.
 
 
 
 
-FORM hide_technical_column USING pv_col TYPE lvc_fname.
-  TRY.
-      lo_column ?= lo_columns->get_column( pv_col ).
-      lo_column->set_technical( abap_true ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
+*---------------------------------------------------------------------*
+*  APPEND_OP_LONGTEXT — Insert OP Long Text under Operation
+*---------------------------------------------------------------------*
+FORM append_op_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines TYPE STANDARD TABLE OF tline,
+        ls_line TYPE tline,
+        lv_name TYPE tdobname,
+        ls_disp TYPE ty_task_display,
+        ls_color TYPE lvc_s_scol,
+        lv_indent TYPE string.
+
+  "Read OP long text
+  PERFORM get_op_text_name USING is_base CHANGING lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = 'ST'
+      language = sy-langu
+      object   = 'PLPO'
+      name     = lv_name
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      not_found = 4
+      OTHERS    = 8.
+
+  LOOP AT lt_lines INTO ls_line.
+
+    CLEAR ls_disp.
+    MOVE-CORRESPONDING is_base TO ls_disp.
+
+    ls_disp-row_kind = 'L'.
+    ls_disp-op_ltxt  = ls_line-tdline.
+
+    "--- indentation ---
+    lv_indent = cl_abap_char_utilities=>hard_space &&
+                cl_abap_char_utilities=>hard_space &&
+                cl_abap_char_utilities=>hard_space.
+
+    CONCATENATE lv_indent ls_disp-op_ltxt INTO ls_disp-op_ltxt.
+
+    "Row color (green)
+    CLEAR ls_color.
+    ls_color-color-col = 6.
+    APPEND ls_color TO ls_disp-row_color.
+
+    APPEND ls_disp TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+
+
+
+*---------------------------------------------------------------------*
+*  APPEND_CHAR_LONGTEXT — Insert Characteristic Long Text
+*---------------------------------------------------------------------*
+FORM append_char_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines TYPE STANDARD TABLE OF tline,
+        ls_line TYPE tline,
+        lv_name TYPE tdobname,
+        lv_plnkn TYPE char03,
+        lv_merknr TYPE char08,
+        ls_disp TYPE ty_task_display,
+        ls_color TYPE lvc_s_scol,
+        lv_indent TYPE string.
+
+  lv_plnkn  = is_base-plnkn.
+  lv_merknr = is_base-merknr.
+
+  "Correct SAP TDNAME for PLMK/ST
+  CONCATENATE
+    is_base-plnty
+    is_base-plnnr
+    lv_plnkn
+    lv_merknr
+  INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = 'ST'
+      language = sy-langu
+      object   = 'PLMK'
+      name     = lv_name
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      not_found = 4
+      OTHERS    = 8.
+
+  LOOP AT lt_lines INTO ls_line.
+
+    CLEAR ls_disp.
+    MOVE-CORRESPONDING is_base TO ls_disp.
+
+    ls_disp-row_kind  = 'L'.
+    ls_disp-char_ltxt = ls_line-tdline.
+
+    "--- indentation ---
+    lv_indent = cl_abap_char_utilities=>hard_space &&
+                cl_abap_char_utilities=>hard_space &&
+                cl_abap_char_utilities=>hard_space.
+
+    CONCATENATE lv_indent ls_disp-char_ltxt INTO ls_disp-char_ltxt.
+
+    "Row color (green)
+    CLEAR ls_color.
+    ls_color-color-col = 6.
+    APPEND ls_color TO ls_disp-row_color.
+
+    APPEND ls_disp TO gt_display.
+
+  ENDLOOP.
+
 ENDFORM.
