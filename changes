@@ -1,128 +1,216 @@
-*&---------------------------------------------------------------------*
-*& Form SET_COLUMN_VISIBILITY_BY_STATE
-*&---------------------------------------------------------------------*
-FORM set_column_visibility_by_state.
+FORM get_data.
 
-  DATA: lo_cols TYPE REF TO cl_salv_columns_table,
-        lo_col  TYPE REF TO cl_salv_column.
+  DATA: lv_keydat TYPE plko-datuv,
+        lv_tolun  TYPE plmk-toleranzun,
+        lv_tolob  TYPE plmk-toleranzob.
 
-  lo_cols = go_alv->get_columns( ).
+  CLEAR gt_base.
+  CLEAR gs_base.
 
-  "============ MACROS =======================
-  "Safe hide
-  DEFINE hidec.
-    TRY.
-        lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_visible( if_salv_c_bool_sap=>false ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
+  " Key date (single value)
+  lv_keydat = so_keydt-low.
 
-  "Safe show
-  DEFINE showc.
-    TRY.
-        lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_visible( if_salv_c_bool_sap=>true ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
-
-  "Safe positioning (working SALV API)
-  DEFINE set_pos.
-    TRY.
-        lo_cols->set_column_position(
-           columnname = &1
-           position   = &2
-        ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
-  "===========================================
-
-
-  "==== Default show these always ====
-  showc 'PLNNR'.
-  showc 'PLNAL'.
-  showc 'WERKS'.
-  showc 'VORNR'.
-  showc 'ARBPL'.
-  showc 'STEUS'.
-  showc 'LTXA1'.
-  showc 'PLMK~MERKNR'.
-  showc 'PLMK~KURZTEXT'.
-  showc 'PLMK~VERWMERKMAL'.
-  showc 'PLMK~VERSION'.
-  showc 'PLMK~PLMKZ'.
-  showc 'PLMK~MERKTY'.
-  showc 'INSPECTION_METHOD'.
-  showc 'INSPECTION_NUMBER'.
-
-  "Hide both long-text columns first
-  hidec 'OP_LTXT'.
-  hidec 'CHAR_LTXT'.
-  hidec 'FK'.
-
-  "==================================================
-  " MODE A = No Char, No LT
-  "==================================================
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
-
-    hidec 'FK'.
-    hidec 'OP_LTXT'.
-    hidec 'CHAR_LTXT'.
-
-    "Normal layout
-    set_pos 'LTXA1' 6.
-    set_pos 'INSPECTION_METHOD' 7.
-    set_pos 'INSPECTION_NUMBER' 8.
-
-  "==================================================
-  " MODE B = Show Char, No LT
-  "==================================================
-  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-
-    showc 'FK'.
-    showc 'PLMK~MERKNR'.
-
-    hidec 'OP_LTXT'.
-    hidec 'CHAR_LTXT'.
-
-    set_pos 'INSPECTION_METHOD' 7.
-    set_pos 'INSPECTION_NUMBER' 8.
-    set_pos 'FK' 9.
-    set_pos 'PLMK~MERKNR' 10.
-
-  "==================================================
-  " MODE C = No Char, Show LT
-  "==================================================
-  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-
-    showc 'OP_LTXT'.
-    showc 'FK'.
-
-    hidec 'CHAR_LTXT'.
-    hidec 'PLMK~MERKNR'.
-
-    "Place FK + OP_LONG after operation
-    set_pos 'FK' 6.
-    set_pos 'OP_LTXT' 7.
-
-  "==================================================
-  " MODE D = Show Char, Show LT
-  "==================================================
-  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_true.
-
-    showc 'FK'.
-    showc 'CHAR_LTXT'.
-
-    hidec 'OP_LTXT'.   "Only char LT in this mode
-
-    "Place FK + Char LT at end (after insp meth & insp#)
-    set_pos 'INSPECTION_METHOD' 7.
-    set_pos 'INSPECTION_NUMBER' 8.
-    set_pos 'FK' 9.
-    set_pos 'CHAR_LTXT' 10.
-
+  " Tolerance parameters (CHAR16 -> FLTP variables)
+  CLEAR: lv_tolun, lv_tolob.
+  IF so_tolun IS NOT INITIAL.
+    lv_tolun = so_tolun.    " implicit conv CHAR16 -> FLTP
   ENDIF.
+  IF so_tolob IS NOT INITIAL.
+    lv_tolob = so_tolob.
+  ENDIF.
+
+  "-------------------------------------------------------------------*
+  " Core selection: PLKO – PLAS – PLPO – PLMK – TAPL – EAPL – CRHD
+  "-------------------------------------------------------------------*
+  SELECT
+    plko~plnty          " header
+    plko~plnnr
+    plko~plnal
+    plko~datuv
+    plko~werks
+    plko~ktext
+    plko~verwe
+    plko~vagrp
+    plko~statu     AS stat_h
+    plko~anlzu     AS anlzu_h
+    plko~strat
+    plko~istru     AS istru_h
+    plko~adpsp
+    plko~slwbez
+    plko~loekz     AS loekz_h
+    plko~andat
+    plko~annam
+    plko~aedat
+    plko~aenam
+
+    tapl~tplnr      " FLOC assignment
+    eapl~equnr      " EQUIP assignment
+
+    plpo~plnkn
+    plpo~zaehl
+    plpo~vornr      " operation
+    plpo~ltxa1
+    plpo~steus
+    crhd~arbpl      AS arbpl_o
+    crhd~werks      AS werks_o
+    plpo~ktsch
+    plpo~arbei
+    plpo~arbeh
+    plpo~dauno
+    plpo~daune
+    plpo~kalid
+    plpo~execution_stage
+    plpo~anlzu      AS anlzu_o
+    plpo~istru      AS istru_o
+    plpo~larnt
+    plpo~ebeln
+    plpo~ebelp
+    plpo~lifnr
+    plpo~preis
+    plpo~waers
+    plpo~sakto
+    plpo~ekorg
+    plpo~ekgrp
+    plpo~txtsp      AS txtsp_op
+    plpo~loekz      AS loekz_o
+
+    plmk~merknr     " characteristic
+    plmk~verwmerkm
+    plmk~kurztext   AS kurzt_char
+    plmk~ltextkz
+    plmk~toleranzun
+    plmk~toleranzob
+    plmk~pruefeinh
+    plmk~stichprver
+    plmk~pmethode
+    plmk~katalgart1
+    plmk~auswmenge1
+    plmk~steuerkz
+    plmk~loekz      AS loekz_c
+
+    INTO CORRESPONDING FIELDS OF TABLE gt_base
+
+    FROM  plko
+      INNER JOIN plas
+        ON  plas~plnty = plko~plnty
+        AND plas~plnnr = plko~plnnr
+        AND plas~plnal = plko~plnal
+        AND plas~loekz = ' '
+      INNER JOIN plpo
+        ON  plpo~plnty = plas~plnty
+        AND plpo~plnnr = plas~plnnr
+        AND plpo~plnkn = plas~plnkn
+        "AND plpo~zaehl = plas~zaehl
+        AND plpo~loekz = ' '
+      LEFT OUTER JOIN plmk
+        ON  plmk~plnty = plpo~plnty
+        AND plmk~plnnr = plpo~plnnr
+        AND plmk~plnkn = plpo~plnkn
+        "AND plmk~zaehl = plpo~zaehl
+        AND plmk~loekz = ' '
+      LEFT OUTER JOIN tapl
+        ON  tapl~plnty = plko~plnty
+        AND tapl~plnnr = plko~plnnr
+        AND tapl~plnal = plko~plnal
+        AND tapl~loekz = ' '
+      LEFT OUTER JOIN eapl
+        ON  eapl~plnty = plko~plnty
+        AND eapl~plnnr = plko~plnnr
+        AND eapl~plnal = plko~plnal
+        AND eapl~loekz = ' '
+      LEFT OUTER JOIN crhd
+        ON  crhd~objid = plpo~arbid
+
+    WHERE plko~loekz = ' '        " header not deleted
+      AND plko~datuv <= lv_keydat.
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+  DELETE ADJACENT DUPLICATES FROM gt_base COMPARING plnty plnnr plnal vornr merknr.
+
+  "-------------------------------------------------------------------*
+  " Apply selection-screen filters in ABAP on GT_BASE
+  "-------------------------------------------------------------------*
+  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+
+  CLEAR lt_filtered.
+
+  LOOP AT gt_base INTO gs_base.
+
+    "---- Task list type (PLKO-PLNTY) via checkboxes ------------------
+    IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+    IF gs_base-plnty = 'B' AND p_etl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+    IF gs_base-plnty = 'E' AND p_gtl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    "---- Task list key: GROUP / COUNTER / PLANT ----------------------
+    "GROUP  = PLKO-PLNNR  (your “Group” field)
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+      CONTINUE.
+    ENDIF.
+
+    "COUNTER = PLKO-PLNAL  (if you have selection for counter)
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+      CONTINUE.
+    ENDIF.
+
+    "PLANT
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
+
+    "---- Operation filters -------------------------------------------
+    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+      CONTINUE.
+    ENDIF.
+
+    "Operation long-text indicator (only ops that HAVE long text)
+    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    "---- Characteristic filters --------------------------------------
+    IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      CONTINUE.
+    ENDIF.
+
+    IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      CONTINUE.
+    ENDIF.
+
+    IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      CONTINUE.
+    ENDIF.
+
+    IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      CONTINUE.
+    ENDIF.
+
+    "Tolerance range
+    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> lv_tolun.
+      CONTINUE.
+    ENDIF.
+    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> lv_tolob.
+      CONTINUE.
+    ENDIF.
+
+    "---- If we reach here: row matches ALL filled selections ---------
+
+    APPEND gs_base TO lt_filtered.
+
+  ENDLOOP.
+
+  gt_base = lt_filtered.
 
 ENDFORM.
