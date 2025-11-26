@@ -46,17 +46,18 @@ ENDCLASS.
 *---------------------------------------------------------------------*
 FORM validate_selection.
 
-  IF p_ftl IS INITIAL AND
-     p_etl IS INITIAL AND
-     p_gtl IS INITIAL.
+  "At least one TL type
+  IF p_ftl IS INITIAL AND p_etl IS INITIAL AND p_gtl IS INITIAL.
     MESSAGE e398(00) WITH 'Select at least one Task List Type'.
   ENDIF.
 
+  "Key date required
   IF so_keydt-low IS INITIAL.
     MESSAGE e398(00) WITH 'Enter a key date'.
   ENDIF.
 
 ENDFORM.
+
 
 *---------------------------------------------------------------------*
 * PF-STATUS DETERMINATION
@@ -79,6 +80,14 @@ FORM set_pfstatus_from_state.
     lo_alv->set_screen_status(
       pfstatus = lv_pf
       report   = sy-repid ).
+  ENDIF.
+  IF gv_show_ltxt = gc_true.
+    "Disable Show Characteristics button
+    lo_alv->set_screen_status(
+       pfstatus = lv_pf
+       report   = sy-repid
+    ).
+    RETURN.
   ENDIF.
 
 ENDFORM.
@@ -309,14 +318,42 @@ FORM get_data.
   "===================================================================*
   "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
   "===================================================================*
-  DATA lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+
   CLEAR lt_filtered.
 
   LOOP AT gt_base INTO gs_base.
 
-    "--------------------------------------------------------------*
-    " Task List Type (A/B/E)
-    "--------------------------------------------------------------*
+    IF gs_base-datuv > so_keydt-low.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-valid_to < so_keydt-low.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-datuv_o > so_keydt-low.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-valid_to_o < so_keydt-low.
+      CONTINUE.
+    ENDIF.
+
+    IF gv_show_char = gc_true.
+      IF gs_base-gueltigab > so_keydt-low.
+        CONTINUE.
+      ENDIF.
+
+      IF gs_base-valid_to_c < so_keydt-low.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+
+    "===================================================================*
+    "* TASK LIST TYPE FILTER (FTL / ETL / GTL)
+    "===================================================================*
     IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
       CONTINUE.
     ENDIF.
@@ -330,26 +367,82 @@ FORM get_data.
     ENDIF.
 
 
-    "--------------------------------------------------------------*
-    " Header Filters (Exact match)
-    "--------------------------------------------------------------*
-    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+    "===================================================================*
+    "* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
+    "===================================================================*
+    IF so_plnnr-low IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
       CONTINUE.
     ENDIF.
 
-    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+    IF so_plnal-low IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
       CONTINUE.
     ENDIF.
 
-    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+    IF so_tplnr-low IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_equnr-low IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
       CONTINUE.
     ENDIF.
 
 
-    "--------------------------------------------------------------*
-    " Operation Filters (Exact match)
-    "--------------------------------------------------------------*
+    "===================================================================*
+    "* HEADER FILTERS — FDS (SAFE VERSION)
+    "===================================================================*
+    IF so_werks-low IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
+
+    IF so_verwe-low IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_vagrp-low IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_stath-low IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzh-low IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_strat-low IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istrh-low IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_adpsp-low IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_slwbe-low IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aedat-low IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aenam-low IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION FILTERS
+    "===================================================================*
     IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_uvorn[] IS NOT INITIAL AND gs_base-vornr NOT IN so_uvorn.
       CONTINUE.
     ENDIF.
 
@@ -357,44 +450,102 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    " Operation long text present?
+    IF so_steus[] IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
+      CONTINUE.
+    ENDIF.
+
+    IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_werop[] IS NOT INITIAL AND gs_base-werks_o NOT IN so_werop.
+      CONTINUE.
+    ENDIF.
+
+    IF so_optpl[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_optpl.
+      CONTINUE.
+    ENDIF.
+
+    IF so_opequ[] IS NOT INITIAL AND gs_base-equnr NOT IN so_opequ.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
+      CONTINUE.
+    ENDIF.
+
+    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istru[] IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
+      CONTINUE.
+    ENDIF.
+
+    IF so_larnt[] IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebeln[] IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebelp[] IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_lifnr[] IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION LONG TEXT INDICATOR FILTER
+    "===================================================================*
     IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
       CONTINUE.
     ENDIF.
 
 
-    "--------------------------------------------------------------*
-    " Characteristic Filters (ONLY if Show Characteristics = ON)
-    "--------------------------------------------------------------*
+    "===================================================================*
+    "* CHARACTERISTIC FILTERS (ONLY IF SHOW CHAR IS ON)
+    "===================================================================*
     IF gv_show_char = gc_true.
 
-      IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      IF so_merkn-low IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
         CONTINUE.
       ENDIF.
 
-      IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      IF so_mic-low IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
         CONTINUE.
       ENDIF.
 
-      IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      IF so_cktxt-low IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
         CONTINUE.
       ENDIF.
 
-      IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      IF so_ltxtk-low IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
         CONTINUE.
       ENDIF.
 
-      IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      IF so_meth-low IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
         CONTINUE.
       ENDIF.
 
-    ENDIF.  "gv_show_char
+      IF so_sproc-low IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+        CONTINUE.
+      ENDIF.
+
+    ENDIF.
 
 
-    "--------------------------------------------------------------*
-    " Tolerances (Exact match, FDS)
-    "--------------------------------------------------------------*
-    " We compare the original CHAR input to avoid float rounding errors.
+    "===================================================================*
+    "* TOLERANCE FILTERS
+    "===================================================================*
     IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> so_tolun.
       CONTINUE.
     ENDIF.
@@ -404,9 +555,9 @@ FORM get_data.
     ENDIF.
 
 
-    "--------------------------------------------------------------*
-    " PASSED ALL FILTERS
-    "--------------------------------------------------------------*
+    "===================================================================*
+    "* PASSED ALL FILTERS
+    "===================================================================*
     APPEND gs_base TO lt_filtered.
 
   ENDLOOP.
@@ -1020,6 +1171,7 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
   ENDLOOP.
 
 ENDFORM.
+
 
 
 *======================================================================*
