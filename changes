@@ -1,50 +1,65 @@
 "===================================================================*
-  "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
-  "===================================================================*
-  DATA lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+"* FDS-COMPLIANT FILTERING
+"===================================================================*
+DATA lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+CLEAR lt_filtered.
 
-  CLEAR lt_filtered.
+LOOP AT gt_base INTO gs_base.
 
-  LOOP AT gt_base INTO gs_base.
+  "--------------------------------------------------------------*
+  " Task List Type (A/B/E)
+  "--------------------------------------------------------------*
+  IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
+    CONTINUE.
+  ENDIF.
 
-    "--- Task List Type (FTL/ETL/GTL) --------------------------------
-    IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
-      CONTINUE.
-    ENDIF.
-    IF gs_base-plnty = 'B' AND p_etl IS INITIAL.
-      CONTINUE.
-    ENDIF.
-    IF gs_base-plnty = 'E' AND p_gtl IS INITIAL.
-      CONTINUE.
-    ENDIF.
+  IF gs_base-plnty = 'B' AND p_etl IS INITIAL.
+    CONTINUE.
+  ENDIF.
 
-    "--- Header Filters ----------------------------------------------
-    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
-      CONTINUE.
-    ENDIF.
+  IF gs_base-plnty = 'E' AND p_gtl IS INITIAL.
+    CONTINUE.
+  ENDIF.
 
-    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
-      CONTINUE.
-    ENDIF.
 
-    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
-      CONTINUE.
-    ENDIF.
+  "--------------------------------------------------------------*
+  " Header Filters (Exact match)
+  "--------------------------------------------------------------*
+  IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+    CONTINUE.
+  ENDIF.
 
-    "--- Operation Filters -------------------------------------------
-    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
-      CONTINUE.
-    ENDIF.
+  IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+    CONTINUE.
+  ENDIF.
 
-    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
-      CONTINUE.
-    ENDIF.
+  IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+    CONTINUE.
+  ENDIF.
 
-    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
-      CONTINUE.
-    ENDIF.
 
-    "--- Characteristic Filters --------------------------------------
+  "--------------------------------------------------------------*
+  " Operation Filters (Exact match)
+  "--------------------------------------------------------------*
+  IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+    CONTINUE.
+  ENDIF.
+
+  IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+    CONTINUE.
+  ENDIF.
+
+  " Operation long text present?
+  IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+    CONTINUE.
+  ENDIF.
+
+
+  "--------------------------------------------------------------*
+  " Characteristic Filters (ONLY if Show Characteristics = ON)
+  "--------------------------------------------------------------*
+  IF gv_show_char = gc_true.
+
     IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
       CONTINUE.
     ENDIF.
@@ -65,14 +80,27 @@
       CONTINUE.
     ENDIF.
 
-    "--- Tolerance ----------------------------------------------------
-    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> lv_tolun.
-      CONTINUE.
-    ENDIF.
+  ENDIF.  "gv_show_char
 
-    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> lv_tolob.
-      CONTINUE.
-    ENDIF.
 
-    "--- If passed all filters ---------------------------------------
-    APPEND gs_base TO lt_filtered.
+  "--------------------------------------------------------------*
+  " Tolerances (Exact match, FDS)
+  "--------------------------------------------------------------*
+  " We compare the original CHAR input to avoid float rounding errors.
+  IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> so_tolun-low.
+    CONTINUE.
+  ENDIF.
+
+  IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> so_tolob-low.
+    CONTINUE.
+  ENDIF.
+
+
+  "--------------------------------------------------------------*
+  " PASSED ALL FILTERS
+  "--------------------------------------------------------------*
+  APPEND gs_base TO lt_filtered.
+
+ENDLOOP.
+
+gt_base = lt_filtered.
