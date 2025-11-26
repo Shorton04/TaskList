@@ -1,23 +1,20 @@
-" New operation → always add operation row
-IF ls_base-vornr <> lv_last_vornr
- OR ls_base-plnnr <> lv_last_plnnr
- OR ls_base-plnal <> lv_last_plnal
- OR ls_base-plnty <> lv_last_plnty.
+IF gv_show_char = gc_true AND ls_base-merknr IS NOT INITIAL.
 
-  CLEAR ls_disp.
-  MOVE-CORRESPONDING ls_base TO ls_disp.
-  ls_disp-row_kind = 'O'.
-  APPEND ls_disp TO gt_display.
+  " New characteristic row under same operation
+  IF ls_base-merknr <> lv_last_merknr.
 
-  " Only OP long text when CHAR is hidden
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-    PERFORM append_op_longtext USING ls_base.
+    CLEAR ls_disp.
+    MOVE-CORRESPONDING ls_base TO ls_disp.
+    ls_disp-row_kind = 'C'.
+    APPEND ls_disp TO gt_display.
+
+    lv_last_merknr = ls_base-merknr.
+
   ENDIF.
 
-  CLEAR lv_last_merknr.
-  lv_last_vornr = ls_base-vornr.
-  lv_last_plnnr = ls_base-plnnr.
-  lv_last_plnal = ls_base-plnal.
-  lv_last_plnty = ls_base-plnty.
+  " Characteristic long text (only in CHAR+LTXT mode)
+  IF gv_show_ltxt = gc_true.
+    PERFORM append_char_longtext USING ls_base.
+  ENDIF.
 
 ENDIF.
