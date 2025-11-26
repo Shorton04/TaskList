@@ -1,187 +1,81 @@
-*---------------------------------------------------------------------*
-*  FORM set_column_visibility_by_state - FINAL WORKING VERSION
-*---------------------------------------------------------------------*
-FORM set_column_visibility_by_state.
+TYPES: BEGIN OF ty_task_disp_c,
+  plnnr       TYPE plko-plnnr,
+  plnal       TYPE plko-plnal,
+  werks       TYPE plko-werks,
+  vornr       TYPE plpo-vornr,
+  tdformat    TYPE tline-tdformat,
+  op_ltxt     TYPE tline-tdline,
+  arbpl_o     TYPE crhd-arbpl,
+  arbei       TYPE plpo-arbei,
+  kurzt_char  TYPE plmk-kurztext,
+  pmethode    TYPE plmk-pmethode,
+  merknr      TYPE plmk-merknr,
+  char_ltxt   TYPE tline-tdline,
+END OF ty_task_disp_c.
 
-  DATA lo_columns TYPE REF TO cl_salv_columns_table.
-  DATA lo_col     TYPE REF TO cl_salv_column_table.
 
-  IF lo_alv IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  lo_columns = lo_alv->get_columns( ).
-
-
-  "--------------------------------------------------------------
-  " Helper macros
-  "--------------------------------------------------------------
-  DEFINE show_col.
-    TRY.
-        lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_technical( abap_false ).
-        lo_col->set_visible(   abap_true  ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
-
-  DEFINE hide_col.
-    TRY.
-        lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_technical( abap_true ).
-        lo_col->set_visible(   abap_false ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
+TYPES: BEGIN OF ty_task_disp_d,
+  plnnr       TYPE plko-plnnr,
+  plnal       TYPE plko-plnal,
+  werks       TYPE plko-werks,
+  vornr       TYPE plpo-vornr,
+  op_ltxt     TYPE tline-tdline,
+  arbpl_o     TYPE crhd-arbpl,
+  arbei       TYPE plpo-arbei,
+  kurzt_char  TYPE plmk-kurztext,
+  pmethode    TYPE plmk-pmethode,
+  merknr      TYPE plmk-merknr,
+  tdformat    TYPE tline-tdformat,
+  char_ltxt   TYPE tline-tdline,
+END OF ty_task_disp_d.
 
 
 
-  "==============================================================
-  " ALWAYS HIDE NON-FDS COLUMNS
-  "==============================================================
-
-  "--- Header fields not required in FDS ---
-  hide_col 'PLNTY'.
-  hide_col 'KTEXT'.
-  hide_col 'TPLNR'.
-  hide_col 'EQUNR'.
-  hide_col 'VERWE'.
-  hide_col 'VAGRP'.
-  hide_col 'STATU_H'.
-  hide_col 'ANLZU_H'.
-  hide_col 'STRAT'.
-  hide_col 'ISTRU_H'.
-  hide_col 'ADPSP'.
-  hide_col 'SLWBEZ'.
-  hide_col 'LOEKZ_H'.
-  hide_col 'ANDAT'.
-  hide_col 'ANNAM'.
-  hide_col 'AEDAT'.
-  hide_col 'AENAM'.
-
-  "--- Operation fields not required in FDS ---
-  hide_col 'LTXA1'.
-  hide_col 'STEUS'.
-  hide_col 'WERKS_O'.
-  hide_col 'KTSCH'.
-  hide_col 'ARBEH'.
-  hide_col 'DAUNO'.
-  hide_col 'DAUNE'.
-  hide_col 'KALID'.
-  hide_col 'EXECUTION_STAGE'.
-  hide_col 'ANLZU_O'.
-  hide_col 'ISTRU_O'.
-  hide_col 'LARNT'.
-  hide_col 'EBELN'.
-  hide_col 'EBELP'.
-  hide_col 'LIFNR'.
-  hide_col 'PREIS'.
-  hide_col 'WAERS'.
-  hide_col 'SAKTO'.
-  hide_col 'EKORG'.
-  hide_col 'EKGRP'.
-  hide_col 'TXTSP_OP'.
-  hide_col 'LOEKZ_O'.
-
-  "--- Characteristic fields not in FDS ---
-  hide_col 'VERWMERKM'.
-  hide_col 'LTEXTKZ'.
-  hide_col 'TOLERANZUN'.
-  hide_col 'TOLERANZOB'.
-  hide_col 'PRUEFEINH'.
-  hide_col 'STICHPRVER'.
-  hide_col 'KATALGART1'.
-  hide_col 'AUSWMENGE1'.
-  hide_col 'STEUERKZ'.
-  hide_col 'LOEKZ_C'.
-
-  "--- CI1..CI28 ghost columns ---
-  hide_col 'CI1'.
-  hide_col 'CI2'.
-  hide_col 'CI3'.
-  hide_col 'CI4'.
-  hide_col 'CI5'.
-  hide_col 'CI6'.
-  hide_col 'CI7'.
-  hide_col 'CI8'.
-  hide_col 'CI9'.
-  hide_col 'CI10'.
-  hide_col 'CI11'.
-  hide_col 'CI12'.
-  hide_col 'CI13'.
-  hide_col 'CI14'.
-  hide_col 'CI15'.
-  hide_col 'CI16'.
-  hide_col 'CI17'.
-  hide_col 'CI18'.
-  hide_col 'CI19'.
-  hide_col 'CI20'.
-  hide_col 'CI21'.
-  hide_col 'CI22'.
-  hide_col 'CI23'.
-  hide_col 'CI24'.
-  hide_col 'CI25'.
-  hide_col 'CI26'.
-  hide_col 'CI27'.
-  hide_col 'CI28'.
-
-  "--- Internal / Technical fields ---
-  hide_col 'ROW_KIND'.
+DATA: gt_display_c TYPE STANDARD TABLE OF ty_task_disp_c,
+      gt_display_d TYPE STANDARD TABLE OF ty_task_disp_d,
+      gt_display   TYPE STANDARD TABLE OF ty_task_disp_d. "used by SALV
 
 
-  "==============================================================
-  " ALWAYS SHOW CORE FDS COLUMNS
-  "==============================================================
-  show_col 'PLNNR'.        "Group
-  show_col 'PLNAL'.        "Counter
-  show_col 'WERKS'.        "Plant
-  show_col 'VORNR'.        "Operation
-  show_col 'ARBPL_O'.      "Work Center
-  show_col 'ARBEI'.        "Work
-  show_col 'KURZT_CHAR'.   "Description
-  show_col 'PMETHODE'.     "Insp Method
-  show_col 'MERKNR'.       "Insp Number
-  show_col 'TDFORMAT'.     "FK
-  show_col 'OP_LTXT'.      "Operation Long Text
-  show_col 'CHAR_LTXT'.    "Characteristic Long Text
+CLEAR: gs_disp_c, gs_disp_d.
+
+"CASE C (Hide Characteristics + Show LT)
+gs_disp_c-plnnr      = gs_base-plnnr.
+gs_disp_c-plnal      = gs_base-plnal.
+gs_disp_c-werks      = gs_base-werks.
+gs_disp_c-vornr      = gs_base-vornr.
+gs_disp_c-tdformat   = gs_base-tdformat.
+gs_disp_c-op_ltxt    = gs_base-op_ltxt.
+gs_disp_c-arbpl_o    = gs_base-arbpl_o.
+gs_disp_c-arbei      = gs_base-arbei.
+gs_disp_c-kurzt_char = gs_base-kurzt_char.
+gs_disp_c-pmethode   = gs_base-pmethode.
+gs_disp_c-merknr     = gs_base-merknr.
+gs_disp_c-char_ltxt  = gs_base-char_ltxt.
+
+APPEND gs_disp_c TO gt_display_c.
+
+
+"CASE D (Show Characteristics + Show LT)
+gs_disp_d-plnnr      = gs_base-plnnr.
+gs_disp_d-plnal      = gs_base-plnal.
+gs_disp_d-werks      = gs_base-werks.
+gs_disp_d-vornr      = gs_base-vornr.
+gs_disp_d-op_ltxt    = gs_base-op_ltxt.
+gs_disp_d-arbpl_o    = gs_base-arbpl_o.
+gs_disp_d-arbei      = gs_base-arbei.
+gs_disp_d-kurzt_char = gs_base-kurzt_char.
+gs_disp_d-pmethode   = gs_base-pmethode.
+gs_disp_d-merknr     = gs_base-merknr.
+gs_disp_d-tdformat   = gs_base-tdformat.
+gs_disp_d-char_ltxt  = gs_base-char_ltxt.
+
+APPEND gs_disp_d TO gt_display_d.
 
 
 
-  "==============================================================
-  " CASE A/B/C/D – Your Original Logic
-  "==============================================================
 
-  "CASE A – No Char, No LT
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
-
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-
-
-  "CASE B – Show Char, No LT
-  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-
-
-  "CASE C – Hide Char, Show LT
-  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-
-    show_col 'TDFORMAT'.
-    show_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-
-
-  "CASE D – Char + LT
-  ELSE.
-
-    show_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    show_col 'CHAR_LTXT'.
-
-  ENDIF.
-
-ENDFORM.
+IF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+  gt_display = gt_display_c.   "Case C
+ELSE.
+  gt_display = gt_display_d.   "Case D
+ENDIF.
