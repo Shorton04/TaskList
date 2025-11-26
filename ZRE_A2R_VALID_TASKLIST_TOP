@@ -1,24 +1,25 @@
-*&---------------------------------------------------------------------*
-*& Include ZRE_A2R_VALID_TASKLIST_TOP
-*&---------------------------------------------------------------------*
+*---------------------------------------------------------------------*
+*  Include ZRE_A2R_VALID_TASKLIST_TOP
+*---------------------------------------------------------------------*
 
 TABLES: plko, plpo, plmk, tapl, eapl, crhd.
 
 *======================================================================*
-* TYPES – BASE DATA (Header + Operation + Characteristic)
+* TYPES – BASE DATA STRUCTURE (FDS 5.3.3)
 *======================================================================*
 TYPES: BEGIN OF ty_task_base,
 
-         "------------- Header (5.3.3) -----------------
+         "------------- Header Fields (PLKO) --------------------------
          plnty           TYPE plko-plnty,
          plnnr           TYPE plko-plnnr,
          plnal           TYPE plko-plnal,
          datuv           TYPE plko-datuv,
+         valid_to        TYPE plko-valid_to,
          werks           TYPE plko-werks,
          ktext           TYPE plko-ktext,
          verwe           TYPE plko-verwe,
          vagrp           TYPE plko-vagrp,
-         stat_h          TYPE plko-statu,
+         statu_h         TYPE plko-statu,
          anlzu_h         TYPE plko-anlzu,
          strat           TYPE plko-strat,
          istru_h         TYPE plko-istru,
@@ -30,12 +31,15 @@ TYPES: BEGIN OF ty_task_base,
          aedat           TYPE plko-aedat,
          aenam           TYPE plko-aenam,
 
+         "------------- Assignment (FL / Equipment) -------------------
          tplnr           TYPE tapl-tplnr,
          equnr           TYPE eapl-equnr,
 
-         "------------- Operation (5.3.3) --------------
+         "------------- Operation Fields (PLPO) -----------------------
          plnkn           TYPE plpo-plnkn,
          zaehl           TYPE plpo-zaehl,
+         datuv_o         TYPE plpo-datuv,
+         valid_to_o      TYPE plpo-valid_to,
          vornr           TYPE plpo-vornr,
          ltxa1           TYPE plpo-ltxa1,
          steus           TYPE plpo-steus,
@@ -62,10 +66,10 @@ TYPES: BEGIN OF ty_task_base,
          txtsp_op        TYPE plpo-txtsp,
          loekz_o         TYPE plpo-loekz,
 
-         "------------- Characteristic (5.3.3, 6.x) ----
+         "------------- Characteristic Fields (PLMK) -----------------
          merknr          TYPE plmk-merknr,
          verwmerkm       TYPE plmk-verwmerkm,
-         kurzt_char      TYPE plmk-kurztext,
+         kurztext        TYPE plmk-kurztext,
          ltextkz         TYPE plmk-ltextkz,
          toleranzun      TYPE plmk-toleranzun,
          toleranzob      TYPE plmk-toleranzob,
@@ -76,15 +80,18 @@ TYPES: BEGIN OF ty_task_base,
          auswmenge1      TYPE plmk-auswmenge1,
          steuerkz        TYPE plmk-steuerkz,
          loekz_c         TYPE plmk-loekz,
+         gueltigab       TYPE plmk-gueltigab,
+         valid_to_c      TYPE plmk-valid_to_on_db,
 
        END OF ty_task_base.
 
+
 *======================================================================*
-* TYPES – DISPLAY (ALV row)
+* TYPES – DISPLAY STRUCTURE (ALV row)
 *======================================================================*
 TYPES: BEGIN OF ty_task_disp,
 
-         " Header
+         "Header section
          plnty            TYPE plko-plnty,
          plnnr            TYPE plko-plnnr,
          plnal            TYPE plko-plnal,
@@ -95,7 +102,7 @@ TYPES: BEGIN OF ty_task_disp,
          equnr            TYPE eapl-equnr,
          verwe            TYPE plko-verwe,
          vagrp            TYPE plko-vagrp,
-         stat_h           TYPE plko-statu,
+         statu_h          TYPE plko-statu,
          anlzu_h          TYPE plko-anlzu,
          strat            TYPE plko-strat,
          istru_h          TYPE plko-istru,
@@ -107,7 +114,7 @@ TYPES: BEGIN OF ty_task_disp,
          aedat            TYPE plko-aedat,
          aenam            TYPE plko-aenam,
 
-         " Operation
+         "Operations
          vornr            TYPE plpo-vornr,
          ltxa1            TYPE plpo-ltxa1,
          steus            TYPE plpo-steus,
@@ -134,10 +141,10 @@ TYPES: BEGIN OF ty_task_disp,
          txtsp_op         TYPE plpo-txtsp,
          loekz_o          TYPE plpo-loekz,
 
-         " Characteristic
+         "Characteristics
          merknr           TYPE plmk-merknr,
          verwmerkm        TYPE plmk-verwmerkm,
-         kurzt_char       TYPE plmk-kurztext,
+         kurztext         TYPE plmk-kurztext,
          ltextkz          TYPE plmk-ltextkz,
          toleranzun       TYPE plmk-toleranzun,
          toleranzob       TYPE plmk-toleranzob,
@@ -149,44 +156,56 @@ TYPES: BEGIN OF ty_task_disp,
          steuerkz         TYPE plmk-steuerkz,
          loekz_c          TYPE plmk-loekz,
 
-         " CI flags (from STEUERKZ)
-         ci_quant         TYPE c LENGTH 1,
-         ci_meas_required TYPE c LENGTH 1,
-         ci_attr_ref      TYPE c LENGTH 1,
-         ci_ulim_ind      TYPE c LENGTH 1,
-         ci_llim_ind      TYPE c LENGTH 1,
-         ci_chk_tgt       TYPE c LENGTH 1,
-         ci_scope         TYPE c LENGTH 1,
-         ci_single_res    TYPE c LENGTH 1,
-         ci_samp_req      TYPE c LENGTH 1,
-         ci_recording     TYPE c LENGTH 1,
-         ci_doc_req       TYPE c LENGTH 1,
-         ci_category      TYPE c LENGTH 1,
+         "CI fields 1–28 (all CHAR1)
+         ci1  TYPE c LENGTH 1,
+         ci2  TYPE c LENGTH 1,
+         ci3  TYPE c LENGTH 1,
+         ci4  TYPE c LENGTH 1,
+         ci5  TYPE c LENGTH 1,
+         ci6  TYPE c LENGTH 1,
+         ci7  TYPE c LENGTH 1,
+         ci8  TYPE c LENGTH 1,
+         ci9  TYPE c LENGTH 1,
+         ci10 TYPE c LENGTH 1,
+         ci11 TYPE c LENGTH 1,
+         ci12 TYPE c LENGTH 1,
+         ci13 TYPE c LENGTH 1,
+         ci14 TYPE c LENGTH 1,
+         ci15 TYPE c LENGTH 1,
+         ci16 TYPE c LENGTH 1,
+         ci17 TYPE c LENGTH 1,
+         ci18 TYPE c LENGTH 1,
+         ci19 TYPE c LENGTH 1,
+         ci20 TYPE c LENGTH 1,
+         ci21 TYPE c LENGTH 1,
+         ci22 TYPE c LENGTH 1,
+         ci23 TYPE c LENGTH 1,
+         ci24 TYPE c LENGTH 1,
+         ci25 TYPE c LENGTH 1,
+         ci26 TYPE c LENGTH 1,
+         ci27 TYPE c LENGTH 1,
+         ci28 TYPE c LENGTH 1,
 
-         " Long text
+         "Long Text
          row_kind         TYPE c LENGTH 1,
+         tdformat         TYPE tline-tdformat,
          op_ltxt          TYPE tline-tdline,
          char_ltxt        TYPE tline-tdline,
-         tdline           TYPE tline-tdline,
-         tdformat         TYPE tline-tdformat,
 
        END OF ty_task_disp.
 
+
 *======================================================================*
-* DATA
+* GLOBAL DATA
 *======================================================================*
 DATA: gt_base      TYPE STANDARD TABLE OF ty_task_base,
       gs_base      TYPE ty_task_base,
       gt_display   TYPE STANDARD TABLE OF ty_task_disp,
-      go_container TYPE REF TO cl_gui_custom_container,
       gs_display   TYPE ty_task_disp.
 
-DATA: gt_tline TYPE STANDARD TABLE OF tline,
-      gs_tline TYPE tline.
+DATA: go_container TYPE REF TO cl_gui_custom_container.
 
-*======================================================================*
 * SALV
-*======================================================================*
 DATA: lo_alv        TYPE REF TO cl_salv_table,
       lo_columns    TYPE REF TO cl_salv_columns_table,
       lo_column     TYPE REF TO cl_salv_column_table,
@@ -197,28 +216,23 @@ DATA: lo_alv        TYPE REF TO cl_salv_table,
       lo_sel        TYPE REF TO cl_salv_selections,
       ls_layout_key TYPE salv_s_layout_key.
 
-*======================================================================*
 * STATE
-*======================================================================*
 DATA: gv_show_char TYPE abap_bool,
       gv_show_ltxt TYPE abap_bool.
 
 CONSTANTS: gc_true  TYPE abap_bool VALUE abap_true,
            gc_false TYPE abap_bool VALUE abap_false.
 
-
-*======================================================================*
-* SALV CUSTOM FUNCTION CODES (CLISTS instead of OLISTS)
-*======================================================================*
+* Function Codes
 CONSTANTS:
-  gc_func_clist_s TYPE salv_de_function VALUE '&CLISTS', "Show Characteristics
-  gc_func_clist_h TYPE salv_de_function VALUE '&CLISTH', "Hide Characteristics
-  gc_func_ltxt_s  TYPE salv_de_function VALUE '&LTXTS',  "Show Long Text
-  gc_func_ltxt_h  TYPE salv_de_function VALUE '&LTXTH'.  "Hide Long Text
+  gc_func_clist_s TYPE salv_de_function VALUE '&CLISTS',
+  gc_func_clist_h TYPE salv_de_function VALUE '&CLISTH',
+  gc_func_ltxt_s  TYPE salv_de_function VALUE '&LTXTS',
+  gc_func_ltxt_h  TYPE salv_de_function VALUE '&LTXTH'.
 
-*======================================================================*
-* EVENT HANDLER CLASS (STATIC METHOD STYLE, LIKE MAINTPLAN)
-*======================================================================*
+*---------------------------------------------------------------------*
+* EVENT HANDLER
+*---------------------------------------------------------------------*
 CLASS lcl_event_handler DEFINITION.
   PUBLIC SECTION.
     CLASS-METHODS on_user_command
