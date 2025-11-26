@@ -1,2 +1,22 @@
-AND plas~datuv <= @lv_keydat
-AND plas~valid_to >= @lv_keydat
+FORM hide_column USING pv_col TYPE lvc_fname.
+  TRY.
+      lo_column ?= lo_columns->get_column( pv_col ).
+
+      "Hide from initial display but still available in Change Layout
+      lo_column->set_visible( abap_false ).
+      lo_column->set_technical( abap_false ).  "IMPORTANT
+
+    CATCH cx_salv_not_found.
+  ENDTRY.
+ENDFORM.
+
+
+
+
+FORM hide_technical_column USING pv_col TYPE lvc_fname.
+  TRY.
+      lo_column ?= lo_columns->get_column( pv_col ).
+      lo_column->set_technical( abap_true ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+ENDFORM.
