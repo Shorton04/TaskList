@@ -1,5 +1,131 @@
+TYPES: BEGIN OF ty_task_disp,
+
+  "===========================================================
+  " FDS MANDATED ORDER (Works for both Case C and Case D)
+  "===========================================================
+
+  plnnr          TYPE plko-plnnr,       "1 Group
+  plnal          TYPE plko-plnal,       "2 Counter
+  werks          TYPE plko-werks,       "3 Plant
+  vornr          TYPE plpo-vornr,       "4 Operation
+
+  tdformat       TYPE tline-tdformat,   "5 FK (Hidden in Case A/B)
+  op_ltxt        TYPE tline-tdline,     "6 Op LT (Shown Case C, Case D)
+  arbpl_o        TYPE crhd-arbpl,       "7 Work Center
+  arbei          TYPE plpo-arbei,       "8 Work
+  kurzt_char     TYPE plmk-kurztext,    "9 Description
+  pmethode       TYPE plmk-pmethode,    "10 Insp Method
+  merknr         TYPE plmk-merknr,      "11 Insp #
+  char_ltxt      TYPE tline-tdline,     "12 Char LT (Shown Case D)
+
+  "===========================================================
+  " REMAINING FIELDS BELOW WILL ALWAYS BE HIDDEN
+  "===========================================================
+
+  row_kind       TYPE c LENGTH 1,
+  tdformat_c     TYPE tline-tdformat,
+  dummy1         TYPE c LENGTH 1,
+
+  " Header (hidden)
+  datuv          TYPE plko-datuv,
+  valid_to       TYPE plko-valid_to,
+  ktext          TYPE plko-ktext,
+  verwe          TYPE plko-verwe,
+  vagrp          TYPE plko-vagrp,
+  stat_h         TYPE plko-statu,
+  anlzu_h        TYPE plko-anlzu,
+  strat          TYPE plko-strat,
+  istru_h        TYPE plko-istru,
+  adpsp          TYPE plko-adpsp,
+  slwbez         TYPE plko-slwbez,
+  loekz_h        TYPE plko-loekz,
+  andat          TYPE plko-andat,
+  annam          TYPE plko-annam,
+  aedat          TYPE plko-aedat,
+  aenam          TYPE plko-aenam,
+
+  " OP (hidden)
+  plnkn          TYPE plpo-plnkn,
+  zaehl          TYPE plpo-zaehl,
+  datuv_o        TYPE plpo-datuv,
+  valid_to_o     TYPE plpo-valid_to,
+  steus          TYPE plpo-steus,
+  werks_o        TYPE crhd-werks,
+  ktsch          TYPE plpo-ktsch,
+  arbeh          TYPE plpo-arbeh,
+  dauno          TYPE plpo-dauno,
+  daune          TYPE plpo-daune,
+  kalid          TYPE plpo-kalid,
+  execution_stage TYPE plpo-execution_stage,
+  anlzu_o        TYPE plpo-anlzu,
+  istru_o        TYPE plpo-istru,
+  larnt          TYPE plpo-larnt,
+  ebeln          TYPE plpo-ebeln,
+  ebelp          TYPE plpo-ebelp,
+  lifnr          TYPE plpo-lifnr,
+  preis          TYPE plpo-preis,
+  waers          TYPE plpo-waers,
+  sakto          TYPE plpo-sakto,
+  ekorg          TYPE plpo-ekorg,
+  ekgrp          TYPE plpo-ekgrp,
+  txtsp_op       TYPE plpo-txtsp,
+  loekz_o        TYPE plpo-loekz,
+
+  " Characteristics (hidden by set_column_visibility)
+  verwmerkm      TYPE plmk-verwmerkm,
+  ltextkz        TYPE plmk-ltextkz,
+  toleranzun     TYPE plmk-toleranzun,
+  toleranzob     TYPE plmk-toleranzob,
+  pruefeinh      TYPE plmk-pruefeinh,
+  stichprver     TYPE plmk-stichprver,
+  katalgart1     TYPE plmk-katalgart1,
+  auswmenge1     TYPE plmk-auswmenge1,
+  steuerkz       TYPE plmk-steuerkz,
+  loekz_c        TYPE plmk-loekz,
+  gueltigab      TYPE plmk-gueltigab,
+  valid_to_c     TYPE plmk-valid_to_on_db,
+
+  " CI1–CI28 (all hidden)
+  ci1 TYPE c LENGTH 1,
+  ci2 TYPE c LENGTH 1,
+  ci3 TYPE c LENGTH 1,
+  ci4 TYPE c LENGTH 1,
+  ci5 TYPE c LENGTH 1,
+  ci6 TYPE c LENGTH 1,
+  ci7 TYPE c LENGTH 1,
+  ci8 TYPE c LENGTH 1,
+  ci9 TYPE c LENGTH 1,
+  ci10 TYPE c LENGTH 1,
+  ci11 TYPE c LENGTH 1,
+  ci12 TYPE c LENGTH 1,
+  ci13 TYPE c LENGTH 1,
+  ci14 TYPE c LENGTH 1,
+  ci15 TYPE c LENGTH 1,
+  ci16 TYPE c LENGTH 1,
+  ci17 TYPE c LENGTH 1,
+  ci18 TYPE c LENGTH 1,
+  ci19 TYPE c LENGTH 1,
+  ci20 TYPE c LENGTH 1,
+  ci21 TYPE c LENGTH 1,
+  ci22 TYPE c LENGTH 1,
+  ci23 TYPE c LENGTH 1,
+  ci24 TYPE c LENGTH 1,
+  ci25 TYPE c LENGTH 1,
+  ci26 TYPE c LENGTH 1,
+  ci27 TYPE c LENGTH 1,
+  ci28 TYPE c LENGTH 1,
+
+END OF ty_task_disp.
+
+
+
+
+
+
+
+
 *---------------------------------------------------------------------*
-*  FORM set_column_visibility_by_state - Enhanced Version (Safe)
+*  FORM set_column_visibility_by_state - FINAL WORKING VERSION
 *---------------------------------------------------------------------*
 FORM set_column_visibility_by_state.
 
@@ -14,7 +140,10 @@ FORM set_column_visibility_by_state.
 
   lo_columns = lo_alv->get_columns( ).
 
-  " Helper macro: show column
+
+  "--------------------------------------------------------------
+  " Helper macros
+  "--------------------------------------------------------------
   DEFINE show_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
@@ -24,7 +153,7 @@ FORM set_column_visibility_by_state.
     ENDTRY.
   END-OF-DEFINITION.
 
-  " Helper macro: hide column
+
   DEFINE hide_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
@@ -35,23 +164,24 @@ FORM set_column_visibility_by_state.
   END-OF-DEFINITION.
 
 
+
   "==============================================================
-  " 1. ALWAYS HIDE GHOST / NON-FDS COLUMNS
+  " ALWAYS HIDE NON-FDS / GHOST / TECHNICAL FIELDS
   "==============================================================
 
-  "--- Hide STATUS fields completely ---
+  " STATUS
   hide_col 'STAT_H'.
   hide_col 'STATUS'.
   hide_col 'STATS'.
 
-  "--- Hide CI1..CI28 (your system needs CONCATENATE) ---
+  " CI1–CI28
   DO 28 TIMES.
     lv_idx = sy-index.
     CONCATENATE 'CI' lv_idx INTO lv_name.
     hide_col lv_name.
   ENDDO.
 
-  "--- Hide internal / tech fields ---
+  " Internal technical
   hide_col 'ROW_KIND'.
   hide_col 'DATUV'.
   hide_col 'VALID_TO'.
@@ -63,7 +193,7 @@ FORM set_column_visibility_by_state.
   hide_col 'LOEKZ_O'.
   hide_col 'LOEKZ_C'.
 
-  "--- Hide header fields not in FDS ---
+  " Header fields not in FDS
   hide_col 'PLNTY'.
   hide_col 'KTEXT'.
   hide_col 'TPLNR'.
@@ -80,11 +210,11 @@ FORM set_column_visibility_by_state.
   hide_col 'AEDAT'.
   hide_col 'AENAM'.
 
-  "--- Hide operation-level columns not in FDS ---
+  " Operation fields not in FDS
   hide_col 'PLNKN'.
   hide_col 'ZAEHL'.
   hide_col 'STEUS'.
-  hide_col 'WERKS_O'.       "We only show main plant and work center
+  hide_col 'WERKS_O'.
   hide_col 'KTSCH'.
   hide_col 'ARBEH'.
   hide_col 'DAUNO'.
@@ -104,7 +234,7 @@ FORM set_column_visibility_by_state.
   hide_col 'EKGRP'.
   hide_col 'TXTSP_OP'.
 
-  "--- Hide characteristic fields not in FDS ---
+  " Characteristics fields not in FDS
   hide_col 'VERWMERKM'.
   hide_col 'LTEXTKZ'.
   hide_col 'TOLERANZUN'.
@@ -116,77 +246,68 @@ FORM set_column_visibility_by_state.
   hide_col 'STEUERKZ'.
 
 
+
   "==============================================================
-  " 2. MODE-BASED COLUMNS (your original CASE A/B/C/D)
+  " SHOW ONLY CORE FDS FIELDS — ALWAYS SHOW THESE
+  "==============================================================
+  show_col 'PLNNR'.        "Group
+  show_col 'PLNAL'.        "Counter
+  show_col 'WERKS'.        "Plant
+  show_col 'VORNR'.        "Operation
+  show_col 'ARBPL_O'.      "Work Center
+  show_col 'ARBEI'.        "Work
+  show_col 'KURZT_CHAR'.   "Description
+  show_col 'PMETHODE'.     "Insp Method
+  show_col 'MERKNR'.       "Insp No.
+  show_col 'TDFORMAT'.     "FK
+  show_col 'OP_LTXT'.      "Op LT
+  show_col 'CHAR_LTXT'.    "Char LT
+
+
+
+  "==============================================================
+  "  FDS VISIBILITY RULES (YOUR WORKING LOGIC)
   "==============================================================
 
+  "--------------------------------------------------------------
+  " CASE A — No Characteristics, No Long Text
+  "--------------------------------------------------------------
   IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
-      "CASE A – No Characteristics, No Long Text
-      hide_col 'TDFORMAT'.
-      hide_col 'OP_LTXT'.
-      hide_col 'CHAR_LTXT'.
 
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+  
+  "--------------------------------------------------------------
+  " CASE B — Show Characteristics, No Long Text
+  "--------------------------------------------------------------
   ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-      "CASE B – Characteristics only
-      hide_col 'TDFORMAT'.
-      hide_col 'OP_LTXT'.
-      hide_col 'CHAR_LTXT'.
 
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+  "--------------------------------------------------------------
+  " CASE C — Hide Characteristics, Show Long Text
+  "--------------------------------------------------------------
   ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-      "CASE C – Long Text only
-      show_col 'TDFORMAT'.
-      show_col 'OP_LTXT'.
-      hide_col 'CHAR_LTXT'.
 
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.    
+
+
+  "--------------------------------------------------------------
+  " CASE D — Show Characteristics + Show Long Text
+  "--------------------------------------------------------------
   ELSE.
-      "CASE D – Char + Long Text
-      show_col 'TDFORMAT'.
-      hide_col 'OP_LTXT'.
-      show_col 'CHAR_LTXT'.
+
+    show_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
 
   ENDIF.
 
-  "==============================================================
-  " 3. COLUMN ORDER (using SET_SEQUENCE for compatibility)
-  "==============================================================
-
-  "-------------- CASE C: Hide Characteristics + Show Long Text --------------
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-
-    seq 'PLNNR'        1.   "Group
-    seq 'PLNAL'        2.   "Counter
-    seq 'WERKS'        3.   "Plant
-    seq 'VORNR'        4.   "Operation
-    seq 'TDFORMAT'     5.   "FK
-    seq 'OP_LTXT'      6.   "Op Long Text
-    seq 'ARBPL_O'      7.   "Work Center
-    seq 'ARBEI'        8.   "Work
-    seq 'KURZT_CHAR'   9.   "Description
-    seq 'PMETHODE'    10.   "Inspection Method
-    seq 'MERKNR'      11.   "Inspection Number
-    seq 'CHAR_LTXT'   12.   "Characteristic Long Text
-
-    RETURN.
-  ENDIF.
-
-
-  "-------------- CASE D: Show Characteristics + Show Long Text --------------
-  IF gv_show_char = gc_true AND gv_show_ltxt = gc_true.
-
-    seq 'PLNNR'        1.   "Group
-    seq 'PLNAL'        2.   "Counter
-    seq 'WERKS'        3.   "Plant
-    seq 'VORNR'        4.   "Operation
-    seq 'ARBPL_O'      5.   "Work Center
-    seq 'ARBEI'        6.   "Work
-    seq 'KURZT_CHAR'   7.   "Description
-    seq 'PMETHODE'     8.   "Inspection Method
-    seq 'MERKNR'       9.   "Inspection Number
-    seq 'TDFORMAT'    10.   "FK
-    seq 'OP_LTXT'     11.   "Op Long Text
-    seq 'CHAR_LTXT'   12.   "Characteristic Long Text
-
-    RETURN.
-  ENDIF.
 ENDFORM.
-
