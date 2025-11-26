@@ -1,50 +1,238 @@
 *---------------------------------------------------------------------*
-*  FORM derive_ci_fields – FULL 28 CI FLAGS
+*  FORM set_column_order_by_state - FINAL LOGIC
 *---------------------------------------------------------------------*
-FORM derive_ci_fields
-  USING    iv_steuerkz TYPE plmk-steuerkz
-  CHANGING cs_disp      TYPE ty_task_disp.
+FORM set_column_order_by_state.
 
-  DATA lv_steuer TYPE string.
+  DATA lo_cols TYPE REF TO cl_salv_columns_table.
+  DATA lo_col  TYPE REF TO cl_salv_column_table.
 
-  "Move STEUERKZ into local string
-  lv_steuer = iv_steuerkz.
-
-  "Pad right side to exactly 28 characters
-  IF strlen( lv_steuer ) < 28.
-    lv_steuer = lv_steuer && repeat( val = ' ' occ = (28 - strlen( lv_steuer )) ).
-  ELSEIF strlen( lv_steuer ) > 28.
-    lv_steuer = lv_steuer(28).
+  IF lo_alv IS INITIAL.
+    RETURN.
   ENDIF.
 
-  "Assign each character into CI fields
-  cs_disp-ci1  = lv_steuer+0(1).
-  cs_disp-ci2  = lv_steuer+1(1).
-  cs_disp-ci3  = lv_steuer+2(1).
-  cs_disp-ci4  = lv_steuer+3(1).
-  cs_disp-ci5  = lv_steuer+4(1).
-  cs_disp-ci6  = lv_steuer+5(1).
-  cs_disp-ci7  = lv_steuer+6(1).
-  cs_disp-ci8  = lv_steuer+7(1).
-  cs_disp-ci9  = lv_steuer+8(1).
-  cs_disp-ci10 = lv_steuer+9(1).
-  cs_disp-ci11 = lv_steuer+10(1).
-  cs_disp-ci12 = lv_steuer+11(1).
-  cs_disp-ci13 = lv_steuer+12(1).
-  cs_disp-ci14 = lv_steuer+13(1).
-  cs_disp-ci15 = lv_steuer+14(1).
-  cs_disp-ci16 = lv_steuer+15(1).
-  cs_disp-ci17 = lv_steuer+16(1).
-  cs_disp-ci18 = lv_steuer+17(1).
-  cs_disp-ci19 = lv_steuer+18(1).
-  cs_disp-ci20 = lv_steuer+19(1).
-  cs_disp-ci21 = lv_steuer+20(1).
-  cs_disp-ci22 = lv_steuer+21(1).
-  cs_disp-ci23 = lv_steuer+22(1).
-  cs_disp-ci24 = lv_steuer+23(1).
-  cs_disp-ci25 = lv_steuer+24(1).
-  cs_disp-ci26 = lv_steuer+25(1).
-  cs_disp-ci27 = lv_steuer+26(1).
-  cs_disp-ci28 = lv_steuer+27(1).
+  lo_cols = lo_alv->get_columns( ).
+
+  "Helper macro
+  DEFINE pos.
+    TRY.
+        lo_col ?= lo_cols->get_column( &1 ).
+        lo_col->set_position( &2 ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  "====================================================================
+  " MODE 1: HIDE CHARACTERISTICS + SHOW LONG TEXT
+  "====================================================================
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+
+    pos 'PLNNR'        1.  "Group
+    pos 'PLNAL'        2.  "Counter
+    pos 'WERKS'        3.  "Plant
+    pos 'VORNR'        4.  "Operation
+    pos 'TDFORMAT'     5.  "FK
+    pos 'OP_LTXT'      6.  "Op Long Text
+    pos 'ARBPL_O'      7.  "WC
+    pos 'ARBEI'        8.  "Work
+    pos 'KURZT_CHAR'   9.  "Description
+    pos 'PMETHODE'    10.  "Inspection Method
+    pos 'MERKNR'      11.  "Inspection Number
+    pos 'CHAR_LTXT'   12.  "Characteristic LT
+
+    RETURN.
+  ENDIF.
+
+
+  "====================================================================
+  " MODE 2: SHOW CHARACTERISTICS + SHOW LONG TEXT
+  "====================================================================
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
+
+    pos 'PLNNR'        1.   "Group
+    pos 'PLNAL'        2.   "Counter
+    pos 'WERKS'        3.   "Plant
+    pos 'VORNR'        4.   "Operation
+    pos 'ARBPL_O'      5.   "WC
+    pos 'ARBEI'        6.   "Work
+    pos 'KURZT_CHAR'   7.   "Description
+    pos 'PMETHODE'     8.   "Inspection Method
+    pos 'MERKNR'       9.   "Inspection Number
+    pos 'TDFORMAT'    10.   "FK
+    pos 'OP_LTXT'     11.   "Op LT
+    pos 'CHAR_LTXT'   12.   "Char LT
+
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+
+
+
+*---------------------------------------------------------------------*
+*  FORM set_column_visibility_by_state - FINAL VERSION
+*---------------------------------------------------------------------*
+FORM set_column_visibility_by_state.
+
+  DATA lo_cols TYPE REF TO cl_salv_columns_table.
+  DATA lo_col  TYPE REF TO cl_salv_column_table.
+  DATA lv_idx  TYPE i.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_cols = lo_alv->get_columns( ).
+
+  "===========================================================
+  " Helper macros for show/hide
+  "===========================================================
+  DEFINE hide_col.
+    TRY.
+        lo_col ?= lo_cols->get_column( &1 ).
+        lo_col->set_visible( abap_false ).
+        lo_col->set_technical( abap_true ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  DEFINE show_col.
+    TRY.
+        lo_col ?= lo_cols->get_column( &1 ).
+        lo_col->set_visible( abap_true ).
+        lo_col->set_technical( abap_false ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+
+  "===========================================================
+  " HIDE ALL GHOST / UNUSED / TECHNICAL COLUMNS
+  "===========================================================
+
+  " --- ALWAYS HIDE STATUS AS REQUESTED ---
+  hide_col 'STAT_H'.       "status field from PLKO
+  hide_col 'STATUS'.       "in case SALV creates STATUS column
+  hide_col 'STATS'.        "in case system adds STATS technical field
+
+  " --- ALWAYS HIDE LONG TEXT TECH FIELDS ---
+  hide_col 'TDFORMAT'.      
+  hide_col 'ROW_KIND'.
+
+  " --- INTERNAL / TECHNICAL FIELDS ---
+  hide_col 'DATUV'.
+  hide_col 'VALID_TO'.
+  hide_col 'DATUV_O'.
+  hide_col 'VALID_TO_O'.
+  hide_col 'GUELTIGAB'.
+  hide_col 'VALID_TO_C'.
+  hide_col 'LOEKZ_H'.
+  hide_col 'LOEKZ_O'.
+  hide_col 'LOEKZ_C'.
+
+  " --- HIDE CI1–CI28 (ghost columns) ---
+  DO 28 TIMES.
+    hide_col |CI{ sy-index }|.
+  ENDDO.
+
+  " --- HIDE ALL HEADER FIELDS (PLKO) ---
+  hide_col 'PLNTY'.
+  hide_col 'KTEXT'.
+  hide_col 'TPLNR'.
+  hide_col 'EQUNR'.
+  hide_col 'VERWE'.
+  hide_col 'VAGRP'.
+  hide_col 'ANLZU_H'.
+  hide_col 'STRAT'.
+  hide_col 'ISTRU_H'.
+  hide_col 'ADPSP'.
+  hide_col 'SLWBEZ'.
+  hide_col 'ANDAT'.
+  hide_col 'ANNAM'.
+  hide_col 'AEDAT'.
+  hide_col 'AENAM'.
+
+  " --- HIDE ALL OPERATION FIELDS (PLPO) NOT IN FDS ---
+  hide_col 'PLNKN'.
+  hide_col 'ZAEHL'.
+  hide_col 'LT XA1'.
+  hide_col 'STEUS'.
+  hide_col 'WERKS_O'.     "we only use ARBPL_O + main plant
+  hide_col 'KTSCH'.
+  hide_col 'ARBEH'.
+  hide_col 'DAUNO'.
+  hide_col 'DAUNE'.
+  hide_col 'KALID'.
+  hide_col 'EXECUTION_STAGE'.
+  hide_col 'ANLZU_O'.
+  hide_col 'ISTRU_O'.
+  hide_col 'LARNT'.
+  hide_col 'EBELN'.
+  hide_col 'EBELP'.
+  hide_col 'LIFNR'.
+  hide_col 'PREIS'.
+  hide_col 'WAERS'.
+  hide_col 'SAKTO'.
+  hide_col 'EKORG'.
+  hide_col 'EKGRP'.
+  hide_col 'TXTSP_OP'.
+
+  " --- HIDE ALL CHARACTERISTIC FIELDS NOT IN FDS ---
+  hide_col 'VERWMERKM'.
+  hide_col 'LTEXTKZ'.
+  hide_col 'TOLERANZUN'.
+  hide_col 'TOLERANZOB'.
+  hide_col 'PRUEFEINH'.
+  hide_col 'STICHPRVER'.
+  hide_col 'KATALGART1'.
+  hide_col 'AUSWMENGE1'.
+  hide_col 'STEUERKZ'.
+
+  "-----------------------------------------------------------
+  " SHOW ONLY THE FIELDS THAT MUST APPEAR (MASTER LIST)
+  "-----------------------------------------------------------
+
+  show_col 'PLNNR'.         "Group
+  show_col 'PLNAL'.         "Counter
+  show_col 'WERKS'.         "Plant
+  show_col 'VORNR'.         "Operation
+  show_col 'ARBPL_O'.       "Work Center
+  show_col 'ARBEI'.         "Work (Labor)
+  show_col 'KURZT_CHAR'.    "Description
+  show_col 'PMETHODE'.      "Inspection Method
+  show_col 'MERKNR'.        "Inspection Number
+  show_col 'TDFORMAT'.      "FK (format)
+  show_col 'OP_LTXT'.       "Operation Long Text
+  show_col 'CHAR_LTXT'.     "Characteristic Long Text
+
+
+  "===========================================================
+  " Mode-specific adjustments
+  "===========================================================
+
+  " MODE 1 — Hide Characteristics + Show Long Text
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+
+    "Char-specific fields should remain hidden
+    hide_col 'KURZT_CHAR'.
+    hide_col 'PMETHODE'.
+    hide_col 'MERKNR'.
+    show_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
+
+  ENDIF.
+
+  " MODE 2 — Show Characteristics + Show Long Text
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
+
+    "Ensure char data appears
+    show_col 'KURZT_CHAR'.
+    show_col 'PMETHODE'.
+    show_col 'MERKNR'.
+    show_col 'CHAR_LTXT'.
+
+    "Operation LT is shown too
+    show_col 'OP_LTXT'.
+
+  ENDIF.
 
 ENDFORM.
