@@ -1,57 +1,57 @@
 *---------------------------------------------------------------------*
-*  FORM set_column_visibility_by_state - FINAL (COMPATIBLE VERSION)
+*  FORM set_column_visibility_by_state - Enhanced Version (Safe)
 *---------------------------------------------------------------------*
 FORM set_column_visibility_by_state.
 
-  DATA lo_cols TYPE REF TO cl_salv_columns_table.
-  DATA lo_col  TYPE REF TO cl_salv_column_table.
-  DATA lv_ci   TYPE char05.
-  DATA lv_idx  TYPE i.
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
+  DATA lv_idx     TYPE i.
+  DATA lv_name    TYPE char10.
 
   IF lo_alv IS INITIAL.
     RETURN.
   ENDIF.
 
-  lo_cols = lo_alv->get_columns( ).
+  lo_columns = lo_alv->get_columns( ).
 
-  "--------------------------------------------
-  " Helper macros (no string templates)
-  "--------------------------------------------
-  DEFINE hide_col.
-    TRY.
-        lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_visible( abap_false ).
-        lo_col->set_technical( abap_true ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
-
+  " Helper macro: show column
   DEFINE show_col.
     TRY.
-        lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_visible( abap_true ).
+        lo_col ?= lo_columns->get_column( &1 ).
         lo_col->set_technical( abap_false ).
+        lo_col->set_visible(   abap_true  ).
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
 
-  DEFINE seq.
+  " Helper macro: hide column
+  DEFINE hide_col.
     TRY.
-        lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_sequence( &2 ).
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_technical( abap_true ).
+        lo_col->set_visible(   abap_false ).
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
 
 
-  "--------------------------------------------
-  " 1. HIDE ALL UNWANTED / TECH FIELDS
-  "--------------------------------------------
+  "==============================================================
+  " 1. ALWAYS HIDE GHOST / NON-FDS COLUMNS
+  "==============================================================
 
+  "--- Hide STATUS fields completely ---
   hide_col 'STAT_H'.
   hide_col 'STATUS'.
   hide_col 'STATS'.
 
+  "--- Hide CI1..CI28 (your system needs CONCATENATE) ---
+  DO 28 TIMES.
+    lv_idx = sy-index.
+    CONCATENATE 'CI' lv_idx INTO lv_name.
+    hide_col lv_name.
+  ENDDO.
+
+  "--- Hide internal / tech fields ---
   hide_col 'ROW_KIND'.
   hide_col 'DATUV'.
   hide_col 'VALID_TO'.
@@ -63,14 +63,7 @@ FORM set_column_visibility_by_state.
   hide_col 'LOEKZ_O'.
   hide_col 'LOEKZ_C'.
 
-  "Hide CI1–CI28 (no string template!)
-  DO 28 TIMES.
-    lv_idx = sy-index.
-    CONCATENATE 'CI' lv_idx INTO lv_ci.
-    hide_col lv_ci.
-  ENDDO.
-
-  "HEADER FIELDS
+  "--- Hide header fields not in FDS ---
   hide_col 'PLNTY'.
   hide_col 'KTEXT'.
   hide_col 'TPLNR'.
@@ -87,11 +80,11 @@ FORM set_column_visibility_by_state.
   hide_col 'AEDAT'.
   hide_col 'AENAM'.
 
-  "OPERATION FIELDS
+  "--- Hide operation-level columns not in FDS ---
   hide_col 'PLNKN'.
   hide_col 'ZAEHL'.
   hide_col 'STEUS'.
-  hide_col 'WERKS_O'.
+  hide_col 'WERKS_O'.       "We only show main plant and work center
   hide_col 'KTSCH'.
   hide_col 'ARBEH'.
   hide_col 'DAUNO'.
@@ -111,7 +104,7 @@ FORM set_column_visibility_by_state.
   hide_col 'EKGRP'.
   hide_col 'TXTSP_OP'.
 
-  "CHARACTERISTIC FIELDS
+  "--- Hide characteristic fields not in FDS ---
   hide_col 'VERWMERKM'.
   hide_col 'LTEXTKZ'.
   hide_col 'TOLERANZUN'.
@@ -123,59 +116,77 @@ FORM set_column_visibility_by_state.
   hide_col 'STEUERKZ'.
 
 
-  "--------------------------------------------
-  " 2. SHOW ONLY FDS-APPROVED FIELDS
-  "--------------------------------------------
-  show_col 'PLNNR'.
-  show_col 'PLNAL'.
-  show_col 'WERKS'.
-  show_col 'VORNR'.
-  show_col 'ARBPL_O'.
-  show_col 'ARBEI'.
-  show_col 'KURZT_CHAR'.
-  show_col 'PMETHODE'.
-  show_col 'MERKNR'.
-  show_col 'TDFORMAT'.
-  show_col 'OP_LTXT'.
-  show_col 'CHAR_LTXT'.
+  "==============================================================
+  " 2. MODE-BASED COLUMNS (your original CASE A/B/C/D)
+  "==============================================================
 
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+      "CASE A – No Characteristics, No Long Text
+      hide_col 'TDFORMAT'.
+      hide_col 'OP_LTXT'.
+      hide_col 'CHAR_LTXT'.
 
-  "--------------------------------------------
-  " 3. COLUMN ORDER (using SET_SEQUENCE)
-  "--------------------------------------------
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+      "CASE B – Characteristics only
+      hide_col 'TDFORMAT'.
+      hide_col 'OP_LTXT'.
+      hide_col 'CHAR_LTXT'.
 
-  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+      "CASE C – Long Text only
+      show_col 'TDFORMAT'.
+      show_col 'OP_LTXT'.
+      hide_col 'CHAR_LTXT'.
 
-    "Mode 1: Hide characteristics + show long text
-    seq 'PLNNR'      1.
-    seq 'PLNAL'      2.
-    seq 'WERKS'      3.
-    seq 'VORNR'      4.
-    seq 'TDFORMAT'   5.
-    seq 'OP_LTXT'    6.
-    seq 'ARBPL_O'    7.
-    seq 'ARBEI'      8.
-    seq 'KURZT_CHAR' 9.
-    seq 'PMETHODE'  10.
-    seq 'MERKNR'    11.
-    seq 'CHAR_LTXT' 12.
-
-  ELSEIF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
-
-    "Mode 2: Show characteristics + show long text
-    seq 'PLNNR'      1.
-    seq 'PLNAL'      2.
-    seq 'WERKS'      3.
-    seq 'VORNR'      4.
-    seq 'ARBPL_O'    5.
-    seq 'ARBEI'      6.
-    seq 'KURZT_CHAR' 7.
-    seq 'PMETHODE'   8.
-    seq 'MERKNR'     9.
-    seq 'TDFORMAT'  10.
-    seq 'OP_LTXT'   11.
-    seq 'CHAR_LTXT' 12.
+  ELSE.
+      "CASE D – Char + Long Text
+      show_col 'TDFORMAT'.
+      hide_col 'OP_LTXT'.
+      show_col 'CHAR_LTXT'.
 
   ENDIF.
 
+  "==============================================================
+  " 3. COLUMN ORDER (using SET_SEQUENCE for compatibility)
+  "==============================================================
+
+  "-------------- CASE C: Hide Characteristics + Show Long Text --------------
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    seq 'PLNNR'        1.   "Group
+    seq 'PLNAL'        2.   "Counter
+    seq 'WERKS'        3.   "Plant
+    seq 'VORNR'        4.   "Operation
+    seq 'TDFORMAT'     5.   "FK
+    seq 'OP_LTXT'      6.   "Op Long Text
+    seq 'ARBPL_O'      7.   "Work Center
+    seq 'ARBEI'        8.   "Work
+    seq 'KURZT_CHAR'   9.   "Description
+    seq 'PMETHODE'    10.   "Inspection Method
+    seq 'MERKNR'      11.   "Inspection Number
+    seq 'CHAR_LTXT'   12.   "Characteristic Long Text
+
+    RETURN.
+  ENDIF.
+
+
+  "-------------- CASE D: Show Characteristics + Show Long Text --------------
+  IF gv_show_char = gc_true AND gv_show_ltxt = gc_true.
+
+    seq 'PLNNR'        1.   "Group
+    seq 'PLNAL'        2.   "Counter
+    seq 'WERKS'        3.   "Plant
+    seq 'VORNR'        4.   "Operation
+    seq 'ARBPL_O'      5.   "Work Center
+    seq 'ARBEI'        6.   "Work
+    seq 'KURZT_CHAR'   7.   "Description
+    seq 'PMETHODE'     8.   "Inspection Method
+    seq 'MERKNR'       9.   "Inspection Number
+    seq 'TDFORMAT'    10.   "FK
+    seq 'OP_LTXT'     11.   "Op Long Text
+    seq 'CHAR_LTXT'   12.   "Characteristic Long Text
+
+    RETURN.
+  ENDIF.
 ENDFORM.
+
