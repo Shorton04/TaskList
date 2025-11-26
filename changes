@@ -2,12 +2,12 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
 
   DATA: lt_lines TYPE STANDARD TABLE OF tline,
         ls_line  TYPE tline,
-        lv_name  TYPE thead-tdname.
+        lv_name  TYPE thead-tdname,
+        lv_indent TYPE string,
+        ls_color TYPE lvc_s_scol.
 
   CLEAR: lt_lines, lv_name.
 
-  "Build TDNAME exactly as in standard examples:
-  "  mandt + plnty + plnnr + plnkn + zaehl
   CONCATENATE sy-mandt
               is_base-plnty
               is_base-plnnr
@@ -27,10 +27,14 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
     EXCEPTIONS
       OTHERS   = 4.
 
-  "No text → no extra rows
   IF sy-subrc <> 0 OR lt_lines IS INITIAL.
     RETURN.
   ENDIF.
+
+  lv_indent =
+    cl_abap_char_utilities=>hard_space &&
+    cl_abap_char_utilities=>hard_space &&
+    cl_abap_char_utilities=>hard_space.
 
   LOOP AT lt_lines INTO ls_line.
 
@@ -41,8 +45,12 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
     gs_display-op_ltxt  = ls_line-tdline.
     gs_display-tdformat = ls_line-tdformat.
 
-    "--- Indent LT under operation ---
-    CONCATENATE '   ' gs_display-op_ltxt INTO gs_display-op_ltxt.
+    CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 6.
+    APPEND ls_color TO gs_display-line_color.
 
     APPEND gs_display TO gt_display.
 
@@ -51,35 +59,24 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
 ENDFORM.
 
 
-*&---------------------------------------------------------------------*
-*& Form APPEND_CHAR_LONGTEXT
-*&---------------------------------------------------------------------*
-*  - Appends characteristic long text lines as separate rows in GT_DISPLAY
-*    with:
-*       ROW_KIND  = 'L'
-*       CHAR_LTXT = text line
-*&---------------------------------------------------------------------*
+
+
 FORM append_char_longtext USING is_base TYPE ty_task_base.
 
   DATA: lt_lines TYPE STANDARD TABLE OF tline,
         ls_line  TYPE tline,
         lv_name  TYPE thead-tdname,
-        lv_tmp   TYPE thead-tdname.
+        lv_tmp   TYPE thead-tdname,
+        lv_indent TYPE string,
+        lv_merknr TYPE char08,
+        ls_color  TYPE lvc_s_scol.
 
   CLEAR: lt_lines, lv_name, lv_tmp.
 
-  " Only try to read if PLMK says: long text exists
   IF is_base-ltextkz IS INITIAL.
     RETURN.
-
   ENDIF.
 
-  "-----------------------------------------------------------*
-  " Build TDNAME for char long text:
-  "   mandt + plnty + plnnr + plnkn + space + merknr + zaehl
-  "   TDOBJECT = 'QSS', TDID = 'QM'
-  "-----------------------------------------------------------*
-  DATA lv_merknr TYPE char08.
   lv_merknr = is_base-merknr.
 
   CONCATENATE sy-mandt
@@ -88,37 +85,29 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
               is_base-plnkn
          INTO lv_tmp.
 
-  CONCATENATE lv_tmp
-              is_base-merknr
-         INTO lv_tmp
-         SEPARATED BY space.
-
-  CONCATENATE lv_tmp
-              is_base-zaehl
-         INTO lv_name.
+  CONCATENATE lv_tmp is_base-merknr INTO lv_tmp SEPARATED BY space.
+  CONCATENATE lv_tmp is_base-zaehl INTO lv_name.
 
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      client                  = sy-mandt
-      id                      = 'QM'
-      language                = sy-langu
-      name                    = lv_name
-      object                  = 'QSS'
+      client   = sy-mandt
+      id       = 'QM'
+      language = sy-langu
+      name     = lv_name
+      object   = 'QSS'
     TABLES
-      lines                   = lt_lines
+      lines    = lt_lines
     EXCEPTIONS
-      id                      = 1
-      language                = 2
-      name                    = 3
-      not_found               = 4
-      object                  = 5
-      reference_check         = 6
-      wrong_access_to_archive = 7
-      OTHERS                  = 8.
+      OTHERS   = 8.
 
   IF sy-subrc <> 0 OR lt_lines IS INITIAL.
     RETURN.
   ENDIF.
+
+  lv_indent =
+    cl_abap_char_utilities=>hard_space &&
+    cl_abap_char_utilities=>hard_space &&
+    cl_abap_char_utilities=>hard_space.
 
   LOOP AT lt_lines INTO ls_line.
 
@@ -129,13 +118,55 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
     gs_display-char_ltxt = ls_line-tdline.
     gs_display-tdformat  = ls_line-tdformat.
 
-    "--- Indent Char LT under characteristic ---
-    CONCATENATE '   ' gs_display-char_ltxt INTO gs_display-char_ltxt.
+    CONCATENATE lv_indent gs_display-char_ltxt INTO gs_display-char_ltxt.
 
     CLEAR gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 6.
+    APPEND ls_color TO gs_display-line_color.
 
     APPEND gs_display TO gt_display.
 
   ENDLOOP.
 
 ENDFORM.
+
+
+
+
+IF gv_show_char = gc_true
+   AND ls_base-merknr IS NOT INITIAL.
+
+  IF ls_base-merknr <> lv_last_merknr.
+
+    CLEAR ls_disp.
+    MOVE-CORRESPONDING ls_base TO ls_disp.
+    ls_disp-row_kind = 'C'.
+
+    lv_indent =
+      cl_abap_char_utilities=>hard_space &&
+      cl_abap_char_utilities=>hard_space &&
+      cl_abap_char_utilities=>hard_space.
+
+    CONCATENATE lv_indent ls_disp-kurzt_char INTO ls_disp-kurzt_char.
+    CONCATENATE lv_indent ls_disp-merknr     INTO ls_disp-merknr.
+
+    "YELLOW color
+    CLEAR ls_color.
+    ls_color-color-col = 5.
+    ls_color-color-int = 1.
+    APPEND ls_color TO ls_disp-line_color.
+
+    APPEND ls_disp TO gt_display.
+
+    lv_last_merknr = ls_base-merknr.
+
+  ENDIF.
+
+  IF gv_show_ltxt = gc_true.
+    PERFORM append_char_longtext USING ls_base.
+  ENDIF.
+
+ENDIF.
