@@ -1,14 +1,2 @@
-DATA lv_merknr TYPE char08.
-lv_merknr = is_base-merknr.
-
-CONCATENATE sy-mandt
-            is_base-plnty
-            is_base-plnnr
-            lv_merknr
-            is_base-zaehl
-       INTO lv_name.
-
-
-
-
-a
+AND plas~datuv <= @lv_keydat
+AND plas~valid_to >= @lv_keydat
