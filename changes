@@ -1,358 +1,128 @@
 *&---------------------------------------------------------------------*
-*& Form BUILD_DISPLAY  (FINAL – CLEAN + FDS LOGIC)
-*&---------------------------------------------------------------------*
-FORM build_display.
-
-  DATA: ls_base        TYPE ty_task_base,
-        ls_disp        TYPE ty_task_disp,
-        lv_last_op_key TYPE string,
-        lv_curr_op_key TYPE string,
-        lv_last_char   TYPE plmk-merknr.
-
-  CLEAR: gt_display, lv_last_op_key, lv_last_char.
-
-  SORT gt_base BY plnty plnnr plnal vornr merknr.
-
-  LOOP AT gt_base INTO ls_base.
-
-    "--------------------------------------------------------------*
-    " Build unique operation key
-    "--------------------------------------------------------------*
-    CONCATENATE ls_base-plnty
-                ls_base-plnnr
-                ls_base-plnal
-                ls_base-vornr
-           INTO lv_curr_op_key.
-
-    "--------------------------------------------------------------*
-    " OPERATION HEADER — ONLY ONCE PER OP
-    "--------------------------------------------------------------*
-    IF lv_curr_op_key <> lv_last_op_key.
-
-      CLEAR ls_disp.
-      MOVE-CORRESPONDING ls_base TO ls_disp.
-      ls_disp-row_kind = 'O'.
-      APPEND ls_disp TO gt_display.
-
-      lv_last_op_key = lv_curr_op_key.
-      lv_last_char   = ''.
-
-      " Mode C → operation long text only
-      IF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-        PERFORM append_op_longtext USING ls_base.
-      ENDIF.
-
-    ENDIF.
-
-    "--------------------------------------------------------------*
-    " CHARACTERISTIC HEADER — ONLY IN Show_Char MODE
-    "--------------------------------------------------------------*
-    IF gv_show_char = gc_true AND ls_base-merknr IS NOT INITIAL.
-
-      IF ls_base-merknr <> lv_last_char.
-
-        CLEAR ls_disp.
-        MOVE-CORRESPONDING ls_base TO ls_disp.
-        ls_disp-row_kind = 'C'.
-        APPEND ls_disp TO gt_display.
-
-        lv_last_char = ls_base-merknr.
-
-      ENDIF.
-
-      "Mode D → characteristic long text
-      IF gv_show_ltxt = gc_true.
-        PERFORM append_char_longtext USING ls_base.
-      ENDIF.
-
-    ENDIF.
-
-  ENDLOOP.
-
-  " final cleanup
-  PERFORM adjust_display_fields_by_state.
-  PERFORM clean_display_rows.
-
-ENDFORM.
-
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form ADJUST_DISPLAY_FIELDS_BY_STATE (FINAL)
-*&---------------------------------------------------------------------*
-FORM adjust_display_fields_by_state.
-
-  FIELD-SYMBOLS <ls> TYPE ty_task_disp.
-
-  LOOP AT gt_display ASSIGNING <ls>.
-
-    "--------------------------------------------------------------*
-    " MODE A — Hide Char + Hide LT
-    "--------------------------------------------------------------*
-    IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
-
-      CLEAR: <ls>-merknr,
-             <ls>-kurzt_char,
-             <ls>-pmethode,
-             <ls>-tdformat,
-             <ls>-op_ltxt,
-             <ls>-char_ltxt.
-
-    "--------------------------------------------------------------*
-    " MODE B — Show Char + Hide LT
-    "--------------------------------------------------------------*
-    ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-
-      CLEAR: <ls>-tdformat,
-             <ls>-op_ltxt,
-             <ls>-char_ltxt.
-
-    "--------------------------------------------------------------*
-    " MODE C — Hide Char + Show LT (OP LT only)
-    "--------------------------------------------------------------*
-    ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-
-      CLEAR: <ls>-merknr,
-             <ls>-kurzt_char,
-             <ls>-pmethode,
-             <ls>-char_ltxt.
-
-    "--------------------------------------------------------------*
-    " MODE D — Show Char + Show LT (CHAR LT only)
-    "--------------------------------------------------------------*
-    ELSE.
-
-      "Remove OP long text in this mode
-      IF <ls>-char_ltxt IS INITIAL AND <ls>-row_kind = 'L'.
-        CLEAR <ls>-op_ltxt.
-      ENDIF.
-
-    ENDIF.
-
-  ENDLOOP.
-
-ENDFORM.
-
-
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form CLEAN_DISPLAY_ROWS (FINAL)
-*&---------------------------------------------------------------------*
-FORM clean_display_rows.
-
-  FIELD-SYMBOLS <ls> TYPE ty_task_disp.
-  DATA: lt_clean TYPE STANDARD TABLE OF ty_task_disp,
-        lv_key   TYPE string,
-        lt_seen  TYPE HASHED TABLE OF string WITH UNIQUE KEY table_line.
-
-  CLEAR: lt_clean, lt_seen.
-
-  LOOP AT gt_display ASSIGNING <ls>.
-
-    "Build uniqueness key based on row kind
-    CASE <ls>-row_kind.
-      WHEN 'O'. "operation row
-        CONCATENATE <ls>-plnty <ls>-plnnr <ls>-plnal <ls>-vornr
-                     INTO lv_key SEPARATED BY '|'.
-
-      WHEN 'C'. "characteristic row
-        CONCATENATE <ls>-plnty <ls>-plnnr <ls>-plnal <ls>-vornr <ls>-merknr
-                     INTO lv_key SEPARATED BY '|'.
-
-      WHEN 'L'. "long text row → always unique
-        lv_key = |LT-{ sy-tabix }|.
-    ENDCASE.
-
-    "Prevent duplicate header rows
-    IF line_exists( lt_seen[ table_line = lv_key ] ) AND <ls>-row_kind <> 'L'.
-      CONTINUE.
-    ENDIF.
-
-    INSERT lv_key INTO TABLE lt_seen.
-    APPEND <ls> TO lt_clean.
-
-  ENDLOOP.
-
-  gt_display = lt_clean.
-
-ENDFORM.
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form TOGGLE_CHAR  (FINAL)
-*&---------------------------------------------------------------------*
-FORM toggle_char.
-
-  gv_show_char = xsdbool( gv_show_char = gc_false ).
-
-  CLEAR gt_display.
-
-  PERFORM build_display.
-  PERFORM set_column_visibility_by_state.
-  PERFORM set_title_from_state.
-  PERFORM set_pfstatus_from_state.
-
-  IF lo_alv IS BOUND.
-    lo_alv->refresh( ).
-  ENDIF.
-
-ENDFORM.
-
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form TOGGLE_LTXT  (FINAL)
-*&---------------------------------------------------------------------*
-FORM toggle_ltxt.
-
-  gv_show_ltxt = xsdbool( gv_show_ltxt = gc_false ).
-
-  CLEAR gt_display.
-
-  PERFORM build_display.
-  PERFORM set_column_visibility_by_state.
-  PERFORM set_title_from_state.
-  PERFORM set_pfstatus_from_state.
-
-  IF lo_alv IS BOUND.
-    lo_alv->refresh( ).
-  ENDIF.
-
-ENDFORM.
-
-
-
-
-
-
-
-*&---------------------------------------------------------------------*
-*& Form SET_COLUMN_VISIBILITY_BY_STATE (FINAL)
+*& Form SET_COLUMN_VISIBILITY_BY_STATE
 *&---------------------------------------------------------------------*
 FORM set_column_visibility_by_state.
 
-  DATA lo_cols TYPE REF TO cl_salv_columns_table.
-  DATA lo_col  TYPE REF TO cl_salv_column.
+  DATA: lo_cols TYPE REF TO cl_salv_columns_table,
+        lo_col  TYPE REF TO cl_salv_column.
 
-  IF lo_alv IS INITIAL.
-    RETURN.
-  ENDIF.
+  lo_cols = go_alv->get_columns( ).
 
-  lo_cols = lo_alv->get_columns( ).
-
-  "Helper macros
-  DEFINE show_col.
+  "============ MACROS =======================
+  "Safe hide
+  DEFINE hidec.
     TRY.
         lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_visible( abap_true ).
+        lo_col->set_visible( if_salv_c_bool_sap=>false ).
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
 
-  DEFINE hide_col.
+  "Safe show
+  DEFINE showc.
     TRY.
         lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_visible( abap_false ).
+        lo_col->set_visible( if_salv_c_bool_sap=>true ).
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
 
+  "Safe positioning (working SALV API)
   DEFINE set_pos.
     TRY.
-        lo_col ?= lo_cols->get_column( &1 ).
-        lo_col->set_position( &2 ).
+        lo_cols->set_column_position(
+           columnname = &1
+           position   = &2
+        ).
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
+  "===========================================
 
-  "----------------------------------------*
-  " Base columns always visible
-  "----------------------------------------*
-  show_col 'PLNTY'.
-  show_col 'PLNNR'.
-  show_col 'PLNAL'.
-  show_col 'VORNR'.
-  show_col 'ARBPL'.
-  show_col 'STEUS'.
 
-  "----------------------------------------*
-  " MODE A – A (Hide Char + Hide LT)
-  "----------------------------------------*
+  "==== Default show these always ====
+  showc 'PLNNR'.
+  showc 'PLNAL'.
+  showc 'WERKS'.
+  showc 'VORNR'.
+  showc 'ARBPL'.
+  showc 'STEUS'.
+  showc 'LTXA1'.
+  showc 'PLMK~MERKNR'.
+  showc 'PLMK~KURZTEXT'.
+  showc 'PLMK~VERWMERKMAL'.
+  showc 'PLMK~VERSION'.
+  showc 'PLMK~PLMKZ'.
+  showc 'PLMK~MERKTY'.
+  showc 'INSPECTION_METHOD'.
+  showc 'INSPECTION_NUMBER'.
+
+  "Hide both long-text columns first
+  hidec 'OP_LTXT'.
+  hidec 'CHAR_LTXT'.
+  hidec 'FK'.
+
+  "==================================================
+  " MODE A = No Char, No LT
+  "==================================================
   IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-    hide_col 'MERKNR'.
-    hide_col 'KURZT_CHAR'.
-    hide_col 'PMETHODE'.
+    hidec 'FK'.
+    hidec 'OP_LTXT'.
+    hidec 'CHAR_LTXT'.
 
-    RETURN.
+    "Normal layout
+    set_pos 'LTXA1' 6.
+    set_pos 'INSPECTION_METHOD' 7.
+    set_pos 'INSPECTION_NUMBER' 8.
+
+  "==================================================
+  " MODE B = Show Char, No LT
+  "==================================================
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+    showc 'FK'.
+    showc 'PLMK~MERKNR'.
+
+    hidec 'OP_LTXT'.
+    hidec 'CHAR_LTXT'.
+
+    set_pos 'INSPECTION_METHOD' 7.
+    set_pos 'INSPECTION_NUMBER' 8.
+    set_pos 'FK' 9.
+    set_pos 'PLMK~MERKNR' 10.
+
+  "==================================================
+  " MODE C = No Char, Show LT
+  "==================================================
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    showc 'OP_LTXT'.
+    showc 'FK'.
+
+    hidec 'CHAR_LTXT'.
+    hidec 'PLMK~MERKNR'.
+
+    "Place FK + OP_LONG after operation
+    set_pos 'FK' 6.
+    set_pos 'OP_LTXT' 7.
+
+  "==================================================
+  " MODE D = Show Char, Show LT
+  "==================================================
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_true.
+
+    showc 'FK'.
+    showc 'CHAR_LTXT'.
+
+    hidec 'OP_LTXT'.   "Only char LT in this mode
+
+    "Place FK + Char LT at end (after insp meth & insp#)
+    set_pos 'INSPECTION_METHOD' 7.
+    set_pos 'INSPECTION_NUMBER' 8.
+    set_pos 'FK' 9.
+    set_pos 'CHAR_LTXT' 10.
 
   ENDIF.
-
-  "----------------------------------------*
-  " MODE B – B (Show Char + Hide LT)
-  "----------------------------------------*
-  IF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-
-    show_col 'MERKNR'.
-    show_col 'KURZT_CHAR'.
-    show_col 'PMETHODE'.
-
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-
-    RETURN.
-
-  ENDIF.
-
-  "----------------------------------------*
-  " MODE C – C (Hide Char + Show LT)
-  "→ FK + OP_LTXT after Operation
-  "----------------------------------------*
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-
-    show_col 'TDFORMAT'.
-    show_col 'OP_LTXT'.
-
-    hide_col 'MERKNR'.
-    hide_col 'KURZT_CHAR'.
-    hide_col 'PMETHODE'.
-    hide_col 'CHAR_LTXT'.
-
-    set_pos 'TDFORMAT' 5.
-    set_pos 'OP_LTXT'  6.
-
-    RETURN.
-
-  ENDIF.
-
-  "----------------------------------------*
-  " MODE D – D (Show Char + Show LT)
-  "→ FK + CHAR_LTXT at the end
-  "----------------------------------------*
-  show_col 'MERKNR'.
-  show_col 'KURZT_CHAR'.
-  show_col 'PMETHODE'.
-  show_col 'TDFORMAT'.
-  show_col 'CHAR_LTXT'.
-  hide_col 'OP_LTXT'.
-
-  set_pos 'MERKNR'     7.
-  set_pos 'KURZT_CHAR' 8.
-  set_pos 'PMETHODE'   9.
-  set_pos 'TDFORMAT'  10.
-  set_pos 'CHAR_LTXT' 11.
 
 ENDFORM.
