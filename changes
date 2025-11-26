@@ -1,11 +1,13 @@
 CLEAR gs_display.
 MOVE-CORRESPONDING is_base TO gs_display.
 
-gs_display-row_kind = 'L'.
-gs_display-op_ltxt  = ls_line-tdline.
-gs_display-tdformat = ls_line-tdformat.
+gs_display-row_kind  = 'L'.
+gs_display-char_ltxt = ls_line-tdline.
+gs_display-tdformat  = ls_line-tdformat.
 
-"--- Indent LT under operation ---
-CONCATENATE '   ' gs_display-op_ltxt INTO gs_display-op_ltxt.
+"--- Indent Char LT under characteristic ---
+CONCATENATE '   ' gs_display-char_ltxt INTO gs_display-char_ltxt.
+
+CLEAR gs_display-op_ltxt.
 
 APPEND gs_display TO gt_display.
