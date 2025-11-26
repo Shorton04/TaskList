@@ -7,52 +7,58 @@ FORM get_data.
   CLEAR gt_base.
   CLEAR gs_base.
 
-  " Key date (single value)
   lv_keydat = so_keydt-low.
 
-  " Tolerance parameters (CHAR16 -> FLTP variables)
-  CLEAR: lv_tolun, lv_tolob.
+  " Convert tolerance CHAR16 → FLTP
+  CLEAR lv_tolun.
+  CLEAR lv_tolob.
   IF so_tolun IS NOT INITIAL.
-    lv_tolun = so_tolun.    " implicit conv CHAR16 -> FLTP
+    lv_tolun = so_tolun.
   ENDIF.
   IF so_tolob IS NOT INITIAL.
     lv_tolob = so_tolob.
   ENDIF.
 
-  "-------------------------------------------------------------------*
-  " Core selection: PLKO – PLAS – PLPO – PLMK – TAPL – EAPL – CRHD
-  "-------------------------------------------------------------------*
+  "===================================================================*
+  "* FDS JOIN WITH ALL FIELDS REQUIRED IN TY_TASK_BASE
+  "===================================================================*
   SELECT
-    plko~plnty          " header
+    "================ HEADER (PLKO) ==================================
+    plko~plnty
     plko~plnnr
     plko~plnal
     plko~datuv
+    plko~valid_to           AS valid_to
     plko~werks
     plko~ktext
     plko~verwe
     plko~vagrp
-    plko~statu     AS stat_h
-    plko~anlzu     AS anlzu_h
+    plko~statu              AS stat_h
+    plko~anlzu              AS anlzu_h
     plko~strat
-    plko~istru     AS istru_h
+    plko~istru              AS istru_h
     plko~adpsp
     plko~slwbez
-    plko~loekz     AS loekz_h
+    plko~loekz              AS loekz_h
     plko~andat
     plko~annam
     plko~aedat
     plko~aenam
 
-    tapl~tplnr      " FLOC assignment
-    eapl~equnr      " EQUIP assignment
+    "================ FLOC / EQUIP (TAPL/EAPL) =======================
+    tapl~tplnr
+    eapl~equnr
 
+    "================ OPERATION (PLPO) ===============================
     plpo~plnkn
     plpo~zaehl
-    plpo~vornr      " operation
+    plpo~datuv              AS datuv_o
+    plpo~valid_to           AS valid_to_o
+    plpo~vornr
     plpo~ltxa1
     plpo~steus
-    crhd~arbpl      AS arbpl_o
-    crhd~werks      AS werks_o
+    crhd~arbpl              AS arbpl_o
+    crhd~werks              AS werks_o
     plpo~ktsch
     plpo~arbei
     plpo~arbeh
@@ -60,8 +66,8 @@ FORM get_data.
     plpo~daune
     plpo~kalid
     plpo~execution_stage
-    plpo~anlzu      AS anlzu_o
-    plpo~istru      AS istru_o
+    plpo~anlzu              AS anlzu_o
+    plpo~istru              AS istru_o
     plpo~larnt
     plpo~ebeln
     plpo~ebelp
@@ -71,12 +77,13 @@ FORM get_data.
     plpo~sakto
     plpo~ekorg
     plpo~ekgrp
-    plpo~txtsp      AS txtsp_op
-    plpo~loekz      AS loekz_o
+    plpo~txtsp              AS txtsp_op
+    plpo~loekz              AS loekz_o
 
-    plmk~merknr     " characteristic
+    "================ CHARACTERISTIC (PLMK) ==========================
+    plmk~merknr
     plmk~verwmerkm
-    plmk~kurztext   AS kurzt_char
+    plmk~kurztext           AS kurzt_char
     plmk~ltextkz
     plmk~toleranzun
     plmk~toleranzob
@@ -86,56 +93,69 @@ FORM get_data.
     plmk~katalgart1
     plmk~auswmenge1
     plmk~steuerkz
-    plmk~loekz      AS loekz_c
+    plmk~loekz              AS loekz_c
+    plmk~gueltigab          AS gueltigab
+    plmk~valid_to_on_db     AS valid_to_c
 
     INTO CORRESPONDING FIELDS OF TABLE gt_base
 
     FROM  plko
       INNER JOIN plas
-        ON  plas~plnty = plko~plnty
-        AND plas~plnnr = plko~plnnr
-        AND plas~plnal = plko~plnal
-        AND plas~loekz = ' '
-      INNER JOIN plpo
-        ON  plpo~plnty = plas~plnty
-        AND plpo~plnnr = plas~plnnr
-        AND plpo~plnkn = plas~plnkn
-        "AND plpo~zaehl = plas~zaehl
-        AND plpo~loekz = ' '
-      LEFT OUTER JOIN plmk
-        ON  plmk~plnty = plpo~plnty
-        AND plmk~plnnr = plpo~plnnr
-        AND plmk~plnkn = plpo~plnkn
-        "AND plmk~zaehl = plpo~zaehl
-        AND plmk~loekz = ' '
-      LEFT OUTER JOIN tapl
-        ON  tapl~plnty = plko~plnty
-        AND tapl~plnnr = plko~plnnr
-        AND tapl~plnal = plko~plnal
-        AND tapl~loekz = ' '
-      LEFT OUTER JOIN eapl
-        ON  eapl~plnty = plko~plnty
-        AND eapl~plnnr = plko~plnnr
-        AND eapl~plnal = plko~plnal
-        AND eapl~loekz = ' '
-      LEFT OUTER JOIN crhd
-        ON  crhd~objid = plpo~arbid
+        ON plas~plnty = plko~plnty
+       AND plas~plnnr = plko~plnnr
+       AND plas~plnal = plko~plnal
+       AND plas~loekz = ' '
 
-    WHERE plko~loekz = ' '        " header not deleted
-      AND plko~datuv <= lv_keydat.
+      INNER JOIN plpo
+        ON plpo~plnty = plas~plnty
+       AND plpo~plnnr = plas~plnnr
+       AND plpo~plnkn = plas~plnkn
+       AND plpo~zaehl = plas~zaehl
+       AND plpo~loekz = ' '
+
+      LEFT JOIN plmk
+        ON plmk~plnty = plpo~plnty
+       AND plmk~plnnr = plpo~plnnr
+       AND plmk~plnkn = plpo~plnkn
+       AND plmk~zaehl = plpo~zaehl
+       AND plmk~loekz = ' '
+
+      LEFT JOIN tapl
+        ON tapl~plnty = plko~plnty
+       AND tapl~plnnr = plko~plnnr
+       AND tapl~plnal = plko~plnal
+       AND tapl~loekz = ' '
+
+      LEFT JOIN eapl
+        ON eapl~plnty = plko~plnty
+       AND eapl~plnnr = plko~plnnr
+       AND eapl~plnal = plko~plnal
+       AND eapl~loekz = ' '
+
+      LEFT JOIN crhd
+        ON crhd~objid = plpo~arbid
+
+    WHERE plko~loekz = ' '
+      AND plko~datuv <= lv_keydat
+      AND plko~valid_to >= lv_keydat
+      AND plpo~datuv <= lv_keydat
+      AND plpo~valid_to >= lv_keydat
+      AND ( plmk~gueltigab IS INITIAL OR plmk~gueltigab <= lv_keydat )
+      AND ( plmk~valid_to_on_db IS INITIAL OR plmk~valid_to_on_db >= lv_keydat ).
+
   SORT gt_base BY plnty plnnr plnal vornr merknr.
   DELETE ADJACENT DUPLICATES FROM gt_base COMPARING plnty plnnr plnal vornr merknr.
 
-  "-------------------------------------------------------------------*
-  " Apply selection-screen filters in ABAP on GT_BASE
-  "-------------------------------------------------------------------*
-  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+  "===================================================================*
+  "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
+  "===================================================================*
+  DATA lt_filtered TYPE STANDARD TABLE OF ty_task_base.
 
   CLEAR lt_filtered.
 
   LOOP AT gt_base INTO gs_base.
 
-    "---- Task list type (PLKO-PLNTY) via checkboxes ------------------
+    "--- Task List Type (FTL/ETL/GTL) --------------------------------
     IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
       CONTINUE.
     ENDIF.
@@ -146,23 +166,20 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    "---- Task list key: GROUP / COUNTER / PLANT ----------------------
-    "GROUP  = PLKO-PLNNR  (your “Group” field)
+    "--- Header Filters ----------------------------------------------
     IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
       CONTINUE.
     ENDIF.
 
-    "COUNTER = PLKO-PLNAL  (if you have selection for counter)
     IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
       CONTINUE.
     ENDIF.
 
-    "PLANT
     IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
       CONTINUE.
     ENDIF.
 
-    "---- Operation filters -------------------------------------------
+    "--- Operation Filters -------------------------------------------
     IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
       CONTINUE.
     ENDIF.
@@ -171,12 +188,11 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    "Operation long-text indicator (only ops that HAVE long text)
     IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
       CONTINUE.
     ENDIF.
 
-    "---- Characteristic filters --------------------------------------
+    "--- Characteristic Filters --------------------------------------
     IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
       CONTINUE.
     ENDIF.
@@ -197,16 +213,16 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    "Tolerance range
+    "--- Tolerance ----------------------------------------------------
     IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> lv_tolun.
       CONTINUE.
     ENDIF.
+
     IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> lv_tolob.
       CONTINUE.
     ENDIF.
 
-    "---- If we reach here: row matches ALL filled selections ---------
-
+    "--- If passed all filters ---------------------------------------
     APPEND gs_base TO lt_filtered.
 
   ENDLOOP.
