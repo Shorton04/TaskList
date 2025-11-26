@@ -1,81 +1,78 @@
-TYPES: BEGIN OF ty_task_disp_c,
-  plnnr       TYPE plko-plnnr,
-  plnal       TYPE plko-plnal,
-  werks       TYPE plko-werks,
-  vornr       TYPE plpo-vornr,
-  tdformat    TYPE tline-tdformat,
-  op_ltxt     TYPE tline-tdline,
-  arbpl_o     TYPE crhd-arbpl,
-  arbei       TYPE plpo-arbei,
-  kurzt_char  TYPE plmk-kurztext,
-  pmethode    TYPE plmk-pmethode,
-  merknr      TYPE plmk-merknr,
-  char_ltxt   TYPE tline-tdline,
-END OF ty_task_disp_c.
+"===================================================================*
+  "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
+  "===================================================================*
+  DATA lt_filtered TYPE STANDARD TABLE OF ty_task_base.
 
+  CLEAR lt_filtered.
 
-TYPES: BEGIN OF ty_task_disp_d,
-  plnnr       TYPE plko-plnnr,
-  plnal       TYPE plko-plnal,
-  werks       TYPE plko-werks,
-  vornr       TYPE plpo-vornr,
-  op_ltxt     TYPE tline-tdline,
-  arbpl_o     TYPE crhd-arbpl,
-  arbei       TYPE plpo-arbei,
-  kurzt_char  TYPE plmk-kurztext,
-  pmethode    TYPE plmk-pmethode,
-  merknr      TYPE plmk-merknr,
-  tdformat    TYPE tline-tdformat,
-  char_ltxt   TYPE tline-tdline,
-END OF ty_task_disp_d.
+  LOOP AT gt_base INTO gs_base.
 
+    "--- Task List Type (FTL/ETL/GTL) --------------------------------
+    IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+    IF gs_base-plnty = 'B' AND p_etl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+    IF gs_base-plnty = 'E' AND p_gtl IS INITIAL.
+      CONTINUE.
+    ENDIF.
 
+    "--- Header Filters ----------------------------------------------
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+      CONTINUE.
+    ENDIF.
 
-DATA: gt_display_c TYPE STANDARD TABLE OF ty_task_disp_c,
-      gt_display_d TYPE STANDARD TABLE OF ty_task_disp_d,
-      gt_display   TYPE STANDARD TABLE OF ty_task_disp_d. "used by SALV
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+      CONTINUE.
+    ENDIF.
 
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
 
-CLEAR: gs_disp_c, gs_disp_d.
+    "--- Operation Filters -------------------------------------------
+    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
 
-"CASE C (Hide Characteristics + Show LT)
-gs_disp_c-plnnr      = gs_base-plnnr.
-gs_disp_c-plnal      = gs_base-plnal.
-gs_disp_c-werks      = gs_base-werks.
-gs_disp_c-vornr      = gs_base-vornr.
-gs_disp_c-tdformat   = gs_base-tdformat.
-gs_disp_c-op_ltxt    = gs_base-op_ltxt.
-gs_disp_c-arbpl_o    = gs_base-arbpl_o.
-gs_disp_c-arbei      = gs_base-arbei.
-gs_disp_c-kurzt_char = gs_base-kurzt_char.
-gs_disp_c-pmethode   = gs_base-pmethode.
-gs_disp_c-merknr     = gs_base-merknr.
-gs_disp_c-char_ltxt  = gs_base-char_ltxt.
+    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+      CONTINUE.
+    ENDIF.
 
-APPEND gs_disp_c TO gt_display_c.
+    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+      CONTINUE.
+    ENDIF.
 
+    "--- Characteristic Filters --------------------------------------
+    IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      CONTINUE.
+    ENDIF.
 
-"CASE D (Show Characteristics + Show LT)
-gs_disp_d-plnnr      = gs_base-plnnr.
-gs_disp_d-plnal      = gs_base-plnal.
-gs_disp_d-werks      = gs_base-werks.
-gs_disp_d-vornr      = gs_base-vornr.
-gs_disp_d-op_ltxt    = gs_base-op_ltxt.
-gs_disp_d-arbpl_o    = gs_base-arbpl_o.
-gs_disp_d-arbei      = gs_base-arbei.
-gs_disp_d-kurzt_char = gs_base-kurzt_char.
-gs_disp_d-pmethode   = gs_base-pmethode.
-gs_disp_d-merknr     = gs_base-merknr.
-gs_disp_d-tdformat   = gs_base-tdformat.
-gs_disp_d-char_ltxt  = gs_base-char_ltxt.
+    IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      CONTINUE.
+    ENDIF.
 
-APPEND gs_disp_d TO gt_display_d.
+    IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      CONTINUE.
+    ENDIF.
 
+    IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      CONTINUE.
+    ENDIF.
 
+    IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      CONTINUE.
+    ENDIF.
 
+    "--- Tolerance ----------------------------------------------------
+    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> lv_tolun.
+      CONTINUE.
+    ENDIF.
 
-IF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-  gt_display = gt_display_c.   "Case C
-ELSE.
-  gt_display = gt_display_d.   "Case D
-ENDIF.
+    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> lv_tolob.
+      CONTINUE.
+    ENDIF.
+
+    "--- If passed all filters ---------------------------------------
+    APPEND gs_base TO lt_filtered.
