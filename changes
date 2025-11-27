@@ -1,10 +1,16 @@
-CASE gs_display-row_kind.
-  WHEN 'O'. gs_display-line_color = '0000'.
-  WHEN 'C'. gs_display-line_color = '6100'.
-  WHEN 'L'.
-    IF is_characteristic = abap_false.
-      gs_display-line_color = '5100'.   "Operation long text
-    ELSE.
-      gs_display-line_color = '3100'.   "Characteristic long text
-    ENDIF.
-ENDCASE.
+IF gs_display-row_kind = 'O'.
+  gs_display-line_color = '0000'.    " No color
+
+ELSEIF gs_display-row_kind = 'C'.
+  gs_display-line_color = '6100'.    " Green (Characteristic)
+
+ELSEIF gs_display-row_kind = 'L'.
+
+  " Distinguish Operation LT vs Characteristic LT
+  IF gs_display-op_ltxt IS NOT INITIAL.
+    gs_display-line_color = '5100'.  " Yellow = Operation LT
+  ELSE.
+    gs_display-line_color = '3100'.  " Blue = Characteristic LT
+  ENDIF.
+
+ENDIF.
