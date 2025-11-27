@@ -1,25 +1,106 @@
-FORM add_fc USING p_field p_text p_pos.
+TYPES: BEGIN OF ty_task_disp,
 
-  CLEAR gs_fcat.
+         "Header section
+         plnty           TYPE plko-plnty,
+         plnnr           TYPE plko-plnnr,
+         plnal           TYPE plko-plnal,
+         datuv           TYPE plko-datuv,
+         werks           TYPE plko-werks,
+         ktext           TYPE plko-ktext,
+         tplnr           TYPE tapl-tplnr,
+         equnr           TYPE eapl-equnr,
+         verwe           TYPE plko-verwe,
+         vagrp           TYPE plko-vagrp,
+         statu_h         TYPE plko-statu,
+         anlzu_h         TYPE plko-anlzu,
+         strat           TYPE plko-strat,
+         istru_h         TYPE plko-istru,
+         adpsp           TYPE plko-adpsp,
+         slwbez          TYPE plko-slwbez,
+         loekz_h         TYPE plko-loekz,
+         andat           TYPE plko-andat,
+         annam           TYPE plko-annam,
+         aedat           TYPE plko-aedat,
+         aenam           TYPE plko-aenam,
 
-  gs_fcat-fieldname  = p_field.
-  gs_fcat-coltext    = p_text.
-  gs_fcat-reptext    = p_text.
-  gs_fcat-seltext    = p_text.
-  gs_fcat-col_pos    = p_pos.
+         "Operations
+         vornr           TYPE plpo-vornr,
+         ltxa1           TYPE plpo-ltxa1,
+         steus           TYPE plpo-steus,
+         arbpl_o         TYPE crhd-arbpl,
+         arbpl_h         TYPE crhd-arbpl,
+         werks_o         TYPE crhd-werks,
+         ktsch           TYPE plpo-ktsch,
+         arbei           TYPE plpo-arbei,
+         arbeh           TYPE plpo-arbeh,
+         dauno           TYPE plpo-dauno,
+         daune           TYPE plpo-daune,
+         kalid           TYPE plpo-kalid,
+         execution_stage TYPE plpo-execution_stage,
+         anlzu_o         TYPE plpo-anlzu,
+         istru_o         TYPE plpo-istru,
+         larnt           TYPE plpo-larnt,
+         ebeln           TYPE plpo-ebeln,
+         ebelp           TYPE plpo-ebelp,
+         lifnr           TYPE plpo-lifnr,
+         preis           TYPE plpo-preis,
+         waers           TYPE plpo-waers,
+         sakto           TYPE plpo-sakto,
+         ekorg           TYPE plpo-ekorg,
+         ekgrp           TYPE plpo-ekgrp,
+         txtsp_op        TYPE plpo-txtsp,
+         loekz_o         TYPE plpo-loekz,
 
-  gs_fcat-edit       = 'X'.
-  gs_fcat-f4availabl = 'X'.
+         "Characteristics
+         merknr          TYPE plmk-merknr,
+         verwmerkm       TYPE plmk-verwmerkm,
+         kurzt_char      TYPE plmk-kurztext,
+         ltextkz         TYPE plmk-ltextkz,
+         toleranzun      TYPE plmk-toleranzun,
+         toleranzob      TYPE plmk-toleranzob,
+         pruefeinh       TYPE plmk-pruefeinh,
+         stichprver      TYPE plmk-stichprver,
+         pmethode        TYPE plmk-pmethode,
+         katalgart1      TYPE plmk-katalgart1,
+         auswmenge1      TYPE plmk-auswmenge1,
+         steuerkz        TYPE plmk-steuerkz,
+         loekz_c         TYPE plmk-loekz,
 
-  "--------------------------------------------------------------
-  " ABSOLUTELY REQUIRED → Prevent ALV from creating sorted table
-  "--------------------------------------------------------------
-  gs_fcat-key        = ''.     " Prevent generated KEY
-  gs_fcat-keyfield   = ''.     " Prevent DDIC inferred KEY
-  gs_fcat-hotspot    = ''.     " Prevent hotspot implicit key
-  gs_fcat-ref_table  = ''.     " Prevent DDIC reference keys
-  gs_fcat-ref_field  = ''.     
+         "CI fields 1–28 (all CHAR1)
+         ci1             TYPE c LENGTH 1,
+         ci2             TYPE c LENGTH 1,
+         ci3             TYPE c LENGTH 1,
+         ci4             TYPE c LENGTH 1,
+         ci5             TYPE c LENGTH 1,
+         ci6             TYPE c LENGTH 1,
+         ci7             TYPE c LENGTH 1,
+         ci8             TYPE c LENGTH 1,
+         ci9             TYPE c LENGTH 1,
+         ci10            TYPE c LENGTH 1,
+         ci11            TYPE c LENGTH 1,
+         ci12            TYPE c LENGTH 1,
+         ci13            TYPE c LENGTH 1,
+         ci14            TYPE c LENGTH 1,
+         ci15            TYPE c LENGTH 1,
+         ci16            TYPE c LENGTH 1,
+         ci17            TYPE c LENGTH 1,
+         ci18            TYPE c LENGTH 1,
+         ci19            TYPE c LENGTH 1,
+         ci20            TYPE c LENGTH 1,
+         ci21            TYPE c LENGTH 1,
+         ci22            TYPE c LENGTH 1,
+         ci23            TYPE c LENGTH 1,
+         ci24            TYPE c LENGTH 1,
+         ci25            TYPE c LENGTH 1,
+         ci26            TYPE c LENGTH 1,
+         ci27            TYPE c LENGTH 1,
+         ci28            TYPE c LENGTH 1,
 
-  APPEND gs_fcat TO gt_fcat.
+         "Long Text
+         row_kind        TYPE c LENGTH 1,
+         tdformat        TYPE tline-tdformat,
+         op_ltxt         TYPE tline-tdline,
+         char_ltxt       TYPE tline-tdline,
+         line_color      TYPE lvc_t_scol,
 
-ENDFORM.
+       END OF ty_task_disp.
