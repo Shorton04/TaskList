@@ -1,16 +1,63 @@
-IF gs_display-row_kind = 'O'.
-  gs_display-line_color = '0000'.    " No color
+FORM build_display.
 
-ELSEIF gs_display-row_kind = 'C'.
-  gs_display-line_color = '6100'.    " Green (Characteristic)
+  DATA lv_last_vornr TYPE vornr.
+  DATA lv_row_id     TYPE i VALUE 0.
 
-ELSEIF gs_display-row_kind = 'L'.
+  CLEAR gt_display.
 
-  " Distinguish Operation LT vs Characteristic LT
-  IF gs_display-op_ltxt IS NOT INITIAL.
-    gs_display-line_color = '5100'.  " Yellow = Operation LT
-  ELSE.
-    gs_display-line_color = '3100'.  " Blue = Characteristic LT
-  ENDIF.
+  SORT gt_base BY plnnr plnal vornr merknr.
 
-ENDIF.
+  LOOP AT gt_base INTO gs_base.
+
+    "--- OPERATION ROW ---
+    IF gs_base-vornr <> lv_last_vornr.
+
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'O'.
+      CLEAR gs_display-line_color.
+
+      APPEND gs_display TO gt_display.
+
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING gs_base.
+      ENDIF.
+
+      lv_last_vornr = gs_base-vornr.
+    ENDIF.
+
+    "--- CHARACTERISTIC ROW ---
+    IF gv_show_char = abap_true AND gs_base-merknr IS NOT INITIAL.
+
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'C'.
+
+      IF gs_display-row_kind = 'O'.
+        gs_display-line_color = '0000'.    " No color
+
+      ELSEIF gs_display-row_kind = 'C'.
+        gs_display-line_color = '6100'.    " Green (Characteristic)
+
+      ELSEIF gs_display-row_kind = 'L'.
+
+        " Distinguish Operation LT vs Characteristic LT
+        IF gs_display-op_ltxt IS NOT INITIAL.
+          gs_display-line_color = '5100'.  " Yellow = Operation LT
+        ELSE.
+          gs_display-line_color = '3100'.  " Blue = Characteristic LT
+        ENDIF.
+
+      ENDIF.
+
+      APPEND gs_display TO gt_display.
+
+      IF gv_show_ltxt = abap_true.
+        PERFORM append_char_longtext USING gs_base.
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
