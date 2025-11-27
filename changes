@@ -1,103 +1,62 @@
-CLASS lcl_event_handler IMPLEMENTATION.
+METHOD on_f4.
 
-  "============================================================
-  " USER COMMAND HANDLER (PF-STATUS)
-  "============================================================
-  METHOD on_user_command.
+  DATA lt_return TYPE TABLE OF ddshretval.
+  DATA ls_return TYPE ddshretval.
+  DATA lr_data   TYPE REF TO data.
 
-    CASE e_ucomm.
+  CASE e_fieldname.
 
-      WHEN '&CLISTS'.   "Show Characteristics
-        gv_show_char = abap_true.
-        gv_show_ltxt = abap_false.
+    WHEN 'VAGRP'.
+      CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+        EXPORTING
+          tabname   = 'PLKO'
+          fieldname = 'VAGRPM'
+        TABLES
+          return_tab = lt_return.
 
-      WHEN '&CLISTH'.   "Hide Characteristics
-        gv_show_char = abap_false.
-        gv_show_ltxt = abap_false.
+    WHEN 'ARBPL_H' OR 'ARBPL_O'.
+      CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+        EXPORTING
+          tabname   = 'CRHD'
+          fieldname = 'ARBPL'
+        TABLES
+          return_tab = lt_return.
 
-      WHEN '&LTXTS'.    "Show Long Text
-        gv_show_ltxt = abap_true.
+    WHEN OTHERS.
+      RETURN.
 
-      WHEN '&LTXTH'.    "Hide Long Text
-        gv_show_ltxt = abap_false.
+  ENDCASE.
 
-      WHEN OTHERS.
-        RETURN.
+  READ TABLE lt_return INTO ls_return INDEX 1.
+  IF sy-subrc = 0.
 
-    ENDCASE.
+    "-------------------------------
+    " FIX: kernel-safe dereference
+    "-------------------------------
+    lr_data = er_event_data->m_data.
+    ASSIGN lr_data->* TO FIELD-SYMBOL(<fs_value>).
+    <fs_value> = ls_return-fieldval.
 
-    PERFORM build_display.
-    PERFORM display_alv.
+    er_event_data->m_event_handled = abap_true.
 
-  ENDMETHOD.
+  ENDIF.
 
-
-
-  "============================================================
-  " F4 HELP HANDLER
-  "============================================================
-  METHOD on_f4.
-
-    DATA lt_return TYPE TABLE OF ddshretval.
-    DATA ls_return TYPE ddshretval.
-
-    CASE e_fieldname.
-
-      WHEN 'VAGRP'.
-        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
-          EXPORTING
-            tabname   = 'PLKO'
-            fieldname = 'VAGRPM'
-          TABLES
-            return_tab = lt_return.
-
-      WHEN 'ARBPL_H' OR 'ARBPL_O'.
-        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
-          EXPORTING
-            tabname   = 'CRHD'
-            fieldname = 'ARBPL'
-          TABLES
-            return_tab = lt_return.
-
-      WHEN OTHERS.
-        RETURN.
-
-    ENDCASE.
-
-    READ TABLE lt_return INTO ls_return INDEX 1.
-
-    IF sy-subrc = 0.
-      er_event_data->m_event_handled = abap_true.
-      er_event_data->m_data->value   = ls_return-fieldval.
-    ENDIF.
-
-  ENDMETHOD.
-
-ENDCLASS.
+ENDMETHOD.
 
 
 
 
 
 
-DATA: lt_f4 TYPE lvc_t_f4,
-      ls_f4 TYPE lvc_s_f4.
+FORM get_header_wcenter CHANGING cs TYPE ty_task_base.
 
-CLEAR lt_f4.
+  "Check if field exists and is not initial
+  IF line_exists( cs-arbid_h ).
+    SELECT SINGLE arbpl
+      INTO cs-arbpl_h
+      FROM crhd
+      WHERE objid = cs-arbid_h
+        AND objty = 'A'.
+  ENDIF.
 
-CLEAR ls_f4.
-ls_f4-fieldname = 'VAGRP'.
-ls_f4-register  = 'X'.
-APPEND ls_f4 TO lt_f4.
-
-CLEAR ls_f4.
-ls_f4-fieldname = 'ARBPL_H'.
-ls_f4-register  = 'X'.
-APPEND ls_f4 TO lt_f4.
-
-CLEAR ls_f4.
-ls_f4-fieldname = 'ARBPL_O'.
-ls_f4-register  = 'X'.
-APPEND ls_f4 TO lt_f4.
-
-go_grid->register_f4_for_fields( it_f4 = lt_f4 ).
+ENDFORM.
