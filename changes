@@ -1,62 +1,101 @@
-METHOD on_f4.
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
 
-  DATA lt_return TYPE TABLE OF ddshretval.
-  DATA ls_return TYPE ddshretval.
-  DATA lr_data   TYPE REF TO data.
+    CLASS-METHODS on_user_command
+      FOR EVENT user_command OF cl_gui_alv_grid
+      IMPORTING e_ucomm.
 
-  CASE e_fieldname.
+    CLASS-METHODS on_f4
+      FOR EVENT onf4 OF cl_gui_alv_grid
+      IMPORTING
+        e_fieldname
+        es_row_no
+        er_event_data
+        et_bad_cells.
 
-    WHEN 'VAGRP'.
-      CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
-        EXPORTING
-          tabname   = 'PLKO'
-          fieldname = 'VAGRPM'
-        TABLES
-          return_tab = lt_return.
-
-    WHEN 'ARBPL_H' OR 'ARBPL_O'.
-      CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
-        EXPORTING
-          tabname   = 'CRHD'
-          fieldname = 'ARBPL'
-        TABLES
-          return_tab = lt_return.
-
-    WHEN OTHERS.
-      RETURN.
-
-  ENDCASE.
-
-  READ TABLE lt_return INTO ls_return INDEX 1.
-  IF sy-subrc = 0.
-
-    "-------------------------------
-    " FIX: kernel-safe dereference
-    "-------------------------------
-    lr_data = er_event_data->m_data.
-    ASSIGN lr_data->* TO FIELD-SYMBOL(<fs_value>).
-    <fs_value> = ls_return-fieldval.
-
-    er_event_data->m_event_handled = abap_true.
-
-  ENDIF.
-
-ENDMETHOD.
+ENDCLASS.
 
 
 
 
 
+CLASS lcl_event_handler IMPLEMENTATION.
 
-FORM get_header_wcenter CHANGING cs TYPE ty_task_base.
+*---------------------------------------------------------------------*
+* USER COMMAND HANDLER
+*---------------------------------------------------------------------*
+  METHOD on_user_command.
 
-  "Check if field exists and is not initial
-  IF line_exists( cs-arbid_h ).
-    SELECT SINGLE arbpl
-      INTO cs-arbpl_h
-      FROM crhd
-      WHERE objid = cs-arbid_h
-        AND objty = 'A'.
-  ENDIF.
+    CASE e_ucomm.
 
-ENDFORM.
+      WHEN '&CLISTS'.   "Show Characteristics
+        gv_show_char = abap_true.
+        gv_show_ltxt = abap_false.
+
+      WHEN '&CLISTH'.   "Hide Characteristics
+        gv_show_char = abap_false.
+        gv_show_ltxt = abap_false.
+
+      WHEN '&LTXTS'.    "Show Long Text
+        gv_show_ltxt = abap_true.
+
+      WHEN '&LTXTH'.    "Hide Long Text
+        gv_show_ltxt = abap_false.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    PERFORM build_display.
+    PERFORM display_alv.
+
+  ENDMETHOD.
+
+
+*---------------------------------------------------------------------*
+* ON_F4 HELP HANDLER
+*---------------------------------------------------------------------*
+  METHOD on_f4.
+
+    DATA lt_return TYPE TABLE OF ddshretval.
+    DATA ls_return TYPE ddshretval.
+    DATA lr_data   TYPE REF TO data.
+
+    CASE e_fieldname.
+
+      WHEN 'VAGRP'.
+        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+          EXPORTING
+            tabname   = 'PLKO'
+            fieldname = 'VAGRPM'
+          TABLES
+            return_tab = lt_return.
+
+      WHEN 'ARBPL_H' OR 'ARBPL_O'.
+        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+          EXPORTING
+            tabname   = 'CRHD'
+            fieldname = 'ARBPL'
+          TABLES
+            return_tab = lt_return.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    READ TABLE lt_return INTO ls_return INDEX 1.
+
+    IF sy-subrc = 0.
+
+      lr_data = er_event_data->m_data.
+      ASSIGN lr_data->* TO FIELD-SYMBOL(<fs_value>).
+      <fs_value> = ls_return-fieldval.
+
+      er_event_data->m_event_handled = abap_true.
+    ENDIF.
+
+  ENDMETHOD.
+
+ENDCLASS.
