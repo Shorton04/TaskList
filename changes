@@ -1,3 +1,99 @@
+*---------------------------------------------------------------------*
+*  Include ZRE_A2R_VALID_TASKLIST_TOP
+*---------------------------------------------------------------------*
+
+TABLES: plko, plpo, plmk, tapl, eapl, crhd.
+
+TYPES: char132 TYPE c LENGTH 132.
+
+TYPE-POOLS: slis, lvc, abap.
+
+*======================================================================*
+* TYPES – BASE DATA STRUCTURE (FDS 5.3.3)
+*======================================================================*
+TYPES: BEGIN OF ty_task_base,
+
+         "------------- Header Fields (PLKO) --------------------------
+         plnty           TYPE plko-plnty,
+         plnnr           TYPE plko-plnnr,
+         plnal           TYPE plko-plnal,
+         datuv           TYPE plko-datuv,
+         valid_to        TYPE plko-valid_to,
+         werks           TYPE plko-werks,
+         ktext           TYPE plko-ktext,
+         verwe           TYPE plko-verwe,
+         vagrp           TYPE plko-vagrp,
+         statu_h         TYPE plko-statu,
+         anlzu_h         TYPE plko-anlzu,
+         strat           TYPE plko-strat,
+         istru_h         TYPE plko-istru,
+         adpsp           TYPE plko-adpsp,
+         slwbez          TYPE plko-slwbez,
+         arbid_h         TYPE plko-arbid,
+         loekz_h         TYPE plko-loekz,
+         andat           TYPE plko-andat,
+         annam           TYPE plko-annam,
+         aedat           TYPE plko-aedat,
+         aenam           TYPE plko-aenam,
+
+         "------------- Assignment (FL / Equipment) -------------------
+         tplnr           TYPE tapl-tplnr,
+         equnr           TYPE eapl-equnr,
+
+         "------------- Operation Fields (PLPO) -----------------------
+         plnkn           TYPE plpo-plnkn,
+         zaehl           TYPE plpo-zaehl,
+         datuv_o         TYPE plpo-datuv,
+         valid_to_o      TYPE plpo-valid_to,
+         vornr           TYPE plpo-vornr,
+         ltxa1           TYPE plpo-ltxa1,
+         steus           TYPE plpo-steus,
+         arbpl_o         TYPE crhd-arbpl,
+         werks_o         TYPE crhd-werks,
+         ktsch           TYPE plpo-ktsch,
+         arbei           TYPE plpo-arbei,
+         arbeh           TYPE plpo-arbeh,
+         dauno           TYPE plpo-dauno,
+         daune           TYPE plpo-daune,
+         kalid           TYPE plpo-kalid,
+         execution_stage TYPE plpo-execution_stage,
+         anlzu_o         TYPE plpo-anlzu,
+         istru_o         TYPE plpo-istru,
+         larnt           TYPE plpo-larnt,
+         ebeln           TYPE plpo-ebeln,
+         ebelp           TYPE plpo-ebelp,
+         lifnr           TYPE plpo-lifnr,
+         preis           TYPE plpo-preis,
+         waers           TYPE plpo-waers,
+         sakto           TYPE plpo-sakto,
+         ekorg           TYPE plpo-ekorg,
+         ekgrp           TYPE plpo-ekgrp,
+         txtsp_op        TYPE plpo-txtsp,
+         loekz_o         TYPE plpo-loekz,
+
+         "------------- Characteristic Fields (PLMK) -----------------
+         merknr          TYPE plmk-merknr,
+         verwmerkm       TYPE plmk-verwmerkm,
+         kurzt_char      TYPE plmk-kurztext,
+         ltextkz         TYPE plmk-ltextkz,
+         toleranzun      TYPE plmk-toleranzun,
+         toleranzob      TYPE plmk-toleranzob,
+         pruefeinh       TYPE plmk-pruefeinh,
+         stichprver      TYPE plmk-stichprver,
+         pmethode        TYPE plmk-pmethode,
+         katalgart1      TYPE plmk-katalgart1,
+         auswmenge1      TYPE plmk-auswmenge1,
+         steuerkz        TYPE plmk-steuerkz,
+         loekz_c         TYPE plmk-loekz,
+         gueltigab       TYPE plmk-gueltigab,
+         valid_to_c      TYPE plmk-valid_to_on_db,
+
+       END OF ty_task_base.
+
+
+*======================================================================*
+* TYPES – DISPLAY STRUCTURE (ALV row)
+*======================================================================*
 TYPES: BEGIN OF ty_task_disp,
 
          "Header section
@@ -101,6 +197,73 @@ TYPES: BEGIN OF ty_task_disp,
          tdformat        TYPE tline-tdformat,
          op_ltxt         TYPE tline-tdline,
          char_ltxt       TYPE tline-tdline,
-         line_color      TYPE lvc_t_scol,
+         line_color      TYPE char4,
 
        END OF ty_task_disp.
+
+
+
+
+*======================================================================*
+* GLOBAL DATA
+*======================================================================*
+DATA: gt_base    TYPE STANDARD TABLE OF ty_task_base,
+      gs_base    TYPE ty_task_base,
+      gt_display TYPE STANDARD TABLE OF ty_task_disp,
+      gs_display TYPE ty_task_disp.
+
+DATA: go_container TYPE REF TO cl_gui_custom_container,
+      go_grid      TYPE REF TO cl_gui_alv_grid.
+
+DATA: gt_fcat   TYPE lvc_t_fcat,
+      gs_fcat   TYPE lvc_s_fcat,
+      gs_layout TYPE lvc_s_layo,
+      gt_sort   TYPE lvc_t_sort,
+      gs_sort   TYPE lvc_s_sort.
+
+DATA: gs_color  TYPE lvc_s_scol,
+      gt_colors TYPE lvc_t_scol.
+
+* SALV
+DATA: lo_alv        TYPE REF TO cl_salv_table,
+      lo_columns    TYPE REF TO cl_salv_columns_table,
+      lo_column     TYPE REF TO cl_salv_column_table,
+      lo_events     TYPE REF TO cl_salv_events_table,
+      lo_funcs      TYPE REF TO cl_salv_functions_list,
+      lo_layout     TYPE REF TO cl_salv_layout,
+      lo_disp       TYPE REF TO cl_salv_display_settings,
+      lo_sel        TYPE REF TO cl_salv_selections,
+      ls_layout_key TYPE salv_s_layout_key.
+
+* STATE
+DATA: gv_show_char TYPE abap_bool,
+      gv_show_ltxt TYPE abap_bool.
+
+CONSTANTS: gc_true  TYPE abap_bool VALUE abap_true,
+           gc_false TYPE abap_bool VALUE abap_false.
+
+* Function Codes
+CONSTANTS:
+  gc_func_clist_s TYPE salv_de_function VALUE '&CLISTS',
+  gc_func_clist_h TYPE salv_de_function VALUE '&CLISTH',
+  gc_func_ltxt_s  TYPE salv_de_function VALUE '&LTXTS',
+  gc_func_ltxt_h  TYPE salv_de_function VALUE '&LTXTH'.
+
+DATA: ok_code      TYPE syucomm.
+
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+
+    CLASS-METHODS on_user_command
+      FOR EVENT user_command OF cl_gui_alv_grid
+      IMPORTING e_ucomm.
+
+    CLASS-METHODS on_f4
+      FOR EVENT onf4 OF cl_gui_alv_grid
+      IMPORTING
+        e_fieldname
+        es_row_no
+        er_event_data
+        et_bad_cells.
+
+ENDCLASS.
