@@ -1,58 +1,205 @@
-FORM append_op_longtext USING is_base TYPE ty_task_base.
+*---------------------------------------------------------------------*
+*  F01 Include – ZRE_A2R_VALID_TASKLIST (GRID VERSION + CORRECT UCOM)
+*---------------------------------------------------------------------*
 
-  DATA: lt_lines TYPE STANDARD TABLE OF tline,
-        ls_line  TYPE tline,
-        lv_name  TYPE thead-tdname,
-        lv_indent TYPE string,
-        ls_color TYPE lvc_s_scol.
+*---------------------------------------------------------------------*
+* CLASS lcl_event_handler
+*---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
 
-  CLEAR: lt_lines, lv_name.
+  "--------------------------------------------------------------*
+  "* USER COMMAND HANDLING (PF-STATUS BUTTONS)
+  "--------------------------------------------------------------*
+  METHOD on_user_command.
 
-  CONCATENATE sy-mandt
-              is_base-plnty
-              is_base-plnnr
-              is_base-plnkn
-              is_base-zaehl
-         INTO lv_name.
+    CASE e_ucomm.
 
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      client   = sy-mandt
-      id       = 'PLPO'
-      language = sy-langu
-      name     = lv_name
-      object   = 'ROUTING'
-    TABLES
-      lines    = lt_lines
-    EXCEPTIONS
-      OTHERS   = 4.
+      WHEN '&CLISTS'.        "Show Characteristics
+        gv_show_char = abap_true.
+        gv_show_ltxt = abap_false.
 
-  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-    RETURN.
+      WHEN '&CLISTH'.        "Hide Characteristics
+        gv_show_char = abap_false.
+        gv_show_ltxt = abap_false.
+
+      WHEN '&LTXTS'.         "Show Long Text
+        gv_show_ltxt = abap_true.
+        "gv_show_char stays as-is
+
+      WHEN '&LTXTH'.         "Hide Long Text
+        gv_show_ltxt = abap_false.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    PERFORM build_display.
+    PERFORM display_alv.
+
+  ENDMETHOD.
+
+
+  "--------------------------------------------------------------*
+  "* F4 HELP HANDLER
+  "--------------------------------------------------------------*
+  METHOD on_f4.
+
+    DATA: lt_return TYPE TABLE OF ddshretval,
+          ls_return TYPE ddshretval.
+
+    CASE e_fieldname.
+
+      WHEN 'VAGRP'.   "Planner Group
+        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+          EXPORTING
+            tabname   = 'PLKO'
+            fieldname = 'VAGRPM'
+          TABLES
+            return_tab = lt_return.
+
+      WHEN 'ARBPL_H' OR 'ARBPL_O'.  "Work Centers
+        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+          EXPORTING
+            tabname   = 'CRHD'
+            fieldname = 'ARBPL'
+          TABLES
+            return_tab = lt_return.
+
+      WHEN OTHERS.
+        RETURN.
+    ENDCASE.
+
+    READ TABLE lt_return INTO ls_return INDEX 1.
+
+    IF sy-subrc = 0.
+      er_event_data->m_event_handled = abap_true.
+      er_event_data->m_data->value = ls_return-fieldval.
+    ENDIF.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+
+*---------------------------------------------------------------------*
+*  VALIDATE_SELECTION
+*---------------------------------------------------------------------*
+FORM validate_selection.
+
+  IF p_ftl IS INITIAL AND p_etl IS INITIAL AND p_gtl IS INITIAL.
+    MESSAGE e398(00) WITH 'Select at least one Task List Type'.
   ENDIF.
 
-  lv_indent =
-    cl_abap_char_utilities=>hard_space &&
-    cl_abap_char_utilities=>hard_space &&
-    cl_abap_char_utilities=>hard_space.
+ENDFORM.
 
-  LOOP AT lt_lines INTO ls_line.
 
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
 
-    gs_display-row_kind = 'L'.
-    gs_display-op_ltxt  = ls_line-tdline.
-    gs_display-tdformat = ls_line-tdformat.
+*---------------------------------------------------------------------*
+* GET HEADER WORK CENTER
+*---------------------------------------------------------------------*
+FORM get_header_wcenter
+  CHANGING cs TYPE ty_task_base.
 
-    CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
+  SELECT SINGLE arbpl
+    INTO cs-arbpl_h
+    FROM crhd
+    WHERE objid = cs-arbid_h
+      AND objty = 'A'.
 
-    "GREEN color
-    CLEAR ls_color.
-    ls_color-color-col = 6.
-    APPEND ls_color TO gs_display-line_color.
+ENDFORM.
 
-    APPEND gs_display TO gt_display.
+
+
+*---------------------------------------------------------------------*
+* GET_DATA – main join (your logic preserved)
+*---------------------------------------------------------------------*
+FORM get_data.
+
+  DATA lv_keydat TYPE dats.
+  lv_keydat = p_keydt.
+
+  CLEAR gt_base.
+
+  SELECT
+    plko~plnty, plko~plnnr, plko~plnal,
+    plko~werks, plko~ktext, plko~vagrp, plko~verwe,
+    plko~statu AS statu_h,
+    plko~anlzu AS anlzu_h,
+    plko~strat, plko~adpsp, plko~slwbez,
+    plko~arbid AS arbid_h,
+
+    tapl~tplnr,
+    eapl~equnr,
+
+    plpo~vornr, plpo~ltxa1, plpo~steus,
+    plpo~arbid AS arbid_o,
+    plpo~arbei, plpo~arbeh, plpo~ktsch,
+    plpo~execution_stage,
+    plpo~anlzu AS anlzu_o,
+    plpo~istru AS istru_o,
+    plpo~larnt, plpo~ebeln, plpo~ebelp,
+    plpo~lifnr, plpo~txtsp AS txtsp_op,
+
+    plmk~merknr, plmk~kurztext,
+    plmk~pmethode, plmk~ltextkz,
+
+    crhd~arbpl AS arbpl_o,
+    crhd~werks AS werks_o
+
+    INTO CORRESPONDING FIELDS OF TABLE @gt_base
+
+    FROM plko
+
+    INNER JOIN plas
+      ON plas~plnty = plko~plnty
+     AND plas~plnnr = plko~plnnr
+     AND plas~plnal = plko~plnal
+     AND plas~datuv <= @lv_keydat
+     AND plas~valid_to >= @lv_keydat
+
+    INNER JOIN plpo
+      ON plpo~plnty = plas~plnty
+     AND plpo~plnnr = plas~plnnr
+     AND plpo~plnkn = plas~plnkn
+     AND plpo~zaehl = plas~zaehl
+
+    LEFT JOIN plmk
+      ON plmk~plnty = plpo~plnty
+     AND plmk~plnnr = plpo~plnnr
+     AND plmk~plnkn = plpo~plnkn
+
+    LEFT JOIN tapl
+      ON tapl~plnty = plko~plnty
+     AND tapl~plnnr = plko~plnnr
+     AND tapl~plnal = plko~plnal
+
+    LEFT JOIN eapl
+      ON eapl~plnty = plko~plnty
+     AND eapl~plnnr = plko~plnnr
+     AND eapl~plnal = plko~plnal
+
+    LEFT JOIN crhd
+      ON crhd~objid = plpo~arbid.
+
+  LOOP AT gt_base INTO gs_base.
+
+    "Fix: Header Work Center
+    PERFORM get_header_wcenter CHANGING gs_base.
+
+    "Task List Type filtering (your original logic)
+    IF gs_base-plnty = 'A' AND p_ftl IS INITIAL. CONTINUE. ENDIF.
+    IF gs_base-plnty = 'B' AND p_etl IS INITIAL. CONTINUE. ENDIF.
+    IF gs_base-plnty = 'E' AND p_gtl IS INITIAL. CONTINUE. ENDIF.
+
+    "Apply header filters (your original)
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr. CONTINUE. ENDIF.
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal. CONTINUE. ENDIF.
+
+    IF so_arbph[] IS NOT INITIAL AND gs_base-arbpl_h NOT IN so_arbph. CONTINUE. ENDIF.
+
+    APPEND gs_base TO gt_base.
 
   ENDLOOP.
 
@@ -60,54 +207,131 @@ ENDFORM.
 
 
 
+*---------------------------------------------------------------------*
+* BUILD_DISPLAY – your logic preserved, color logic fixed
+*---------------------------------------------------------------------*
+FORM build_display.
 
+  DATA lv_last_vornr TYPE vornr.
+
+  CLEAR gt_display.
+
+  SORT gt_base BY plnnr plnal vornr merknr.
+
+  LOOP AT gt_base INTO gs_base.
+
+    "--- OPERATION ROW ---
+    IF gs_base-vornr <> lv_last_vornr.
+
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'O'.
+      CLEAR gs_display-line_color.
+
+      APPEND gs_display TO gt_display.
+
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING gs_base.
+      ENDIF.
+
+      lv_last_vornr = gs_base-vornr.
+    ENDIF.
+
+    "--- CHARACTERISTIC ROW ---
+    IF gv_show_char = abap_true AND gs_base-merknr IS NOT INITIAL.
+
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'C'.
+
+      CLEAR gs_color.
+      gs_color-color-col = 6. "Green
+      APPEND gs_color TO gs_display-line_color.
+
+      APPEND gs_display TO gt_display.
+
+      IF gv_show_ltxt = abap_true.
+        PERFORM append_char_longtext USING gs_base.
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+*---------------------------------------------------------------------*
+* APPEND OPERATION LONG TEXT (Yellow)
+*---------------------------------------------------------------------*
+FORM append_op_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines TYPE STANDARD TABLE OF tline,
+        ls_line  TYPE tline,
+        lv_name  TYPE thead-tdname,
+        ls_color TYPE lvc_s_scol.
+
+  CONCATENATE sy-mandt is_base-plnty is_base-plnnr
+              is_base-plnkn is_base-zaehl
+         INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = 'PLPO'
+      name     = lv_name
+      language = sy-langu
+      object   = 'ROUTING'
+    TABLES
+      lines    = lt_lines.
+
+  LOOP AT lt_lines INTO ls_line.
+
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+     gs_display-row_kind = 'L'.
+     gs_display-op_ltxt  = ls_line-tdline.
+     gs_display-tdformat = ls_line-tdformat.
+
+     CLEAR ls_color.
+     ls_color-color-col = 5. "Yellow
+     APPEND ls_color TO gs_display-line_color.
+
+     APPEND gs_display TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+*---------------------------------------------------------------------*
+* APPEND CHARACTERISTIC LONG TEXT (Blue)
+*---------------------------------------------------------------------*
 FORM append_char_longtext USING is_base TYPE ty_task_base.
 
   DATA: lt_lines TYPE STANDARD TABLE OF tline,
         ls_line  TYPE tline,
         lv_name  TYPE thead-tdname,
-        lv_tmp   TYPE thead-tdname,
-        lv_indent TYPE string,
-        lv_merknr TYPE char08,
-        ls_color  TYPE lvc_s_scol.
-
-  CLEAR: lt_lines, lv_name, lv_tmp.
+        ls_color TYPE lvc_s_scol.
 
   IF is_base-ltextkz IS INITIAL.
     RETURN.
   ENDIF.
 
-  lv_merknr = is_base-merknr.
-
-  CONCATENATE sy-mandt
-              is_base-plnty
-              is_base-plnnr
-              is_base-plnkn
-         INTO lv_tmp.
-
-  CONCATENATE lv_tmp is_base-merknr INTO lv_tmp SEPARATED BY space.
-  CONCATENATE lv_tmp is_base-zaehl INTO lv_name.
+  CONCATENATE sy-mandt is_base-plnty is_base-plnnr
+              is_base-plnkn is_base-merknr is_base-zaehl
+         INTO lv_name.
 
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      client   = sy-mandt
       id       = 'QM'
-      language = sy-langu
       name     = lv_name
+      language = sy-langu
       object   = 'QSS'
     TABLES
-      lines    = lt_lines
-    EXCEPTIONS
-      OTHERS   = 8.
-
-  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  lv_indent =
-    cl_abap_char_utilities=>hard_space &&
-    cl_abap_char_utilities=>hard_space &&
-    cl_abap_char_utilities=>hard_space.
+      lines    = lt_lines.
 
   LOOP AT lt_lines INTO ls_line.
 
@@ -118,13 +342,8 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
     gs_display-char_ltxt = ls_line-tdline.
     gs_display-tdformat  = ls_line-tdformat.
 
-    CONCATENATE lv_indent gs_display-char_ltxt INTO gs_display-char_ltxt.
-
-    CLEAR gs_display-op_ltxt.
-
-    "GREEN color
     CLEAR ls_color.
-    ls_color-color-col = 6.
+    ls_color-color-col = 3. "Blue
     APPEND ls_color TO gs_display-line_color.
 
     APPEND gs_display TO gt_display.
@@ -135,38 +354,110 @@ ENDFORM.
 
 
 
+*---------------------------------------------------------------------*
+* FIELD CATALOG BUILDER (GRID VERSION)
+*---------------------------------------------------------------------*
+FORM build_fieldcatalog.
 
-IF gv_show_char = gc_true
-   AND ls_base-merknr IS NOT INITIAL.
+  CLEAR gt_fcat.
 
-  IF ls_base-merknr <> lv_last_merknr.
+  PERFORM add_fc USING 'PLNNR'      'Group'                        1.
+  PERFORM add_fc USING 'PLNAL'      'Counter'                      2.
+  PERFORM add_fc USING 'WERKS'      'Planning Plant'               3.
+  PERFORM add_fc USING 'VORNR'      'Operation'                    4.
+  PERFORM add_fc USING 'ARBPL_H'    'Work Center (Header)'         5.
+  PERFORM add_fc USING 'ARBPL_O'    'Work Center (Operation)'      6.
+  PERFORM add_fc USING 'ARBEI'      'Activity'                     7.
+  PERFORM add_fc USING 'KURZT_CHAR' 'Characteristic Text'          8.
+  PERFORM add_fc USING 'PMETHODE'   'Inspection Method'            9.
+  PERFORM add_fc USING 'MERKNR'     'Characteristic Number'       10.
+  PERFORM add_fc USING 'OP_LTXT'    'Operation Long Text'         11.
+  PERFORM add_fc USING 'CHAR_LTXT'  'Characteristic Long Text'    12.
 
-    CLEAR ls_disp.
-    MOVE-CORRESPONDING ls_base TO ls_disp.
-    ls_disp-row_kind = 'C'.
+ENDFORM.
 
-    lv_indent =
-      cl_abap_char_utilities=>hard_space &&
-      cl_abap_char_utilities=>hard_space &&
-      cl_abap_char_utilities=>hard_space.
 
-    CONCATENATE lv_indent ls_disp-kurzt_char INTO ls_disp-kurzt_char.
-    CONCATENATE lv_indent ls_disp-merknr     INTO ls_disp-merknr.
 
-    "YELLOW color
-    CLEAR ls_color.
-    ls_color-color-col = 5.
-    ls_color-color-int = 1.
-    APPEND ls_color TO ls_disp-line_color.
+*---------------------------------------------------------------------*
+* FIELD CATALOG ADDER
+*---------------------------------------------------------------------*
+FORM add_fc USING p_field p_text p_pos.
 
-    APPEND ls_disp TO gt_display.
+  CLEAR gs_fcat.
 
-    lv_last_merknr = ls_base-merknr.
+  gs_fcat-fieldname = p_field.
+  gs_fcat-coltext   = p_text.
+  gs_fcat-reptext   = p_text.
+  gs_fcat-seltext   = p_text.
+  gs_fcat-col_pos   = p_pos.
+
+  gs_fcat-edit = 'X'.
+  gs_fcat-f4availabl = 'X'.
+  gs_fcat-outputlen = 40.
+
+  IF p_field = 'LINE_COLOR'.
+    gs_fcat-no_out = 'X'.
+    gs_fcat-tech = 'X'.
+  ENDIF.
+
+  APPEND gs_fcat TO gt_fcat.
+
+ENDFORM.
+
+
+
+*---------------------------------------------------------------------*
+* DISPLAY ALV – GRID VERSION
+*---------------------------------------------------------------------*
+FORM display_alv.
+
+  IF go_container IS INITIAL.
+
+    CREATE OBJECT go_container
+      EXPORTING container_name = 'CC_ALV'.
+
+    CREATE OBJECT go_grid
+      EXPORTING i_parent = go_container.
+
+    "Build field catalog
+    PERFORM build_fieldcatalog.
+
+    CLEAR gs_layout.
+    gs_layout-zebra = 'X'.
+    gs_layout-cwidth_opt = 'X'.
+    gs_layout-info_fname = 'LINE_COLOR'.
+    gs_layout-sel_mode   = 'A'.
+
+    CLEAR gs_sort.
+    gs_sort-fieldname = 'PLNNR'.
+    gs_sort-up        = 'X'.
+    gs_sort-spos      = 1.
+    APPEND gs_sort TO gt_sort.
+
+    "Handlers
+    SET HANDLER lcl_event_handler=>on_user_command FOR go_grid.
+    SET HANDLER lcl_event_handler=>on_f4           FOR go_grid.
+
+    "Register F4 fields
+    DATA lt_f4 TYPE lvc_t_f4.
+    lt_f4 = VALUE #(
+      ( fieldname = 'VAGRP'   register = 'X' chg_id = 'X' )
+      ( fieldname = 'ARBPL_H' register = 'X' chg_id = 'X' )
+      ( fieldname = 'ARBPL_O' register = 'X' chg_id = 'X' )
+    ).
+    go_grid->register_f4_for_fields( it_f4 = lt_f4 ).
+
+    "ALV first display
+    go_grid->set_table_for_first_display(
+      EXPORTING is_layout = gs_layout
+      CHANGING  it_outtab = gt_display
+                it_fieldcatalog = gt_fcat
+                it_sort = gt_sort ).
+
+  ELSE.
+
+    go_grid->refresh_table_display( ).
 
   ENDIF.
 
-  IF gv_show_ltxt = gc_true.
-    PERFORM append_char_longtext USING ls_base.
-  ENDIF.
-
-ENDIF.
+ENDFORM.
