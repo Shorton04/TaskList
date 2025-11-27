@@ -649,11 +649,6 @@ FORM build_display.
       MOVE-CORRESPONDING ls_base TO ls_disp.
       ls_disp-row_kind = 'O'.
 
-      "Row color (blue)
-      CLEAR ls_color.
-      ls_color-color-col = 3.
-      APPEND ls_color TO ls_disp-line_color.
-
       APPEND ls_disp TO gt_display.
 
       "Operation long text only if CHAR OFF and LTXT ON
@@ -685,9 +680,9 @@ FORM build_display.
         MOVE-CORRESPONDING ls_base TO ls_disp.
         ls_disp-row_kind = 'C'.
 
-        "YELLOW color
+
         CLEAR ls_color.
-        ls_color-color-col = 5.
+        ls_color-color-col = 6.
         ls_color-color-int = 1.
         APPEND ls_color TO ls_disp-line_color.
 
@@ -805,6 +800,12 @@ FORM display_alv.
 
         " Columns handling
         lo_columns = lo_alv->get_columns( ).
+
+        TRY.
+          lo_columns->set_color_column( 'LINE_COLOR' ).
+        CATCH cx_salv_not_found cx_salv_data_error.
+        ENDTRY.
+
         lo_columns->set_optimize( abap_true ).
 
         "-----------------------------------------------------------*
@@ -1091,7 +1092,7 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
 
     "GREEN color
     CLEAR ls_color.
-    ls_color-color-col = 6.
+    ls_color-color-col = 1.
     APPEND ls_color TO gs_display-line_color.
 
     APPEND gs_display TO gt_display.
@@ -1168,7 +1169,7 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
 
     "GREEN color
     CLEAR ls_color.
-    ls_color-color-col = 6.
+    ls_color-color-col = 4.
     APPEND ls_color TO gs_display-line_color.
 
     APPEND gs_display TO gt_display.
@@ -1335,7 +1336,7 @@ FORM set_column_visibility_by_state.
   DEFINE hide_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_technical( abap_true ).
+        lo_col->set_technical( abap_false ).
         lo_col->set_visible(   abap_false ).
       CATCH cx_salv_not_found.
     ENDTRY.
