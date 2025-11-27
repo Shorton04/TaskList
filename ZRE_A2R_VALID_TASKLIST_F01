@@ -2,44 +2,105 @@
 *& Include ZRE_A2R_VALID_TASKLIST_F01
 *&---------------------------------------------------------------------*
 *---------------------------------------------------------------------*
-* EVENT HANDLER IMPLEMENTATION
+* CLASS lcl_event_handler
 *---------------------------------------------------------------------*
 CLASS lcl_event_handler IMPLEMENTATION.
+
+*---------------------------------------------------------------------*
+* USER COMMAND HANDLER
+*---------------------------------------------------------------------*
   METHOD on_user_command.
 
-    CASE e_salv_function.
+    CASE e_ucomm.
 
-      WHEN gc_func_clist_s.     " &CLISTS
-        gv_show_char = gc_true.
-        gv_show_ltxt = gc_false.
+      WHEN '&CLISTS'.   "Show Characteristics
+        gv_show_char = abap_true.
+        gv_show_ltxt = abap_false.
 
-      WHEN gc_func_clist_h.     " &CLISTH
-        gv_show_char = gc_false.
-        gv_show_ltxt = gc_false.
+      WHEN '&CLISTH'.   "Hide Characteristics
+        gv_show_char = abap_false.
+        gv_show_ltxt = abap_false.
 
-      WHEN gc_func_ltxt_s.      " &LTXTS
-        gv_show_ltxt = gc_true.
+      WHEN '&LTXTS'.    "Show Long Text
+        gv_show_ltxt = abap_true.
 
-      WHEN gc_func_ltxt_h.      " &LTXTH
-        gv_show_ltxt = gc_false.
+      WHEN '&LTXTH'.    "Hide Long Text
+        gv_show_ltxt = abap_false.
 
       WHEN OTHERS.
         RETURN.
 
     ENDCASE.
 
-    " Rebuild data and refresh ALV / PF-STATUS / title
     PERFORM build_display.
-    PERFORM set_pfstatus_from_state.
-    PERFORM set_title_from_state.
-    PERFORM set_column_visibility_by_state.
+    PERFORM display_alv.
 
-    IF lo_alv IS BOUND.
-      lo_alv->refresh( ).
+  ENDMETHOD.
+
+
+*---------------------------------------------------------------------*
+* ON_F4 HELP HANDLER
+*---------------------------------------------------------------------*
+  METHOD on_f4.
+
+    DATA lt_return TYPE TABLE OF ddshretval.
+    DATA ls_return TYPE ddshretval.
+    DATA lr_data   TYPE REF TO data.
+
+    CASE e_fieldname.
+
+      WHEN 'VAGRP'.
+        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+          EXPORTING
+            tabname    = 'PLKO'
+            fieldname  = 'VAGRPM'
+          TABLES
+            return_tab = lt_return.
+
+      WHEN 'ARBPL_H' OR 'ARBPL_O'.
+        CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+          EXPORTING
+            tabname    = 'CRHD'
+            fieldname  = 'ARBPL'
+          TABLES
+            return_tab = lt_return.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    READ TABLE lt_return INTO ls_return INDEX 1.
+
+    IF sy-subrc = 0.
+
+      lr_data = er_event_data->m_data.
+      ASSIGN lr_data->* TO FIELD-SYMBOL(<fs_value>).
+      <fs_value> = ls_return-fieldval.
+
+      er_event_data->m_event_handled = abap_true.
     ENDIF.
 
   ENDMETHOD.
+
 ENDCLASS.
+
+*---------------------------------------------------------------------*
+* GET HEADER WORK CENTER
+*---------------------------------------------------------------------*
+FORM get_header_wcenter CHANGING cs TYPE ty_task_base.
+
+  "Check if field exists and is not initial
+  IF cs-arbid_h IS NOT INITIAL.
+    SELECT SINGLE arbpl
+      INTO cs-arbpl_o
+      FROM crhd
+      WHERE objid = cs-arbid_h
+        AND objty = 'A'.
+  ENDIF.
+
+ENDFORM.
+
 
 *---------------------------------------------------------------------*
 * Validate Selection
@@ -52,7 +113,7 @@ FORM validate_selection.
   ENDIF.
 
   "Key date required
-  IF so_keydt-low IS INITIAL.
+  IF so_keydt IS INITIAL.
     MESSAGE e398(00) WITH 'Enter a key date'.
   ENDIF.
 
@@ -176,7 +237,7 @@ FORM get_data.
   CLEAR gt_base.
   CLEAR gs_base.
 
-  lv_keydat = so_keydt-low.
+  lv_keydat = so_keydt.
 
   " Convert tolerance CHAR16 → FLTP
   CLEAR lv_tolun.
@@ -326,28 +387,28 @@ FORM get_data.
 
   LOOP AT gt_base INTO gs_base.
 
-    IF gs_base-datuv > so_keydt-low.
+    IF gs_base-datuv > so_keydt.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-valid_to < so_keydt-low.
+    IF gs_base-valid_to < so_keydt.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-datuv_o > so_keydt-low.
+    IF gs_base-datuv_o > so_keydt.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-valid_to_o < so_keydt-low.
+    IF gs_base-valid_to_o < so_keydt.
       CONTINUE.
     ENDIF.
 
     IF gv_show_char = gc_true.
-      IF gs_base-gueltigab > so_keydt-low.
+      IF gs_base-gueltigab > so_keydt.
         CONTINUE.
       ENDIF.
 
-      IF gs_base-valid_to_c < so_keydt-low.
+      IF gs_base-valid_to_c < so_keydt.
         CONTINUE.
       ENDIF.
     ENDIF.
@@ -448,10 +509,6 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_uvorn[] IS NOT INITIAL AND gs_base-vornr NOT IN so_uvorn.
-      CONTINUE.
-    ENDIF.
-
     IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
       CONTINUE.
     ENDIF.
@@ -464,23 +521,10 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_werop[] IS NOT INITIAL AND gs_base-werks_o NOT IN so_werop.
-      CONTINUE.
-    ENDIF.
-
-    IF so_optpl[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_optpl.
-      CONTINUE.
-    ENDIF.
-
-    IF so_opequ[] IS NOT INITIAL AND gs_base-equnr NOT IN so_opequ.
-      CONTINUE.
-    ENDIF.
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr. CONTINUE. ENDIF.
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal. CONTINUE. ENDIF.
 
     IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
-      CONTINUE.
-    ENDIF.
-
-    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
       CONTINUE.
     ENDIF.
 
@@ -617,83 +661,64 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 FORM build_display.
 
-  DATA: ls_base        TYPE ty_task_base,
-        ls_disp        TYPE ty_task_disp,
-        lv_last_plnty  TYPE plnty,
-        lv_last_plnnr  TYPE plnnr,
-        lv_last_plnal  TYPE plnal,
-        lv_last_vornr  TYPE plnkn,
-        lv_last_merknr TYPE merknr,
-        ls_color       TYPE lvc_s_scol,
-        lv_indent      TYPE string.
+  DATA lv_last_vornr TYPE vornr.
+  DATA lv_row_id     TYPE i VALUE 0.
 
-  CLEAR: gt_display,
-         lv_last_plnty,
-         lv_last_plnnr,
-         lv_last_plnal,
-         lv_last_vornr,
-         lv_last_merknr.
-  SORT gt_base BY plnty plnnr plnal vornr merknr.
+  CLEAR gt_display.
 
-  LOOP AT gt_base INTO ls_base.
+  SORT gt_base BY plnnr plnal vornr merknr.
 
-    "—————————————————————————————
-    " NEW OPERATION GROUP
-    "—————————————————————————————
-    IF ls_base-vornr <> lv_last_vornr
-    OR ls_base-plnnr <> lv_last_plnnr
-    OR ls_base-plnal <> lv_last_plnal
-    OR ls_base-plnty <> lv_last_plnty.
+  LOOP AT gt_base INTO gs_base.
 
-      CLEAR ls_disp.
-      MOVE-CORRESPONDING ls_base TO ls_disp.
-      ls_disp-row_kind = 'O'.
+    "--- OPERATION ROW ---
+    IF gs_base-vornr <> lv_last_vornr.
 
-      APPEND ls_disp TO gt_display.
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'O'.
+      CLEAR gs_display-line_color.
 
-      "Operation long text only if CHAR OFF and LTXT ON
+      ADD 1 TO lv_row_id.
+      gs_display-row_id = lv_row_id.
+      APPEND gs_display TO gt_display.
+
       IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
-        PERFORM append_op_longtext USING ls_base.
+        PERFORM append_op_longtext USING gs_base.
       ENDIF.
 
-      "Reset last characteristic
-      CLEAR lv_last_merknr.
-
-      "Track operation grouping keys
-      lv_last_plnty = ls_base-plnty.
-      lv_last_plnnr = ls_base-plnnr.
-      lv_last_plnal = ls_base-plnal.
-      lv_last_vornr = ls_base-vornr.
-
+      lv_last_vornr = gs_base-vornr.
     ENDIF.
 
+    "--- CHARACTERISTIC ROW ---
+    IF gv_show_char = abap_true AND gs_base-merknr IS NOT INITIAL.
 
-    "—————————————————————————————
-    " CHARACTERISTICS
-    "—————————————————————————————
-    IF gv_show_char = gc_true
-   AND ls_base-merknr IS NOT INITIAL.
+      CLEAR gs_display.
+      MOVE-CORRESPONDING gs_base TO gs_display.
+      gs_display-row_kind = 'C'.
 
-      IF ls_base-merknr <> lv_last_merknr.
+      IF gs_display-row_kind = 'O'.
+        gs_display-line_color = '0000'.    " No color
 
-        CLEAR ls_disp.
-        MOVE-CORRESPONDING ls_base TO ls_disp.
-        ls_disp-row_kind = 'C'.
+      ELSEIF gs_display-row_kind = 'C'.
+        gs_display-line_color = '6100'.    " Green (Characteristic)
 
+      ELSEIF gs_display-row_kind = 'L'.
 
-        CLEAR ls_color.
-        ls_color-color-col = 6.
-        ls_color-color-int = 1.
-        APPEND ls_color TO ls_disp-line_color.
-
-        APPEND ls_disp TO gt_display.
-
-        lv_last_merknr = ls_base-merknr.
+        " Distinguish Operation LT vs Characteristic LT
+        IF gs_display-op_ltxt IS NOT INITIAL.
+          gs_display-line_color = '5100'.  " Yellow = Operation LT
+        ELSE.
+          gs_display-line_color = '3100'.  " Blue = Characteristic LT
+        ENDIF.
 
       ENDIF.
 
-      IF gv_show_ltxt = gc_true.
-        PERFORM append_char_longtext USING ls_base.
+      ADD 1 TO lv_row_id.
+      gs_display-row_id = lv_row_id.
+      APPEND gs_display TO gt_display.
+
+      IF gv_show_ltxt = abap_true.
+        PERFORM append_char_longtext USING gs_base.
       ENDIF.
 
     ENDIF.
@@ -701,6 +726,63 @@ FORM build_display.
   ENDLOOP.
 
 ENDFORM.
+
+
+*---------------------------------------------------------------------*
+* FIELD CATALOG BUILDER (GRID VERSION)
+*---------------------------------------------------------------------*
+FORM build_fieldcatalog.
+
+  CLEAR gt_fcat.
+
+  PERFORM add_fc USING 'ROW_ID'     'Internal Key'                 1.
+  PERFORM add_fc USING 'PLNNR'      'Group'                        2.
+  PERFORM add_fc USING 'PLNAL'      'Counter'                      3.
+  PERFORM add_fc USING 'WERKS'      'Planning Plant'               4.
+  PERFORM add_fc USING 'VORNR'      'Operation'                    5.
+  PERFORM add_fc USING 'ARBPL_H'    'Work Center (Header)'         6.
+  PERFORM add_fc USING 'ARBPL_O'    'Work Center (Operation)'      7.
+  PERFORM add_fc USING 'ARBEI'      'Activity'                     8.
+  PERFORM add_fc USING 'KURZT_CHAR' 'Characteristic Text'          9.
+  PERFORM add_fc USING 'PMETHODE'   'Inspection Method'           10.
+  PERFORM add_fc USING 'MERKNR'     'Characteristic Number'       11.
+  PERFORM add_fc USING 'OP_LTXT'    'Operation Long Text'         12.
+  PERFORM add_fc USING 'CHAR_LTXT'  'Characteristic Long Text'    13.
+
+ENDFORM.
+
+
+
+*---------------------------------------------------------------------*
+* FIELD CATALOG ADDER
+*---------------------------------------------------------------------*
+FORM add_fc USING p_field p_text p_pos.
+
+  CLEAR gs_fcat.
+
+  gs_fcat-fieldname  = p_field.
+  gs_fcat-coltext    = p_text.
+  gs_fcat-reptext    = p_text.
+  gs_fcat-seltext    = p_text.
+  gs_fcat-col_pos    = p_pos.
+
+  gs_fcat-edit       = 'X'.
+  gs_fcat-f4availabl = 'X'.
+
+  "--------------------------------------------------------------
+  " ABSOLUTELY REQUIRED → Prevent ALV from creating sorted table
+  "--------------------------------------------------------------
+  gs_fcat-key = ''.
+
+  IF p_field = 'ROW_ID'.
+    gs_fcat-tech = 'X'.
+    gs_fcat-no_out = 'X'.
+  ENDIF.
+
+  APPEND gs_fcat TO gt_fcat.
+
+ENDFORM.
+
 
 
 
@@ -779,261 +861,70 @@ ENDFORM.
 *---------------------------------------------------------------------*
 FORM display_alv.
 
-  DATA: lx_salv_ex  TYPE REF TO cx_root,
-        lx_salv_msg TYPE REF TO cx_salv_msg.
+  IF go_container IS INITIAL.
 
-  IF gt_display IS INITIAL.
-    MESSAGE s398(00) WITH 'No data to display'.
-    RETURN.
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'CC_ALV'.
+
+    CREATE OBJECT go_grid
+      EXPORTING
+        i_parent = go_container.
+
+    "Build field catalog
+    PERFORM build_fieldcatalog.
+
+    CLEAR gs_layout.
+    gs_layout-zebra = 'X'.
+    gs_layout-cwidth_opt = 'X'.
+    gs_layout-info_fname = 'LINE_COLOR'.
+    gs_layout-sel_mode   = 'A'.
+    gs_layout-no_keyfix  = 'X'.
+
+    CLEAR gs_sort.
+    gs_sort-fieldname = 'PLNNR'.
+    gs_sort-up        = 'X'.
+    gs_sort-spos      = 1.
+    APPEND gs_sort TO gt_sort.
+
+    "Handlers
+    SET HANDLER lcl_event_handler=>on_user_command FOR go_grid.
+    SET HANDLER lcl_event_handler=>on_f4           FOR go_grid.
+
+    DATA: lt_f4 TYPE lvc_t_f4,
+          ls_f4 TYPE lvc_s_f4.
+
+    CLEAR lt_f4.
+
+    CLEAR ls_f4.
+    ls_f4-fieldname = 'VAGRP'.
+    ls_f4-register  = 'X'.
+    APPEND ls_f4 TO lt_f4.
+
+    CLEAR ls_f4.
+    ls_f4-fieldname = 'ARBPL_H'.
+    ls_f4-register  = 'X'.
+    APPEND ls_f4 TO lt_f4.
+
+    CLEAR ls_f4.
+    ls_f4-fieldname = 'ARBPL_O'.
+    ls_f4-register  = 'X'.
+    APPEND ls_f4 TO lt_f4.
+
+    go_grid->register_f4_for_fields( it_f4 = lt_f4 ).
+
+    "ALV first display
+    go_grid->set_table_for_first_display(
+      EXPORTING is_layout = gs_layout
+      CHANGING  it_outtab = gt_display
+                it_fieldcatalog = gt_fcat
+                it_sort = gt_sort ).
+
+  ELSE.
+
+    go_grid->refresh_table_display( ).
+
   ENDIF.
-
-  TRY.
-
-      " Create SALV only once
-      IF lo_alv IS INITIAL.
-
-        cl_salv_table=>factory(
-          IMPORTING
-            r_salv_table = lo_alv
-          CHANGING
-            t_table      = gt_display ).
-
-        " Columns handling
-        lo_columns = lo_alv->get_columns( ).
-
-        TRY.
-          lo_columns->set_color_column( 'LINE_COLOR' ).
-        CATCH cx_salv_not_found cx_salv_data_error.
-        ENDTRY.
-
-        lo_columns->set_optimize( abap_true ).
-
-        "-----------------------------------------------------------*
-        " Hide columns that are NOT in the FDS visible list
-        "-----------------------------------------------------------*
-
-        " Technical
-        PERFORM hide_column USING 'ROW_KIND'.
-
-        " Header to hide
-        PERFORM hide_column USING 'PLNTY'.
-        PERFORM hide_column USING 'DATUV'.
-        PERFORM hide_column USING 'KTEXT'.
-        PERFORM hide_column USING 'TPLNR'.
-        PERFORM hide_column USING 'EQUNR'.
-        PERFORM hide_column USING 'VERWE'.
-        PERFORM hide_column USING 'VAGRP'.
-        PERFORM hide_column USING 'STAT_H'.
-        PERFORM hide_column USING 'ANLZU_H'.
-        PERFORM hide_column USING 'STRAT'.
-        PERFORM hide_column USING 'ISTRU_H'.
-        PERFORM hide_column USING 'ADPSP'.
-        PERFORM hide_column USING 'SLWBEZ'.
-        PERFORM hide_column USING 'LOEKZ_H'.
-        PERFORM hide_column USING 'ANDAT'.
-        PERFORM hide_column USING 'ANNAM'.
-        PERFORM hide_column USING 'AEDAT'.
-        PERFORM hide_column USING 'AENAM'.
-
-        " Operation to hide (keep VORNR, ARBPL_O, ARBEI)
-        PERFORM hide_column USING 'LTXA1'.
-        PERFORM hide_column USING 'STEUS'.
-        PERFORM hide_column USING 'WERKS_O'.
-        PERFORM hide_column USING 'KTSCH'.
-        PERFORM hide_column USING 'ARBEH'.
-        PERFORM hide_column USING 'DAUNO'.
-        PERFORM hide_column USING 'DAUNE'.
-        PERFORM hide_column USING 'KALID'.
-        PERFORM hide_column USING 'EXECUTION_STAGE'.
-        PERFORM hide_column USING 'ANLZU_O'.
-        PERFORM hide_column USING 'ISTRU_O'.
-        PERFORM hide_column USING 'LARNT'.
-        PERFORM hide_column USING 'EBELN'.
-        PERFORM hide_column USING 'EBELP'.
-        PERFORM hide_column USING 'LIFNR'.
-        PERFORM hide_column USING 'PREIS'.
-        PERFORM hide_column USING 'WAERS'.
-        PERFORM hide_column USING 'SAKTO'.
-        PERFORM hide_column USING 'EKORG'.
-        PERFORM hide_column USING 'EKGRP'.
-        PERFORM hide_column USING 'TXTSP_OP'.
-        PERFORM hide_column USING 'TDLINE'.
-        PERFORM hide_column USING 'LOEKZ_O'.
-
-        " Characteristic to hide (keep MERKNR, KURZT_CHAR, PMETHODE)
-        PERFORM hide_column USING 'VERWMERKM'.
-        PERFORM hide_column USING 'LTEXTKZ'.
-        PERFORM hide_column USING 'TOLERANZUN'.
-        PERFORM hide_column USING 'TOLERANZOB'.
-        PERFORM hide_column USING 'PRUEFEINH'.
-        PERFORM hide_column USING 'STICHPRVER'.
-        PERFORM hide_column USING 'KATALGART1'.
-        PERFORM hide_column USING 'AUSWMENGE1'.
-        PERFORM hide_column USING 'STEUERKZ'.
-        PERFORM hide_column USING 'LOEKZ_C'.
-
-        " CI flags – all hidden
-        PERFORM hide_column USING 'CI_QUANT'.
-        PERFORM hide_column USING 'CI_MEAS_REQUIRED'.
-        PERFORM hide_column USING 'CI_ATTR_REF'.
-        PERFORM hide_column USING 'CI_ULIM_IND'.
-        PERFORM hide_column USING 'CI_LLIM_IND'.
-        PERFORM hide_column USING 'CI_CHK_TGT'.
-        PERFORM hide_column USING 'CI_SCOPE'.
-        PERFORM hide_column USING 'CI_SINGLE_RES'.
-        PERFORM hide_column USING 'CI_SAMP_REQ'.
-        PERFORM hide_column USING 'CI_RECORDING'.
-        PERFORM hide_column USING 'CI_DOC_REQ'.
-        PERFORM hide_column USING 'CI_CATEGORY'.
-
-        "-----------------------------------------------------------*
-        " FDS column order
-        "-----------------------------------------------------------*
-        PERFORM set_position USING 'PLNNR'      1.   "Group
-        PERFORM set_position USING 'PLNAL'      2.   "Counter
-        PERFORM set_position USING 'WERKS'      3.   "Plant
-        PERFORM set_position USING 'VORNR'      4.   "Operation
-        PERFORM set_position USING 'ARBPL_O'    5.   "WC
-        PERFORM set_position USING 'ARBEI'      6.   "Work
-        PERFORM set_position USING 'KURZT_CHAR' 7.   "Description
-        PERFORM set_position USING 'PMETHODE'   8.   "Insp. Method
-        PERFORM set_position USING 'MERKNR'     9.   "Insp#
-        PERFORM set_position USING 'TDFORMAT'  10.   "FK
-        PERFORM set_position USING 'OP_LTXT'   11.   "Op Long Text
-        PERFORM set_position USING 'CHAR_LTXT' 12.   "Char Long Text
-
-        "-----------------------------------------------------------*
-        " Column texts – FDS-friendly captions
-        "-----------------------------------------------------------*
-        TRY.
-            lo_column ?= lo_columns->get_column( 'PLNNR' ).
-            lo_column->set_short_text(  |Grp| ).
-            lo_column->set_medium_text( |Group| ).
-            lo_column->set_long_text(   |Group| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'PLNAL' ).
-            lo_column->set_short_text(  |Cntr| ).
-            lo_column->set_medium_text( |Counter| ).
-            lo_column->set_long_text(   |Counter| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'WERKS' ).
-            lo_column->set_short_text(  |Plant| ).
-            lo_column->set_medium_text( |Plant| ).
-            lo_column->set_long_text(   |Plant| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'VORNR' ).
-            lo_column->set_short_text(  |Op.| ).
-            lo_column->set_medium_text( |Operation| ).
-            lo_column->set_long_text(   |Operation| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'TDFORMAT' ).
-            lo_column->set_short_text(  |FK| ).
-            lo_column->set_medium_text( |Frmt Key| ).
-            lo_column->set_long_text(   |Format Key| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'OP_LTXT' ).
-            lo_column->set_short_text(  |Op Long Text| ).
-            lo_column->set_medium_text( |Operation Long Text| ).
-            lo_column->set_long_text(   |Operation Long Text| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'ARBPL_O' ).
-            lo_column->set_short_text(  |WC| ).
-            lo_column->set_medium_text( |Work Center| ).
-            lo_column->set_long_text(   |Work Center| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'ARBEI' ).
-            lo_column->set_short_text(  |Work| ).
-            lo_column->set_medium_text( |Work| ).
-            lo_column->set_long_text(   |Work| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'KURZT_CHAR' ).
-            lo_column->set_short_text(  |Descrip| ).
-            lo_column->set_medium_text( |Insp. Description| ).
-            lo_column->set_long_text(   |Inspection Description| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'PMETHODE' ).
-            lo_column->set_short_text(  |Insp Meth| ).
-            lo_column->set_medium_text( |Inspection Method| ).
-            lo_column->set_long_text(   |Inspection Method| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'MERKNR' ).
-            lo_column->set_short_text(  |Insp#| ).
-            lo_column->set_medium_text( |Inspection No.| ).
-            lo_column->set_long_text(   |Inspection Number| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        TRY.
-            lo_column ?= lo_columns->get_column( 'CHAR_LTXT' ).
-            lo_column->set_short_text(  |Char Long Text| ).
-            lo_column->set_medium_text( |Characteristic Long Text| ).
-            lo_column->set_long_text(   |Characteristic Long Text| ).
-          CATCH cx_salv_not_found.
-        ENDTRY.
-
-        " Display settings
-        lo_disp = lo_alv->get_display_settings( ).
-        lo_disp->set_striped_pattern( abap_true ).
-        lo_disp->set_list_header( 'Maintenance Task List Report' ).
-
-        " Layout
-        lo_layout = lo_alv->get_layout( ).
-        ls_layout_key-report = sy-repid.
-        lo_layout->set_key( ls_layout_key ).
-        lo_layout->set_default( abap_true ).
-
-        " Functions
-        lo_funcs = lo_alv->get_functions( ).
-        lo_funcs->set_all( abap_true ).
-
-        " Events
-        lo_events = lo_alv->get_event( ).
-        SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
-
-      ELSE.
-        " ALV already exists – just refresh data
-        lo_alv->refresh( ).
-      ENDIF.
-
-      PERFORM set_column_visibility_by_state.
-      PERFORM set_pfstatus_from_state.
-      lo_alv->display( ).
-
-    CATCH cx_salv_msg INTO lx_salv_msg.
-      MESSAGE lx_salv_msg->get_text( ) TYPE 'E'.
-    CATCH cx_root INTO lx_salv_ex.
-      MESSAGE lx_salv_ex->get_text( ) TYPE 'E'.
-  ENDTRY.
 
 ENDFORM.
 
@@ -1053,6 +944,8 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
         lv_name   TYPE thead-tdname,
         lv_indent TYPE string,
         ls_color  TYPE lvc_s_scol.
+
+  DATA lv_row_id     TYPE i VALUE 0.
 
   CLEAR: lt_lines, lv_name.
 
@@ -1091,10 +984,10 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
     CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
 
     "GREEN color
-    CLEAR ls_color.
-    ls_color-color-col = 1.
-    APPEND ls_color TO gs_display-line_color.
+    gs_display-line_color = '3100'.
 
+    ADD 1 TO lv_row_id.
+    gs_display-row_id = lv_row_id.
     APPEND gs_display TO gt_display.
 
   ENDLOOP.
@@ -1120,6 +1013,8 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
         lv_indent TYPE string,
         lv_merknr TYPE char08,
         ls_color  TYPE lvc_s_scol.
+
+  DATA lv_row_id     TYPE i VALUE 0.
 
   CLEAR: lt_lines, lv_name, lv_tmp.
 
@@ -1167,11 +1062,10 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
 
     CLEAR gs_display-op_ltxt.
 
-    "GREEN color
-    CLEAR ls_color.
-    ls_color-color-col = 4.
-    APPEND ls_color TO gs_display-line_color.
+    gs_display-line_color = '5100'.
 
+    ADD 1 TO lv_row_id.
+    gs_display-row_id = lv_row_id.
     APPEND gs_display TO gt_display.
 
   ENDLOOP.
