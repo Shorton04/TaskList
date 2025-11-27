@@ -1,4 +1,58 @@
 *---------------------------------------------------------------------*
+*  TOP Include – ZRE_A2R_VALID_TASKLIST (GRID VERSION)
+*---------------------------------------------------------------------*
+
+TYPE-POOLS: slis lvc abap.
+
+"Base Data Tables
+DATA: gt_base     TYPE STANDARD TABLE OF ty_task_base,
+      gs_base     TYPE ty_task_base.
+
+"Display Table
+DATA: gt_display  TYPE STANDARD TABLE OF ty_task_disp,
+      gs_display  TYPE ty_task_disp.
+
+"ALV Grid Objects
+DATA: go_container TYPE REF TO cl_gui_custom_container,
+      go_grid      TYPE REF TO cl_gui_alv_grid.
+
+"ALV Field Catalog / Layout / Sort
+DATA: gt_fcat      TYPE lvc_t_fcat,
+      gs_fcat      TYPE lvc_s_fcat,
+      gs_layout    TYPE lvc_s_layo,
+      gt_sort      TYPE lvc_t_sort,
+      gs_sort      TYPE lvc_s_sort.
+
+"Color structure for GRID ALV
+DATA: gs_color     TYPE lvc_s_scol,
+      gt_colors    TYPE lvc_t_scol.
+
+"Selection toggles
+DATA: gv_show_char TYPE abap_bool,
+      gv_show_ltxt TYPE abap_bool.
+
+"PF-STATUS Control
+DATA: ok_code      TYPE syucomm.
+
+"Forward declaration for handler
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS:
+      on_f4
+        FOR EVENT onf4 OF cl_gui_alv_grid
+        IMPORTING e_fieldname es_row_no er_event_data et_bad_cells,
+
+      on_user_command
+        FOR EVENT user_command OF cl_gui_alv_grid
+        IMPORTING e_ucomm.
+ENDCLASS.
+
+
+
+
+
+
+*---------------------------------------------------------------------*
 *  F01 Include – ZRE_A2R_VALID_TASKLIST (GRID VERSION + CORRECT UCOM)
 *---------------------------------------------------------------------*
 
