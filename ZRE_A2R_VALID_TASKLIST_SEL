@@ -8,9 +8,9 @@
 SELECTION-SCREEN BEGIN OF BLOCK b_ttype WITH FRAME TITLE TEXT-001.
 
 PARAMETERS:
-  p_ftl TYPE c AS CHECKBOX DEFAULT 'X',   "Functional Location Task List
+  p_ftl TYPE c AS CHECKBOX,   "Functional Location Task List
   p_etl TYPE c AS CHECKBOX,               "Equipment Task List
-  p_gtl TYPE c AS CHECKBOX.               "General Task List
+  p_gtl TYPE c AS CHECKBOX DEFAULT 'X'.               "General Task List
 
 SELECTION-SCREEN END OF BLOCK b_ttype.
 
@@ -24,8 +24,10 @@ SELECT-OPTIONS:
   so_tplnr FOR tapl-tplnr,      "Functional Location
   so_equnr FOR eapl-equnr,      "Equipment
   so_plnnr FOR plko-plnnr,      "Group
-  so_plnal FOR plko-plnal,      "Group Counter
-  so_keydt FOR plko-datuv OBLIGATORY.  "Key Date (required)
+  so_plnal FOR plko-plnal.      "Group Counter
+
+PARAMETERS:
+  so_keydt TYPE plko-datuv DEFAULT sy-datum.   "Key Date (required)
 
 SELECTION-SCREEN END OF BLOCK b_tl.
 
@@ -62,7 +64,6 @@ SELECTION-SCREEN BEGIN OF BLOCK b_op WITH FRAME TITLE TEXT-003.
 
 SELECT-OPTIONS:
   so_vornr FOR plpo-vornr,            "Operation
-  so_uvorn FOR plpo-vornr,            "Suboperation (same domain)
   so_otext FOR plpo-ltxa1.            "Operation Short Text
 
 PARAMETERS:
@@ -72,9 +73,6 @@ PARAMETERS:
 SELECT-OPTIONS:
   so_steus FOR plpo-steus,            "Control Key
   so_arbpo FOR crhd-arbpl,            "Work Center (Operation)
-  so_werop FOR crhd-werks,            "WC Plant
-  so_optpl FOR tapl-tplnr,            "Functional Location (Op-level)
-  so_opequ FOR eapl-equnr,            "Equipment (Op-level)
   so_ktsch FOR plpo-ktsch,            "Standard Text Key
   so_exsta FOR plpo-execution_stage,  "Execution Stage
   so_anlzo FOR plpo-anlzu,            "System Condition
