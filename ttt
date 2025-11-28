@@ -1,41 +1,47 @@
-FORM build_fieldcat.
+INTO TABLE @DATA(lt_raw).
 
-  CLEAR gt_fieldcat.
+  LOOP AT lt_raw ASSIGNING FIELD-SYMBOL(<l>).
 
-  "--------------------------------------------------------------
-  " 1. AUTO-GENERATE FIELD CATALOG FROM GT_DISPLAY USING RTTI
-  "--------------------------------------------------------------
-  DATA: lr_descr TYPE REF TO cl_abap_structdescr,
-        lt_comp  TYPE cl_abap_structdescr=>component_table,
-        ls_comp  LIKE LINE OF lt_comp,
-        ls_fcat  TYPE lvc_s_fcat.
+    CLEAR gs_display.
 
-  lr_descr ?= cl_abap_typedescr=>describe_by_data( gt_display ).
-  lt_comp  = lr_descr->components.
+    MOVE-CORRESPONDING <l> TO gs_display.
 
-  LOOP AT lt_comp INTO ls_comp.
+    "--- Map STEUERKZ bits → CI01..CI28 dynamically
+    DO 28 TIMES.
+      DATA(lv_idx) = sy-index.
+      DATA(lv_field) = |CI{ lv_idx ALPHA = OUT }|.
+      ASSIGN COMPONENT lv_field OF STRUCTURE gs_display TO FIELD-SYMBOL(<f>).
+      IF <f> IS ASSIGNED.
+        IF <l>-steuerkz+lv_idx(1) = 'X'.
+          <f> = 'X'.
+        ENDIF.
+      ENDIF.
+    ENDDO.
 
-    CLEAR ls_fcat.
-
-    ls_fcat-fieldname = ls_comp-name.
-    ls_fcat-coltext   = ls_comp-name.
-    ls_fcat-seltext_l = ls_comp-name.
-    ls_fcat-seltext_m = ls_comp-name.
-    ls_fcat-seltext_s = ls_comp-name.
-
-    "Hide CI columns initially (shown only when user clicks)
-    IF ls_comp-name CP 'CI*'.
-      ls_fcat-no_out = abap_true.
-    ENDIF.
-
-    "Hide long text technical rows
-    IF ls_comp-name = 'ROW_KIND'.
-      ls_fcat-no_out = abap_true.
-    ENDIF.
-
-    APPEND ls_fcat TO gt_fieldcat.
+    APPEND gs_display TO gt_display.
 
   ENDLOOP.
+
+
+
+
+FORM build_display.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING r_salv_table = go_alv
+        CHANGING  t_table      = gt_display ).
+
+    CATCH cx_salv_msg INTO DATA(lx).
+      MESSAGE lx->get_text( ) TYPE 'E'.
+  ENDTRY.
+
+  go_columns = go_alv->get_columns( ).
+
+  " Apply FDS visibility rules
+  PERFORM set_column_visibility_by_state.
+
+  go_alv->display( ).
 
 ENDFORM.
 
@@ -45,145 +51,37 @@ ENDFORM.
 
 FORM set_column_visibility_by_state.
 
-  DATA: lo_columns TYPE REF TO cl_salv_columns_table,
-        lo_col     TYPE REF TO cl_salv_column_table.
+  DATA(lo_col) TYPE REF TO cl_salv_column_table.
 
-  IF lo_alv IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  lo_columns = lo_alv->get_columns( ).
-
-  "--------------------------------------------------------------
-  " 1. HIDE ALL CI COLUMNS FIRST
-  "--------------------------------------------------------------
-  DATA lv_idx TYPE i VALUE 0.
-  DATA lv_idx_str TYPE char3.
-  DATA lv_idx_char TYPE char3.
-  DATA lv_ciname TYPE lvc_fname.
-
+  "--- 1. Hide all CI columns --------------------------
   DO 28 TIMES.
-
-    lv_idx = lv_idx + 1.
-    lv_idx_str = lv_idx.
-
-    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
-      EXPORTING
-        input  = lv_idx_str
-      IMPORTING
-        output = lv_idx_char.
-
-    CONCATENATE 'CI' lv_idx_char INTO lv_ciname.
+    DATA(lv_idx) = sy-index.
+    DATA(lv_name) = |CI{ lv_idx ALPHA = OUT }|.
+    TRANSLATE lv_name TO UPPER CASE.
 
     TRY.
-        lo_col ?= lo_columns->get_column( lv_ciname ).
-        lo_col->set_visible( abap_false ).   "HIDE
+        lo_col ?= go_columns->get_column( lv_name ).
+        lo_col->set_visible( if_salv_c_bool_sap=>false ).
       CATCH cx_salv_not_found.
     ENDTRY.
-
   ENDDO.
 
-  "--------------------------------------------------------------
-  " 2. SHOW CI COLUMNS WHEN BUTTON PRESSED
-  "--------------------------------------------------------------
-  IF gv_show_char = abap_true.
+  "--- 2. FDS mandatory visible columns ----------------
+  DATA lt_show TYPE STANDARD TABLE OF string WITH EMPTY KEY.
 
-    lv_idx = 0.
+  APPEND 'PLNNR'   TO lt_show.
+  APPEND 'PLNAL'   TO lt_show.
+  APPEND 'WERKS'   TO lt_show.
+  APPEND 'VORNR'   TO lt_show.
+  APPEND 'ARBPL_O' TO lt_show.
+  APPEND 'ARBEI'   TO lt_show.
 
-    LOOP AT lt_ci_texts INTO DATA(lv_text).
-      lv_idx = lv_idx + 1.
-      lv_idx_str = lv_idx.
-
-      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
-        EXPORTING
-          input  = lv_idx_str
-        IMPORTING
-          output = lv_idx_char.
-
-      CONCATENATE 'CI' lv_idx_char INTO lv_ciname.
-
-      TRY.
-          lo_col ?= lo_columns->get_column( lv_ciname ).
-          lo_col->set_visible( abap_true ).
-          lo_col->set_long_text( lv_text ).
-          lo_col->set_medium_text( lv_text ).
-          lo_col->set_short_text( lv_text ).
-        CATCH cx_salv_not_found.
-      ENDTRY.
-    ENDLOOP.
-
-  ENDIF.
-
-  "--------------------------------------------------------------
-  " 3. HANDLE LONG TEXT FIELDS
-  "--------------------------------------------------------------
-  TRY.
-      lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
-      lo_col->set_visible( gv_show_ltxt ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
-
-  TRY.
-      lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).
-      lo_col->set_visible( gv_show_ltxt ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
-
-ENDFORM.
-
-
-
-
-
-FORM build_display.
-
-  CLEAR gt_display.
-  gv_row_id = 0.
-
-  SORT gt_base BY plnnr plnal vornr merknr.
-
-  DATA: lv_last_op TYPE vornr.
-
-  LOOP AT gt_base INTO gs_base.
-
-    "---------------------------------------------------
-    " 1. OPERATION ROW
-    "---------------------------------------------------
-    IF gs_base-vornr <> lv_last_op.
-
-      CLEAR gs_display.
-      MOVE-CORRESPONDING gs_base TO gs_display.
-
-      gs_display-row_kind = 'O'.
-      gv_row_id += 1.
-      gs_display-row_id = gv_row_id.
-
-      APPEND gs_display TO gt_display.
-
-      IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
-        PERFORM append_op_longtext USING gs_base.
-      ENDIF.
-
-      lv_last_op = gs_base-vornr.
-
-    ENDIF.
-
-    "---------------------------------------------------
-    " 2. CHARACTERISTIC ROW
-    "---------------------------------------------------
-    CLEAR gs_display.
-    MOVE-CORRESPONDING gs_base TO gs_display.
-
-    gs_display-row_kind = 'C'.
-    gv_row_id += 1.
-    gs_display-row_id = gv_row_id.
-
-    APPEND gs_display TO gt_display.
-
-    IF gv_show_ltxt = abap_true.
-      PERFORM append_char_longtext USING gs_base.
-    ENDIF.
-
+  LOOP AT lt_show INTO DATA(lv_colname).
+    TRY.
+        lo_col ?= go_columns->get_column( lv_colname ).
+        lo_col->set_visible( if_salv_c_bool_sap=>true ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
   ENDLOOP.
 
 ENDFORM.
