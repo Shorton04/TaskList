@@ -1,33 +1,19 @@
-"=========================================================
-" Apply labels to CI01..CI28 (SALV-compatible on all basis)
-"=========================================================
-FIELD-SYMBOLS <text> TYPE scrtext_l.
+lv_index = 0.
 
-DATA: lv_idx    TYPE i VALUE 0,
-      lv_idx_c  TYPE char2,
-      lv_ciname TYPE lvc_fname.
+DO 28 TIMES.
+  lv_index = lv_index + 1.
 
-LOOP AT lt_ci_texts ASSIGNING <text>.
-  lv_idx = lv_idx + 1.
+  "Convert 1 → '01', 2 → '02', ..., 10 → '10'
+  DATA(lv_idx_char) = |{ lv_index ALPHA = IN WIDTH = 2 }|.
 
-  "Build CI01..CI28
-  IF lv_idx < 10.
-    lv_idx_c = |0{ lv_idx }|.
-  ELSE.
-    lv_idx_c = lv_idx.
-  ENDIF.
+  "Build CI01..CI28 fieldname
+  DATA(lv_ciname) TYPE lvc_fname.
+  CONCATENATE 'CI' lv_idx_char INTO lv_ciname.
 
-  CONCATENATE 'CI' lv_idx_c INTO lv_ciname.
+  "Extract 1 character from STEUERKZ
+  DATA(lv_char) = gs_base-steuerkz+lv_index(1).
 
-  TRY.
-      lo_col ?= lo_columns->get_column( lv_ciname ).
+  "Assign into CI field
+  gs_display-(lv_ciname) = lv_char.
 
-      "Use FIELD SYMBOL <text> (your system accepts this!)
-      lo_col->set_long_text(   <text> ).
-      lo_col->set_medium_text( <text> ).
-      lo_col->set_short_text(  <text> ).
-
-    CATCH cx_salv_not_found.
-  ENDTRY.
-
-ENDLOOP.
+ENDDO.
