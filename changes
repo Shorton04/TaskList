@@ -36,10 +36,11 @@ FORM display_alv.
     lo_funcs->set_all( abap_true ).
 
     "==================================================
-    " Enable MULTIPLE ROW SELECTION
+    " ENABLE MULTIPLE ROW SELECTION + CHECKBOX COLUMN
     "==================================================
-    lo_alv->get_selections( )->set_selection_mode(
-      if_salv_c_selection_mode=>row_multiple ).
+    DATA(lo_sel) = lo_alv->get_selections( ).
+    lo_sel->set_selection_mode( if_salv_c_selection_mode=>multiple ). " <-- FIX
+    lo_sel->set_selection_col( abap_true ).                           " <-- IMPORTANT
 
     "==================================================
     " Register event handler
