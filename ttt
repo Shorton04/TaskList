@@ -1,0 +1,17 @@
+"--------------------------------------------------------------
+" Set CI1–CI28 column labels
+"--------------------------------------------------------------
+DATA(lv_colname) TYPE string.
+
+DO 28 TIMES.
+  lv_colname = |CI{ sy-index }|.
+  TRANSLATE lv_colname TO UPPER CASE.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( lv_colname ).
+      lo_col->set_short_text( lv_colname ).
+      lo_col->set_medium_text( lv_colname ).
+      lo_col->set_long_text( |CI: { lv_colname }| ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+ENDDO.
