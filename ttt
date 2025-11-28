@@ -2,15 +2,20 @@ lv_index = 1.
 
 LOOP AT lt_ci_texts INTO lv_text.
 
-  lv_index_char = |{ lv_index WIDTH = 2 ALPHA = IN }|.
+  "Convert index into 3-char ALPHA format (001..028)
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      input  = lv_index
+    IMPORTING
+      output = lv_index_char.
+
   CONCATENATE 'CI' lv_index_char INTO lv_ciname.
 
   TRY.
       lo_col ?= lo_columns->get_column( lv_ciname ).
-
       lo_col->set_long_text(  lv_text ).
       lo_col->set_medium_text( lv_text ).
-      lo_col->set_short_text( lv_text ).   "<<< FIXED
+      lo_col->set_short_text( lv_text ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
