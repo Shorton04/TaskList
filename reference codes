@@ -1,6 +1,16 @@
-"===============================================================
-" FDS COLUMN HEADERS (visible + hidden)
-"===============================================================
+  PERFORM set_position USING 'SEL'        1.
+  PERFORM set_position USING 'PLNNR'      2.
+  PERFORM set_position USING 'PLNAL'      3.
+  PERFORM set_position USING 'WERKS'      4.
+  PERFORM set_position USING 'VORNR'      5.
+  PERFORM set_position USING 'ARBPL_O'    6.
+  PERFORM set_position USING 'ARBEI'      7.
+  PERFORM set_position USING 'KURZT_CHAR' 8.
+  PERFORM set_position USING 'PMETHODE'   9.
+  PERFORM set_position USING 'MERKNR'    10.
+  PERFORM set_position USING 'TDFORMAT'  11.
+  PERFORM set_position USING 'OP_LTXT'   12.
+  PERFORM set_position USING 'CHAR_LTXT' 13.
 TRY.
 
 *----------------------------------------------------------------------
