@@ -52,7 +52,7 @@ FORM validate_selection.
   ENDIF.
 
   "Key date required
-  IF so_keydt-low IS INITIAL.
+  IF so_keydt IS INITIAL.
     MESSAGE e398(00) WITH 'Enter a key date'.
   ENDIF.
 
@@ -176,7 +176,7 @@ FORM get_data.
   CLEAR gt_base.
   CLEAR gs_base.
 
-  lv_keydat = so_keydt-low.
+  lv_keydat = so_keydt.
 
   " Convert tolerance CHAR16 → FLTP
   CLEAR lv_tolun.
@@ -272,6 +272,8 @@ FORM get_data.
        AND plas~plnnr = plko~plnnr
        AND plas~plnal = plko~plnal
        AND plas~loekz = ' '
+       AND plas~datuv <= @lv_keydat
+       AND plas~valid_to >= @lv_keydat
 
       INNER JOIN plpo
         ON plpo~plnty = plas~plnty
@@ -324,28 +326,28 @@ FORM get_data.
 
   LOOP AT gt_base INTO gs_base.
 
-    IF gs_base-datuv > so_keydt-low.
+    IF gs_base-datuv > so_keydt.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-valid_to < so_keydt-low.
+    IF gs_base-valid_to < so_keydt.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-datuv_o > so_keydt-low.
+    IF gs_base-datuv_o > so_keydt.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-valid_to_o < so_keydt-low.
+    IF gs_base-valid_to_o < so_keydt.
       CONTINUE.
     ENDIF.
 
     IF gv_show_char = gc_true.
-      IF gs_base-gueltigab > so_keydt-low.
+      IF gs_base-gueltigab > so_keydt.
         CONTINUE.
       ENDIF.
 
-      IF gs_base-valid_to_c < so_keydt-low.
+      IF gs_base-valid_to_c < so_keydt.
         CONTINUE.
       ENDIF.
     ENDIF.
@@ -354,15 +356,15 @@ FORM get_data.
     "===================================================================*
     "* TASK LIST TYPE FILTER (FTL / ETL / GTL)
     "===================================================================*
-    IF gs_base-plnty = 'A' AND p_ftl IS INITIAL.
+    IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-plnty = 'B' AND p_etl IS INITIAL.
+    IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
       CONTINUE.
     ENDIF.
 
-    IF gs_base-plnty = 'E' AND p_gtl IS INITIAL.
+    IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
       CONTINUE.
     ENDIF.
 
@@ -370,11 +372,11 @@ FORM get_data.
     "===================================================================*
     "* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
     "===================================================================*
-    IF so_plnnr-low IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
       CONTINUE.
     ENDIF.
 
-    IF so_plnal-low IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
       CONTINUE.
     ENDIF.
 
@@ -390,6 +392,10 @@ FORM get_data.
     "===================================================================*
     "* HEADER FILTERS — FDS (SAFE VERSION)
     "===================================================================*
+    IF so_ktext[] IS NOT INITIAL AND gs_base-ktext NOT IN so_ktext.
+      CONTINUE.
+    ENDIF.
+
     IF so_werks-low IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
       CONTINUE.
     ENDIF.
@@ -442,10 +448,6 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_uvorn[] IS NOT INITIAL AND gs_base-vornr NOT IN so_uvorn.
-      CONTINUE.
-    ENDIF.
-
     IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
       CONTINUE.
     ENDIF.
@@ -455,18 +457,6 @@ FORM get_data.
     ENDIF.
 
     IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
-      CONTINUE.
-    ENDIF.
-
-    IF so_werop[] IS NOT INITIAL AND gs_base-werks_o NOT IN so_werop.
-      CONTINUE.
-    ENDIF.
-
-    IF so_optpl[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_optpl.
-      CONTINUE.
-    ENDIF.
-
-    IF so_opequ[] IS NOT INITIAL AND gs_base-equnr NOT IN so_opequ.
       CONTINUE.
     ENDIF.
 
@@ -613,54 +603,47 @@ FORM build_display.
 
   DATA: ls_base        TYPE ty_task_base,
         ls_disp        TYPE ty_task_disp,
-        lv_last_plnty  TYPE plko-plnty,
-        lv_last_plnnr  TYPE plko-plnnr,
-        lv_last_plnal  TYPE plko-plnal,
-        lv_last_vornr  TYPE plpo-vornr,
-        lv_last_merknr TYPE plmk-merknr.
+        lv_last_plnty  TYPE plnty,
+        lv_last_plnnr  TYPE plnnr,
+        lv_last_plnal  TYPE plnal,
+        lv_last_vornr  TYPE plnkn,
+        lv_last_merknr TYPE merknr,
+        ls_color       TYPE lvc_s_scol,
+        lv_indent      TYPE string.
 
-  CLEAR gt_display.
-  CLEAR: lv_last_plnty,
+  CLEAR: gt_display,
+         lv_last_plnty,
          lv_last_plnnr,
          lv_last_plnal,
          lv_last_vornr,
          lv_last_merknr.
-
-  "Always in a stable order: one op, then its chars
   SORT gt_base BY plnty plnnr plnal vornr merknr.
 
   LOOP AT gt_base INTO ls_base.
 
-    "---------------------------------------------------------*
-    " 1) Operation header row – exactly ONCE per operation
-    "---------------------------------------------------------*
-    IF     ls_base-plnty <> lv_last_plnty
-     OR  ls_base-plnnr <> lv_last_plnnr
-     OR  ls_base-plnal <> lv_last_plnal
-     OR  ls_base-vornr <> lv_last_vornr.
+    "—————————————————————————————
+    " NEW OPERATION GROUP
+    "—————————————————————————————
+    IF ls_base-vornr <> lv_last_vornr
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
 
-      " Show operation row only if:
-      "   - we are in "no char" mode, OR
-      "   - this operation has no characteristic (MERKNR initial)
-      IF gv_show_char = gc_false
-         OR ls_base-merknr IS INITIAL.
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+      ls_disp-row_kind = 'O'.
 
-        CLEAR ls_disp.
-        MOVE-CORRESPONDING ls_base TO ls_disp.
-        ls_disp-row_kind = 'O'.
-        APPEND ls_disp TO gt_display.
+      APPEND ls_disp TO gt_display.
 
-        " In LT-only mode, add operation long text rows
-        IF gv_show_char = gc_false
-           AND gv_show_ltxt = gc_true.
-          PERFORM append_op_longtext USING ls_base.
-        ENDIF.
-
+      "Operation long text only if CHAR OFF and LTXT ON
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING ls_base.
       ENDIF.
 
-      " Reset "last characteristic" for this new operation
+      "Reset last characteristic
       CLEAR lv_last_merknr.
 
+      "Track operation grouping keys
       lv_last_plnty = ls_base-plnty.
       lv_last_plnnr = ls_base-plnnr.
       lv_last_plnal = ls_base-plnal.
@@ -668,26 +651,31 @@ FORM build_display.
 
     ENDIF.
 
-    "---------------------------------------------------------*
-    " 2) Characteristic header + characteristic long text
-    "    Only when "Show Characteristics" = X
-    "---------------------------------------------------------*
-    IF gv_show_char = gc_true
-       AND ls_base-merknr IS NOT INITIAL.
 
-      "Header row: only once per MERKNR
+    "—————————————————————————————
+    " CHARACTERISTICS
+    "—————————————————————————————
+    IF gv_show_char = gc_true
+   AND ls_base-merknr IS NOT INITIAL.
+
       IF ls_base-merknr <> lv_last_merknr.
 
         CLEAR ls_disp.
         MOVE-CORRESPONDING ls_base TO ls_disp.
         ls_disp-row_kind = 'C'.
+
+
+        CLEAR ls_color.
+        ls_color-color-col = 6.
+        ls_color-color-int = 1.
+        APPEND ls_color TO ls_disp-line_color.
+
         APPEND ls_disp TO gt_display.
 
         lv_last_merknr = ls_base-merknr.
 
       ENDIF.
 
-      "Characteristic long text rows only in Char+LT mode
       IF gv_show_ltxt = gc_true.
         PERFORM append_char_longtext USING ls_base.
       ENDIF.
@@ -695,12 +683,9 @@ FORM build_display.
     ENDIF.
 
   ENDLOOP.
-  PERFORM cleanup_duplicates.
-
-  "Normalize fields per mode (clear columns etc.)
-  PERFORM adjust_display_fields_by_state.
 
 ENDFORM.
+
 
 
 *&---------------------------------------------------------------------*
@@ -799,6 +784,12 @@ FORM display_alv.
 
         " Columns handling
         lo_columns = lo_alv->get_columns( ).
+
+        TRY.
+          lo_columns->set_color_column( 'LINE_COLOR' ).
+        CATCH cx_salv_not_found cx_salv_data_error.
+        ENDTRY.
+
         lo_columns->set_optimize( abap_true ).
 
         "-----------------------------------------------------------*
@@ -1041,14 +1032,14 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM append_op_longtext USING is_base TYPE ty_task_base.
 
-  DATA: lt_lines TYPE STANDARD TABLE OF tline,
-        ls_line  TYPE tline,
-        lv_name  TYPE thead-tdname.
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_indent TYPE string,
+        ls_color  TYPE lvc_s_scol.
 
   CLEAR: lt_lines, lv_name.
 
-  "Build TDNAME exactly as in standard examples:
-  "  mandt + plnty + plnnr + plnkn + zaehl
   CONCATENATE sy-mandt
               is_base-plnty
               is_base-plnnr
@@ -1068,7 +1059,6 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
     EXCEPTIONS
       OTHERS   = 4.
 
-  "No text → no extra rows
   IF sy-subrc <> 0 OR lt_lines IS INITIAL.
     RETURN.
   ENDIF.
@@ -1078,15 +1068,23 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
     CLEAR gs_display.
     MOVE-CORRESPONDING is_base TO gs_display.
 
-    gs_display-row_kind = 'L'.               "long-text row
-    gs_display-op_ltxt  = ls_line-tdline.    "text line
-    gs_display-tdformat = ls_line-tdformat.  "format key (*, =, etc.)
+    gs_display-row_kind = 'L'.
+    gs_display-op_ltxt  = ls_line-tdline.
+    gs_display-tdformat = ls_line-tdformat.
+
+    CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 1.
+    APPEND ls_color TO gs_display-line_color.
 
     APPEND gs_display TO gt_display.
 
   ENDLOOP.
 
 ENDFORM.
+
 
 
 *&---------------------------------------------------------------------*
@@ -1099,56 +1097,42 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM append_char_longtext USING is_base TYPE ty_task_base.
 
-  DATA: lt_lines TYPE STANDARD TABLE OF tline,
-        ls_line  TYPE tline,
-        lv_name  TYPE thead-tdname,
-        lv_tmp   TYPE thead-tdname.
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_tmp    TYPE thead-tdname,
+        lv_indent TYPE string,
+        lv_merknr TYPE char08,
+        ls_color  TYPE lvc_s_scol.
 
   CLEAR: lt_lines, lv_name, lv_tmp.
 
-  " Only try to read if PLMK says: long text exists
   IF is_base-ltextkz IS INITIAL.
     RETURN.
   ENDIF.
 
-  "-----------------------------------------------------------*
-  " Build TDNAME for char long text:
-  "   mandt + plnty + plnnr + plnkn + space + merknr + zaehl
-  "   TDOBJECT = 'QSS', TDID = 'QM'
-  "-----------------------------------------------------------*
+  lv_merknr = is_base-merknr.
+
   CONCATENATE sy-mandt
               is_base-plnty
               is_base-plnnr
               is_base-plnkn
          INTO lv_tmp.
 
-  CONCATENATE lv_tmp
-              is_base-merknr
-         INTO lv_tmp
-         SEPARATED BY space.
-
-  CONCATENATE lv_tmp
-              is_base-zaehl
-         INTO lv_name.
+  CONCATENATE lv_tmp is_base-merknr INTO lv_tmp SEPARATED BY space.
+  CONCATENATE lv_tmp is_base-zaehl INTO lv_name.
 
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      client                  = sy-mandt
-      id                      = 'QM'
-      language                = sy-langu
-      name                    = lv_name
-      object                  = 'QSS'
+      client   = sy-mandt
+      id       = 'QM'
+      language = sy-langu
+      name     = lv_name
+      object   = 'QSS'
     TABLES
-      lines                   = lt_lines
+      lines    = lt_lines
     EXCEPTIONS
-      id                      = 1
-      language                = 2
-      name                    = 3
-      not_found               = 4
-      object                  = 5
-      reference_check         = 6
-      wrong_access_to_archive = 7
-      OTHERS                  = 8.
+      OTHERS   = 8.
 
   IF sy-subrc <> 0 OR lt_lines IS INITIAL.
     RETURN.
@@ -1163,8 +1147,14 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
     gs_display-char_ltxt = ls_line-tdline.
     gs_display-tdformat  = ls_line-tdformat.
 
-    " Make sure op long text column is empty on char rows
+    CONCATENATE lv_indent gs_display-char_ltxt INTO gs_display-char_ltxt.
+
     CLEAR gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 4.
+    APPEND ls_color TO gs_display-line_color.
 
     APPEND gs_display TO gt_display.
 
@@ -1250,9 +1240,12 @@ ENDMODULE.
 FORM hide_column USING pv_col TYPE lvc_fname.
   TRY.
       lo_column ?= lo_columns->get_column( pv_col ).
-      lo_column->set_technical( abap_true ).
+
+      "Hide from initial display but still available in Change Layout
+      lo_column->set_visible( abap_false ).
+      lo_column->set_technical( abap_false ).  "IMPORTANT
+
     CATCH cx_salv_not_found.
-      " Ignore if column does not exist in current structure
   ENDTRY.
 ENDFORM.
 
@@ -1327,7 +1320,7 @@ FORM set_column_visibility_by_state.
   DEFINE hide_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_technical( abap_true ).
+        lo_col->set_technical( abap_false ).
         lo_col->set_visible(   abap_false ).
       CATCH cx_salv_not_found.
     ENDTRY.
@@ -1490,58 +1483,5 @@ ENDFORM.
 *&  - Remove duplicate header rows when Long Text is active
 *&---------------------------------------------------------------------*
 FORM cleanup_duplicates.
-
-  FIELD-SYMBOLS: <ls_disp> TYPE ty_task_disp.
-
-  DATA: lt_op   TYPE STANDARD TABLE OF ty_task_disp,
-        lt_char TYPE STANDARD TABLE OF ty_task_disp,
-        lt_ltxt TYPE STANDARD TABLE OF ty_task_disp.
-
-  " Only needed when Long Text is shown
-  IF gv_show_ltxt = gc_false.
-    RETURN.
-  ENDIF.
-
-  " Split GT_DISPLAY into O / C / L buckets
-  LOOP AT gt_display ASSIGNING <ls_disp>.
-    CASE <ls_disp>-row_kind.
-      WHEN 'O'.
-        APPEND <ls_disp> TO lt_op.
-      WHEN 'C'.
-        APPEND <ls_disp> TO lt_char.
-      WHEN 'L'.
-        APPEND <ls_disp> TO lt_ltxt.
-      WHEN OTHERS.
-        " Treat any unknown kind like a header row
-        APPEND <ls_disp> TO lt_op.
-    ENDCASE.
-  ENDLOOP.
-
-  CLEAR gt_display.
-
-  "-----------------------------------------------------------*
-  " Case C: Hide Char / Show LT
-  "   → one operation row per op + all LT rows
-  "-----------------------------------------------------------*
-  IF gv_show_char = gc_false.
-
-    SORT lt_op BY plnty plnnr plnal vornr.
-    DELETE ADJACENT DUPLICATES FROM lt_op
-      COMPARING plnty plnnr plnal vornr.
-    APPEND LINES OF lt_ltxt TO gt_display.
-
-    "-----------------------------------------------------------*
-    " Case D: Show Char / Show LT
-    "   → one char row per characteristic + all LT rows
-    "-----------------------------------------------------------*
-  ELSE.
-
-    SORT lt_char BY plnty plnnr plnal vornr merknr.
-    DELETE ADJACENT DUPLICATES FROM lt_char
-      COMPARING plnty plnnr plnal vornr merknr.
-    APPEND LINES OF lt_ltxt TO gt_display.
-    APPEND LINES OF lt_char TO gt_display.
-
-  ENDIF.
 
 ENDFORM.
