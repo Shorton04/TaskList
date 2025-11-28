@@ -1,23 +1,59 @@
-AT SELECTION-SCREEN OUTPUT.
+FORM display_alv.
 
-  LOOP AT SCREEN.
+  IF gt_display IS INITIAL.
+    MESSAGE s398(00) WITH 'No data to display'.
+    RETURN.
+  ENDIF.
 
-    "Planner Group (SO_VAGRP)
-    IF screen-name CP 'SO_VAGRP-*'.
-      screen-value_help = 'X'.
-      MODIFY SCREEN.
-    ENDIF.
+  IF lo_alv IS INITIAL.
 
-    "Header Work Center (SO_ARBH)
-    IF screen-name CP 'SO_ARBH-*'.
-      screen-value_help = 'X'.
-      MODIFY SCREEN.
-    ENDIF.
+    cl_salv_table=>factory(
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
 
-    "Operation Work Center (SO_ARBPO)
-    IF screen-name CP 'SO_ARBPO-*'.
-      screen-value_help = 'X'.
-      MODIFY SCREEN.
-    ENDIF.
+    lo_columns = lo_alv->get_columns( ).
+    lo_columns->set_optimize( abap_true ).
+    TRY.
+        lo_columns->set_color_column( 'LINE_COLOR' ).
+      CATCH cx_salv_not_found cx_salv_data_error.
+    ENDTRY.
 
-  ENDLOOP.
+    "==================================================
+    " Enable layout saving
+    "==================================================
+    lo_layout = lo_alv->get_layout( ).
+    DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
+    lo_layout->set_key( ls_key ).
+    lo_layout->set_default( abap_true ).
+    lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+
+    "==================================================
+    " Enable toolbar buttons
+    "==================================================
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+
+    "==================================================
+    " Enable MULTIPLE ROW SELECTION
+    "==================================================
+    lo_alv->get_selections( )->set_selection_mode(
+      if_salv_c_selection_mode=>row_multiple ).
+
+    "==================================================
+    " Register event handler
+    "==================================================
+    lo_events = lo_alv->get_event( ).
+    SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+
+  ELSE.
+    lo_alv->refresh( ).
+  ENDIF.
+
+  PERFORM set_column_visibility_by_state.
+  PERFORM set_pfstatus_from_state.
+
+  lo_alv->display( ).
+
+ENDFORM.
