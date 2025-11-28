@@ -36,11 +36,15 @@ FORM display_alv.
     lo_funcs->set_all( abap_true ).
 
     "==================================================
-    " ENABLE MULTIPLE ROW SELECTION + CHECKBOX COLUMN
+    " ENABLE MULTIPLE ROW SELECTION + ROW-HEADER CHECKBOX
     "==================================================
     DATA(lo_sel) = lo_alv->get_selections( ).
-    lo_sel->set_selection_mode( if_salv_c_selection_mode=>multiple ). " <-- FIX
-    lo_sel->set_selection_col( abap_true ).                           " <-- IMPORTANT
+
+    "Enable multiple selection
+    lo_sel->set_selection_mode( if_salv_c_selection_mode=>multiple ).
+
+    "Enable checkbox selection column (older SALV systems)
+    lo_sel->set_selection_state( if_salv_c_selection_state=>row_header ).
 
     "==================================================
     " Register event handler
