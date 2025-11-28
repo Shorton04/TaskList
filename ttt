@@ -1,11 +1,3 @@
-DO 28 TIMES.
-    DATA(lv_ciname) = |CI{ sy-index }|.
-    hide_col lv_ciname.
-  ENDDO.
-
-
-
-
 
       "==============================================================
       " CI LABELS (ALL HIDDEN BUT AVAILABLE)
