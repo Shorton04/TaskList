@@ -1,53 +1,72 @@
-FORM build_fieldcat.
+*---------------------------------------------------------------------*
+*  FORM display_alv
+*---------------------------------------------------------------------*
+FORM display_alv.
 
-  CLEAR gt_fieldcat.
+  DATA: ls_layout   TYPE slis_layout_alv,
+        lt_sort     TYPE slis_t_sortinfo_alv,
+        ls_sort     TYPE slis_sortinfo_alv.
 
-  DATA: ls_fieldcat TYPE slis_fieldcat_alv,
-        lv_fname    TYPE fieldname.
+  "--------------------------------------------------------------
+  " PROTECT: If no display data, exit gracefully
+  "--------------------------------------------------------------
+  IF gt_display IS INITIAL.
+    MESSAGE 'No Data found' TYPE 'S'.
+    RETURN.
+  ENDIF.
 
-  "-------------------------------------------------------
-  " LOOP OVER ALL FIELDS OF TY_TASK_DISP
-  " (this guarantees gt_fieldcat is always populated)
-  "-------------------------------------------------------
-  LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp>) FROM 1 TO 1.
+  "--------------------------------------------------------------
+  " PROTECT: If fieldcat empty → this causes your error
+  "--------------------------------------------------------------
+  IF gt_fieldcat IS INITIAL.
+    MESSAGE 'Field catalog not built' TYPE 'E'.
+    RETURN.
+  ENDIF.
 
-    LOOP AT SCREEN.
-      "Ignore screen loop
-    ENDLOOP.
+  "--------------------------------------------------------------
+  " Layout Settings
+  "--------------------------------------------------------------
+  CLEAR ls_layout.
+  ls_layout-zebra       = abap_true.
+  ls_layout-colwidth_optimize = abap_true.
+  ls_layout-detail_popup = abap_true.
 
-  ENDLOOP.
+  "--------------------------------------------------------------
+  " Sort by Group / Counter / Operation
+  "--------------------------------------------------------------
+  CLEAR ls_sort.
+  ls_sort-fieldname = 'PLNNR'.
+  ls_sort-up        = 'X'.
+  APPEND ls_sort TO lt_sort.
 
-  "-------------------------------------------------------
-  " Use RTTS to read structure definition automatically
-  "-------------------------------------------------------
-  DATA: lr_descr TYPE REF TO cl_abap_structdescr,
-        lt_comp  TYPE cl_abap_structdescr=>component_table.
+  CLEAR ls_sort.
+  ls_sort-fieldname = 'PLNAL'.
+  ls_sort-up        = 'X'.
+  APPEND ls_sort TO lt_sort.
 
-  lr_descr ?= cl_abap_typedescr=>describe_by_data( gt_display[ 1 ] ).
-  lt_comp = lr_descr->components.
+  CLEAR ls_sort.
+  ls_sort-fieldname = 'VORNR'.
+  ls_sort-up        = 'X'.
+  APPEND ls_sort TO lt_sort.
 
-  LOOP AT lt_comp INTO DATA(ls_comp).
+  "--------------------------------------------------------------
+  " Display ALV
+  "--------------------------------------------------------------
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program     = sy-repid
+      is_layout              = ls_layout
+      it_fieldcat            = gt_fieldcat
+      it_sort                = lt_sort
+    TABLES
+      t_outtab               = gt_display
+    EXCEPTIONS
+      program_error          = 1
+      OTHERS                 = 2.
 
-    CLEAR ls_fieldcat.
-
-    ls_fieldcat-fieldname = ls_comp-name.
-    ls_fieldcat-coltext   = ls_comp-name.
-    ls_fieldcat-seltext_l = ls_comp-name.
-    ls_fieldcat-seltext_m = ls_comp-name.
-    ls_fieldcat-seltext_s = ls_comp-name.
-
-    "Hide CI fields by default
-    IF ls_comp-name CP 'CI*'.
-      ls_fieldcat-no_out = abap_true.
-    ENDIF.
-
-    "Make long texts blue/expandable
-    IF ls_comp-name = 'OP_LTXT' OR ls_comp-name = 'CHAR_LTXT'.
-      ls_fieldcat-outputlen = 200.
-    ENDIF.
-
-    APPEND ls_fieldcat TO gt_fieldcat.
-
-  ENDLOOP.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
 
 ENDFORM.
