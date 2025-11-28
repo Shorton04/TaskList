@@ -1,14 +1,11 @@
-WHEN 'SELALL'.
-    LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp_selall>).
-      <fs_disp_selall>-sel = 'X'.
-    ENDLOOP.
-    lo_alv->refresh( ).
+FORM set_position USING pv_field pv_pos.
 
-  WHEN 'DESEL'.
-    LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp_desel>).
-      <fs_disp_desel>-sel = ''.
-    ENDLOOP.
+  TRY.
+      DATA(lo_col) = lo_columns->get_column( pv_field ).
+      lo_columns->set_column_position(
+        columnname = pv_field
+        position   = pv_pos ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
-
-
-a
+ENDFORM.
