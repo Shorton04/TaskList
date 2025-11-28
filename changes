@@ -15,6 +15,7 @@ FORM display_alv.
 
     lo_columns = lo_alv->get_columns( ).
     lo_columns->set_optimize( abap_true ).
+
     TRY.
         lo_columns->set_color_column( 'LINE_COLOR' ).
       CATCH cx_salv_not_found cx_salv_data_error.
@@ -36,25 +37,36 @@ FORM display_alv.
     lo_funcs->set_all( abap_true ).
 
     "==================================================
-    " ENABLE MULTIPLE ROW SELECTION + ROW-HEADER CHECKBOX
+    " Enable MULTIPLE selection (old SALV)
     "==================================================
     DATA(lo_sel) = lo_alv->get_selections( ).
-
-    "Enable multiple selection
     lo_sel->set_selection_mode( if_salv_c_selection_mode=>multiple ).
 
-    "Enable checkbox selection column (older SALV systems)
-    lo_sel->set_selection_state( if_salv_c_selection_state=>row_header ).
+    "==================================================
+    " Make SEL a clickable checkbox
+    "==================================================
+    TRY.
+        DATA(lo_col) = lo_columns->get_column( 'SEL' ).
+        lo_col->set_short_text( ' ' ).
+        lo_col->set_medium_text( 'Select' ).
+        lo_col->set_long_text( 'Select' ).
+        lo_col->set_cell_type( if_salv_c_cell_type=>hotspot ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
 
     "==================================================
-    " Register event handler
+    " Register hotspot click + button events
     "==================================================
     lo_events = lo_alv->get_event( ).
+
     SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+    SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
 
   ELSE.
     lo_alv->refresh( ).
   ENDIF.
+
+  PERFORM set_position USING 'SEL' 1.
 
   PERFORM set_column_visibility_by_state.
   PERFORM set_pfstatus_from_state.
@@ -62,3 +74,50 @@ FORM display_alv.
   lo_alv->display( ).
 
 ENDFORM.
+
+
+
+"=== Ensure SEL checkbox column stays visible ===
+TRY.
+    DATA(lo_col_sel) = lo_columns->get_column( 'SEL' ).
+    lo_col_sel->set_visible( abap_true ).
+    lo_col_sel->set_technical( abap_false ).  "Shown in ALV
+  CATCH cx_salv_not_found.
+ENDTRY.
+
+
+METHOD on_link_click.
+
+  READ TABLE gt_display ASSIGNING FIELD-SYMBOL(<ls_disp>) INDEX row.
+  IF sy-subrc = 0.
+
+    "Toggle checkbox
+    IF <ls_disp>-sel = 'X'.
+      <ls_disp>-sel = ''.
+    ELSE.
+      <ls_disp>-sel = 'X'.
+    ENDIF.
+
+    lo_alv->refresh( ).
+
+  ENDIF.
+
+ENDMETHOD.
+
+
+
+WHEN 'SELALL'.
+  LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<l>).
+    <l>-sel = 'X'.
+  ENDLOOP.
+  lo_alv->refresh( ).
+
+WHEN 'DESEL'.
+  LOOP AT gt_display ASSIGNING <l>.
+    <l>-sel = ''.
+  ENDLOOP.
+  lo_alv->refresh( ).
+
+
+
+a
