@@ -1,51 +1,14 @@
-"==============================================================
-" CI LABELS — Hidden but available in Change Layout
-"==============================================================
-
-DATA lt_ci_texts TYPE STANDARD TABLE OF string WITH EMPTY KEY.
-
-APPEND 'Quantitative Characteristic'                TO lt_ci_texts.
-APPEND 'Measured Values Must Be Recorded'           TO lt_ci_texts.
-APPEND 'Ref. to Characteristic Attribute Required'  TO lt_ci_texts.
-APPEND 'Upper Specification Limit Indicator'        TO lt_ci_texts.
-APPEND 'Lower Specification Limit Indicator'        TO lt_ci_texts.
-APPEND 'Check Target Value'                         TO lt_ci_texts.
-APPEND 'Inspection Scope'                           TO lt_ci_texts.
-APPEND 'Long Term Inspection'                       TO lt_ci_texts.
-APPEND 'Recording Type'                             TO lt_ci_texts.
-APPEND 'Document Required'                          TO lt_ci_texts.
-APPEND 'Characteristic Category'                    TO lt_ci_texts.
-APPEND 'Synchronization Active'                     TO lt_ci_texts.
-APPEND 'Inspection Sample Qty Added'                TO lt_ci_texts.
-APPEND 'Destructive Inspection'                     TO lt_ci_texts.
-APPEND 'Calculated Characteristic'                  TO lt_ci_texts.
-APPEND 'Sampling Procedure Required'                TO lt_ci_texts.
-APPEND 'Relevant for Quality Score'                 TO lt_ci_texts.
-APPEND 'Default Control Indicators Locked'          TO lt_ci_texts.
-APPEND 'Defects Recording Required'                 TO lt_ci_texts.
-APPEND 'QM Subsystem Characteristic'                TO lt_ci_texts.
-APPEND 'Specification Change Allowed'               TO lt_ci_texts.
-APPEND 'Assignment of Test Equipment Required'      TO lt_ci_texts.
-APPEND 'Auto Defect Recording'                      TO lt_ci_texts.
-APPEND 'Change Documents Required'                  TO lt_ci_texts.
-APPEND 'SPC Characteristic'                         TO lt_ci_texts.
-APPEND 'Print Indicator'                            TO lt_ci_texts.
-APPEND 'Parameter Characteristic'                   TO lt_ci_texts.
-APPEND 'Process Characteristic'                     TO lt_ci_texts.
-
 lv_index = 1.
 
 LOOP AT lt_ci_texts INTO lv_text.
 
-  CONCATENATE 'CI' lv_index INTO lv_ciname. "lv_ciname type LVC_FNAME
+  CONCATENATE 'CI' lv_index INTO lv_ciname.
 
   TRY.
       lo_col ?= lo_columns->get_column( lv_ciname ).
-
       lo_col->set_long_text( lv_text ).
       lo_col->set_medium_text( lv_text ).
-      lo_col->set_short_text( lv_ciname ). "e.g. CI1, CI2…
-
+      lo_col->set_short_text( lv_ciname ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
