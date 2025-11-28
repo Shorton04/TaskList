@@ -1,47 +1,16 @@
-CLEAR lt_ci_texts.
-APPEND 'Quantitative Characteristic'              TO lt_ci_texts.
-APPEND 'Measured Values Required'                 TO lt_ci_texts.
-APPEND 'Ref to Char Attribute Req'                TO lt_ci_texts.
-APPEND 'Upper Spec Limit Ind'                     TO lt_ci_texts.
-APPEND 'Lower Spec Limit Ind'                     TO lt_ci_texts.
-APPEND 'Check Target Value'                       TO lt_ci_texts.
-APPEND 'Inspection Scope'                         TO lt_ci_texts.
-APPEND 'Long Term Inspection'                     TO lt_ci_texts.
-APPEND 'Recording Type'                           TO lt_ci_texts.
-APPEND 'Document Required'                        TO lt_ci_texts.
-APPEND 'Characteristic Category'                  TO lt_ci_texts.
-APPEND 'Synchronization Active'                   TO lt_ci_texts.
-APPEND 'Sample Qty Added'                         TO lt_ci_texts.
-APPEND 'Destructive Inspection'                   TO lt_ci_texts.
-APPEND 'Calculated Characteristic'                TO lt_ci_texts.
-APPEND 'Sampling Procedure Req'                   TO lt_ci_texts.
-APPEND 'Quality Score Relevant'                   TO lt_ci_texts.
-APPEND 'Control Indicators Locked'                TO lt_ci_texts.
-APPEND 'Defects Recording Req'                    TO lt_ci_texts.
-APPEND 'QM Subsystem Char'                        TO lt_ci_texts.
-APPEND 'Specification Change Allowed'             TO lt_ci_texts.
-APPEND 'Test Equipment Required'                  TO lt_ci_texts.
-APPEND 'Auto Defect Recording'                    TO lt_ci_texts.
-APPEND 'Change Documents Required'                TO lt_ci_texts.
-APPEND 'SPC Characteristic'                       TO lt_ci_texts.
-APPEND 'Print Indicator'                          TO lt_ci_texts.
-APPEND 'Parameter Characteristic'                 TO lt_ci_texts.
-APPEND 'Process Characteristic'                   TO lt_ci_texts.
-
-
-
 lv_index = 1.
 
 LOOP AT lt_ci_texts INTO lv_text.
 
-  lv_index_char = lv_index.
+  lv_index_char = |{ lv_index WIDTH = 2 ALPHA = IN }|.
   CONCATENATE 'CI' lv_index_char INTO lv_ciname.
 
   TRY.
       lo_col ?= lo_columns->get_column( lv_ciname ).
-      lo_col->set_long_text(  lv_text ).     "SCRTEXT_L OK
-      lo_col->set_medium_text( lv_text ).    "SCRTEXT_M auto-cut
-      lo_col->set_short_text( lv_ciname ).   "CI1..CI28
+
+      lo_col->set_long_text(  lv_text ).
+      lo_col->set_medium_text( lv_text ).
+      lo_col->set_short_text( lv_text ).   "<<< FIXED
     CATCH cx_salv_not_found.
   ENDTRY.
 
