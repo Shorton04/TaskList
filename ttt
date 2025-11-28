@@ -1,23 +1,133 @@
+DATA: gt_fieldcat TYPE lvc_t_fcat,
+      gs_fieldcat TYPE lvc_s_fcat,
+      gs_layout   TYPE lvc_s_layo.
 
-DO 28 TIMES.
 
-  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
-    EXPORTING input  = lv_index
-    IMPORTING output = lv_index_char.
 
-  CONCATENATE 'CI' lv_index_char INTO lv_ciname.
+FORM display_alv.
 
-  "Must be STRING or SALV will reject it
-  READ TABLE lt_ci_texts INTO lv_text INDEX lv_index.
+  IF gt_display IS INITIAL.
+    MESSAGE s398(00) WITH 'No data to display'.
+    RETURN.
+  ENDIF.
 
-  TRY.
-      lo_col ?= lo_columns->get_column( lv_ciname ).
-      lo_col->set_long_text(  lv_text ).
-      lo_col->set_medium_text( lv_text ).
-      lo_col->set_short_text( lv_text ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
+  "-----------------------------------------------------
+  " Build Field Catalog – All Columns with FDS logic
+  "-----------------------------------------------------
+  PERFORM build_fieldcat.
 
-  lv_index = lv_index + 1.
+  "-----------------------------------------------------
+  " ALV Layout
+  "-----------------------------------------------------
+  CLEAR gs_layout.
+  gs_layout-zebra = abap_true.
+  gs_layout-cwidth_opt = abap_true.
+  gs_layout-detail_initial = abap_false.
+  gs_layout-box_fname = 'SEL'.          "Multi-select checkbox
+  gs_layout-info_fname = 'LINE_COLOR'.  "Row color
+  gs_layout-no_merging = abap_true.
 
-ENDDO
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program = sy-repid
+      is_layout          = gs_layout
+      it_fieldcat        = gt_fieldcat
+      i_save             = 'A'
+    TABLES
+      t_outtab           = gt_display
+    EXCEPTIONS
+      program_error      = 1
+      OTHERS             = 2.
+
+ENDFORM.
+
+
+
+
+
+FORM build_fieldcat.
+
+  CLEAR gt_fieldcat.
+
+  "-----------------------------------------------------
+  " Helper for adding fields
+  "-----------------------------------------------------
+  DEFINE add_field.
+    CLEAR gs_fieldcat.
+    gs_fieldcat-fieldname = &1.
+    gs_fieldcat-coltext   = &2.
+    gs_fieldcat-scrtext_l = &2.
+    gs_fieldcat-scrtext_m = &2.
+    gs_fieldcat-scrtext_s = &3.
+    gs_fieldcat-outputlen = &4.
+    gs_fieldcat-no_zero   = abap_true.
+    APPEND gs_fieldcat TO gt_fieldcat.
+  END-OF-DEFINITION.
+
+  "-----------------------------------------------------
+  " FDS COLUMNS (Displayed)
+  "-----------------------------------------------------
+  add_field 'SEL'        'Select'                 'Sel'    4.
+  add_field 'PLNNR'      'Group'                  'Grp'    12.
+  add_field 'PLNAL'      'Counter'                'Cnt'    4.
+  add_field 'WERKS'      'Plant'                  'Plant'  6.
+  add_field 'VORNR'      'Operation'              'Op'     6.
+  add_field 'ARBPL_O'    'Work Center'            'WkCtr'  12.
+  add_field 'ARBEI'      'Work'                   'Work'   8.
+  add_field 'KURZT_CHAR' 'Description'            'Desc'   20.
+  add_field 'PMETHODE'   'Insp. Method'           'Meth'   10.
+  add_field 'MERKNR'     'Insp#'                  'IN'     6.
+
+  IF gv_show_ltxt = abap_true.
+    add_field 'TDFORMAT'  'FK'                    'FK'     4.
+    add_field 'OP_LTXT'   'Operation Long Text'   'OpLT'   40.
+    add_field 'CHAR_LTXT' 'Char Long Text'        'ChLT'   40.
+  ENDIF.
+
+  "-----------------------------------------------------
+  " HIDDEN BUT AVAILABLE IN CHANGE LAYOUT
+  " (All FDS-required technical fields)
+  "-----------------------------------------------------
+  DATA lt_all TYPE STANDARD TABLE OF lvc_fname.
+  APPEND 'KTEXT'       TO lt_all.
+  APPEND 'TPLNR'       TO lt_all.
+  APPEND 'EQUNR'       TO lt_all.
+  APPEND 'VERWE'       TO lt_all.
+  APPEND 'VAGRP'       TO lt_all.
+  APPEND 'STATU_H'     TO lt_all.
+  APPEND 'STRAT'       TO lt_all.
+  APPEND 'SLWBEZ'      TO lt_all.
+  APPEND 'ANDAT'       TO lt_all.
+  APPEND 'AEDAT'       TO lt_all.
+  APPEND 'ANNAM'       TO lt_all.
+  APPEND 'AENAM'       TO lt_all.
+  APPEND 'LTEXTKZ'     TO lt_all.
+  APPEND 'TOLERANZUN'  TO lt_all.
+  APPEND 'TOLERANZOB'  TO lt_all.
+  APPEND 'PRUEFEINH'   TO lt_all.
+  APPEND 'STICHPRVER'  TO lt_all.
+  APPEND 'KATALGART1'  TO lt_all.
+  APPEND 'AUSWMENGE1'  TO lt_all.
+  APPEND 'STEUERKZ'    TO lt_all.
+
+  LOOP AT lt_all INTO DATA(lv_fname).
+    CLEAR gs_fieldcat.
+    gs_fieldcat-fieldname = lv_fname.
+    gs_fieldcat-no_out    = abap_true.      "Hidden but AVAILABLE
+    APPEND gs_fieldcat TO gt_fieldcat.
+  ENDLOOP.
+
+  "-----------------------------------------------------
+  " CI1..CI28 HIDDEN BUT AVAILABLE IN CHANGE LAYOUT
+  "-----------------------------------------------------
+  DO 28 TIMES.
+    lv_index = sy-index.
+    DATA(lv_ci) = |CI{ lv_index ALPHA = IN }|.
+    CLEAR gs_fieldcat.
+    gs_fieldcat-fieldname = lv_ci.
+    gs_fieldcat-no_out    = abap_true.   "Hidden but available
+    gs_fieldcat-coltext   = 'CI'.
+    APPEND gs_fieldcat TO gt_fieldcat.
+  ENDDO.
+
+ENDFORM.
