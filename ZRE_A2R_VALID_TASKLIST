@@ -1,18 +1,55 @@
 *&---------------------------------------------------------------------*
 *& Report  ZRE_A2R_VALID_TASKLIST
 *&---------------------------------------------------------------------*
+*& RICEFW ID.........: 7296
+*& TR Number.........: D30K909618
+*& Version...........: 4
+*& Program...........: ZRE_A2R_VALID_TASKLIST
+*& Transaction Code..: ZA2R_VALID_TASKLIST
+*& Author............:HQ75177
+*& Date..............: 25.11.2025
+*&---------------------------------------------------------------------*
+*& Description:
+*&   Report to validate and display Maintenance Task Lists (PLKO/PLPO/PLMK)
+*&   with support for:
+*&     - Header, Operation, and Characteristic-level filtering
+*&     - Operation & Characteristic Long Text extraction via READ_TEXT
+*&     - Dynamic display level switching (Operations / Characteristics)
+*&     - Show/Hide Characteristics & Long Text custom toolbar buttons
+*&     - CI (Control Indicator) Derivation from PLMK-STEUERKZ
+*&     - ALV output with multi-line long text formatting
+*&---------------------------------------------------------------------*
+*& Functional Summary:
+*&   - Selects Task Lists based on user filters (PLNTY/PLNNR/PLNAL/etc.)
+*&   - Applies key date validity and deletion flag logic
+*&   - Retrieves Operations (PLPO) and Characteristics (PLMK)
+*&   - Builds ALV rows:
+*&        O = Operation row
+*&        C = Characteristic row
+*&        L = Long Text line row (Op/Char)
+*&   - Displays long texts by level according to FDS rules:
+*&        • Operations only → Operation Long Text
+*&        • Characteristics shown → Characteristic Long Text
+*&   - Provides toolbar toggles for:
+*&        • Show/Hide Characteristics
+*&        • Show/Hide Long Text
+*&   - Outputs FDS-specified columns:
+*&        Group, Counter, Plant, Operation, Format Key,
+*&        Op Long Text, Work Center, Work,
+*&        Insp. Description, Insp. Method, Char Long Text
+*&---------------------------------------------------------------------*
+*& Modification Log
+*&---------------------------------------------------------------------*
+*& Date        Author      TR Number      Description
+*& 25.11.2025  HQ75177    D30K911337     Hide Columns
+*&---------------------------------------------------------------------*
+*----------------------------------------------------------------------*
+
 REPORT zre_a2r_valid_tasklist.
 
 INCLUDE zre_a2r_valid_tasklist_top.
 INCLUDE zre_a2r_valid_tasklist_sel.
 INCLUDE zre_a2r_valid_tasklist_f01.
-
-INITIALIZATION.
-  CLEAR so_keydt.
-  so_keydt-sign = 'I'.
-  so_keydt-option = 'EQ'.
-  so_keydt-low = sy-datum.
-  APPEND so_keydt.
 
 *---------------------------------------------------------------------*
 * Selection-screen checks
