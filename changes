@@ -1,122 +1,13 @@
-FORM display_alv.
-
-  IF gt_display IS INITIAL.
-    MESSAGE s398(00) WITH 'No data to display'.
-    RETURN.
-  ENDIF.
-
-  IF lo_alv IS INITIAL.
-
-    cl_salv_table=>factory(
-      IMPORTING
-        r_salv_table = lo_alv
-      CHANGING
-        t_table      = gt_display ).
-
-    lo_columns = lo_alv->get_columns( ).
-    lo_columns->set_optimize( abap_true ).
-
-    TRY.
-        lo_columns->set_color_column( 'LINE_COLOR' ).
-      CATCH cx_salv_not_found cx_salv_data_error.
-    ENDTRY.
-
-    "==================================================
-    " Enable layout saving
-    "==================================================
-    lo_layout = lo_alv->get_layout( ).
-    DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
-    lo_layout->set_key( ls_key ).
-    lo_layout->set_default( abap_true ).
-    lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
-
-    "==================================================
-    " Enable toolbar buttons
-    "==================================================
-    lo_funcs = lo_alv->get_functions( ).
-    lo_funcs->set_all( abap_true ).
-
-    "==================================================
-    " Enable MULTIPLE selection (old SALV)
-    "==================================================
-    DATA(lo_sel) = lo_alv->get_selections( ).
-    lo_sel->set_selection_mode( if_salv_c_selection_mode=>multiple ).
-
-    "==================================================
-    " Make SEL a clickable checkbox
-    "==================================================
-    TRY.
-        DATA(lo_col) = lo_columns->get_column( 'SEL' ).
-        lo_col->set_short_text( ' ' ).
-        lo_col->set_medium_text( 'Select' ).
-        lo_col->set_long_text( 'Select' ).
-        lo_col->set_cell_type( if_salv_c_cell_type=>hotspot ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-
-    "==================================================
-    " Register hotspot click + button events
-    "==================================================
-    lo_events = lo_alv->get_event( ).
-
-    SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
-    SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
-
-  ELSE.
-    lo_alv->refresh( ).
-  ENDIF.
-
-  PERFORM set_position USING 'SEL' 1.
-
-  PERFORM set_column_visibility_by_state.
-  PERFORM set_pfstatus_from_state.
-
-  lo_alv->display( ).
-
-ENDFORM.
-
-
-
-"=== Ensure SEL checkbox column stays visible ===
-TRY.
-    DATA(lo_col_sel) = lo_columns->get_column( 'SEL' ).
-    lo_col_sel->set_visible( abap_true ).
-    lo_col_sel->set_technical( abap_false ).  "Shown in ALV
-  CATCH cx_salv_not_found.
-ENDTRY.
-
-
-METHOD on_link_click.
-
-  READ TABLE gt_display ASSIGNING FIELD-SYMBOL(<ls_disp>) INDEX row.
-  IF sy-subrc = 0.
-
-    "Toggle checkbox
-    IF <ls_disp>-sel = 'X'.
-      <ls_disp>-sel = ''.
-    ELSE.
-      <ls_disp>-sel = 'X'.
-    ENDIF.
-
-    lo_alv->refresh( ).
-
-  ENDIF.
-
-ENDMETHOD.
-
-
-
 WHEN 'SELALL'.
-  LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<l>).
-    <l>-sel = 'X'.
-  ENDLOOP.
-  lo_alv->refresh( ).
+    LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp_selall>).
+      <fs_disp_selall>-sel = 'X'.
+    ENDLOOP.
+    lo_alv->refresh( ).
 
-WHEN 'DESEL'.
-  LOOP AT gt_display ASSIGNING <l>.
-    <l>-sel = ''.
-  ENDLOOP.
-  lo_alv->refresh( ).
+  WHEN 'DESEL'.
+    LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp_desel>).
+      <fs_disp_desel>-sel = ''.
+    ENDLOOP.
 
 
 
