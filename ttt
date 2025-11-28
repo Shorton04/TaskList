@@ -1,87 +1,33 @@
-INTO TABLE @DATA(lt_raw).
+"=========================================================
+" Apply labels to CI01..CI28 (SALV-compatible on all basis)
+"=========================================================
+FIELD-SYMBOLS <text> TYPE scrtext_l.
 
-  LOOP AT lt_raw ASSIGNING FIELD-SYMBOL(<l>).
+DATA: lv_idx    TYPE i VALUE 0,
+      lv_idx_c  TYPE char2,
+      lv_ciname TYPE lvc_fname.
 
-    CLEAR gs_display.
+LOOP AT lt_ci_texts ASSIGNING <text>.
+  lv_idx = lv_idx + 1.
 
-    MOVE-CORRESPONDING <l> TO gs_display.
+  "Build CI01..CI28
+  IF lv_idx < 10.
+    lv_idx_c = |0{ lv_idx }|.
+  ELSE.
+    lv_idx_c = lv_idx.
+  ENDIF.
 
-    "--- Map STEUERKZ bits → CI01..CI28 dynamically
-    DO 28 TIMES.
-      DATA(lv_idx) = sy-index.
-      DATA(lv_field) = |CI{ lv_idx ALPHA = OUT }|.
-      ASSIGN COMPONENT lv_field OF STRUCTURE gs_display TO FIELD-SYMBOL(<f>).
-      IF <f> IS ASSIGNED.
-        IF <l>-steuerkz+lv_idx(1) = 'X'.
-          <f> = 'X'.
-        ENDIF.
-      ENDIF.
-    ENDDO.
-
-    APPEND gs_display TO gt_display.
-
-  ENDLOOP.
-
-
-
-
-FORM build_display.
+  CONCATENATE 'CI' lv_idx_c INTO lv_ciname.
 
   TRY.
-      cl_salv_table=>factory(
-        IMPORTING r_salv_table = go_alv
-        CHANGING  t_table      = gt_display ).
+      lo_col ?= lo_columns->get_column( lv_ciname ).
 
-    CATCH cx_salv_msg INTO DATA(lx).
-      MESSAGE lx->get_text( ) TYPE 'E'.
+      "Use FIELD SYMBOL <text> (your system accepts this!)
+      lo_col->set_long_text(   <text> ).
+      lo_col->set_medium_text( <text> ).
+      lo_col->set_short_text(  <text> ).
+
+    CATCH cx_salv_not_found.
   ENDTRY.
 
-  go_columns = go_alv->get_columns( ).
-
-  " Apply FDS visibility rules
-  PERFORM set_column_visibility_by_state.
-
-  go_alv->display( ).
-
-ENDFORM.
-
-
-
-
-
-FORM set_column_visibility_by_state.
-
-  DATA(lo_col) TYPE REF TO cl_salv_column_table.
-
-  "--- 1. Hide all CI columns --------------------------
-  DO 28 TIMES.
-    DATA(lv_idx) = sy-index.
-    DATA(lv_name) = |CI{ lv_idx ALPHA = OUT }|.
-    TRANSLATE lv_name TO UPPER CASE.
-
-    TRY.
-        lo_col ?= go_columns->get_column( lv_name ).
-        lo_col->set_visible( if_salv_c_bool_sap=>false ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  ENDDO.
-
-  "--- 2. FDS mandatory visible columns ----------------
-  DATA lt_show TYPE STANDARD TABLE OF string WITH EMPTY KEY.
-
-  APPEND 'PLNNR'   TO lt_show.
-  APPEND 'PLNAL'   TO lt_show.
-  APPEND 'WERKS'   TO lt_show.
-  APPEND 'VORNR'   TO lt_show.
-  APPEND 'ARBPL_O' TO lt_show.
-  APPEND 'ARBEI'   TO lt_show.
-
-  LOOP AT lt_show INTO DATA(lv_colname).
-    TRY.
-        lo_col ?= go_columns->get_column( lv_colname ).
-        lo_col->set_visible( if_salv_c_bool_sap=>true ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  ENDLOOP.
-
-ENDFORM.
+ENDLOOP.
