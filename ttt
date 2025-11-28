@@ -1,39 +1,245 @@
-FORM display_alv.
+TABLES: sscrfields.
 
-  IF gt_display IS INITIAL.
-    MESSAGE s398(00) WITH 'No data to display'.
-    RETURN.
-  ENDIF.
+TYPE-POOLS: slis.
 
-  "-----------------------------------------------------
-  " Build Field Catalog
-  "-----------------------------------------------------
-  PERFORM build_fieldcat.
+DATA: gt_base     TYPE STANDARD TABLE OF ty_task_base,
+      gt_display  TYPE STANDARD TABLE OF ty_task_disp,
+      gt_fieldcat TYPE slis_t_fieldcat_alv,
+      gs_fieldcat TYPE slis_fieldcat_alv,
+      gs_layout   TYPE slis_layout_alv,
+      gt_events   TYPE slis_t_event,
+      gs_event    TYPE slis_alv_event,
+      gv_repid    TYPE syrepid VALUE sy-repid.
 
-  "-----------------------------------------------------
-  " ALV Layout
-  "-----------------------------------------------------
-  CLEAR gs_layout.
-  gs_layout-zebra       = abap_true.
-  gs_layout-cwidth_opt  = abap_true.
-  gs_layout-detailinit  = abap_false.     " <-- FIXED
-  gs_layout-box_fname   = 'SEL'.          " Multi-select checkbox
-  gs_layout-info_fname  = 'LINE_COLOR'.   " Row color
-  gs_layout-no_merging  = abap_true.
+"Selection states
+DATA: gv_show_char TYPE abap_bool VALUE abap_true,
+      gv_show_ltxt TYPE abap_bool VALUE abap_false.
 
-  "-----------------------------------------------------
-  " Display REUSE ALV Grid
-  "-----------------------------------------------------
-  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
-    EXPORTING
-      i_callback_program = sy-repid
-      is_layout          = gs_layout
-      it_fieldcat        = gt_fieldcat
-      i_save             = 'A'
-    TABLES
-      t_outtab           = gt_display
-    EXCEPTIONS
-      program_error      = 1
-      OTHERS             = 2.
+"CI fields
+CONSTANTS: gc_ci_count TYPE i VALUE 28.
+
+
+
+
+
+FORM build_display.
+
+  DATA: ls_base TYPE ty_task_base,
+        ls_disp TYPE ty_task_disp,
+        lv_last_vornr  TYPE vornr,
+        lv_last_plnnr  TYPE plnnr,
+        lv_last_plnal  TYPE plnal,
+        lv_last_plnty  TYPE plnty,
+        lv_last_merknr TYPE merknr.
+
+  CLEAR: gt_display.
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+
+  LOOP AT gt_base INTO ls_base.
+
+    "-------------------------------------------------------
+    " OPERATION LINE (new group)
+    "-------------------------------------------------------
+    IF ls_base-vornr <> lv_last_vornr
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
+
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+      ls_disp-row_kind = 'O'.
+      APPEND ls_disp TO gt_display.
+
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING ls_base.
+      ENDIF.
+
+      lv_last_vornr = ls_base-vornr.
+      lv_last_plnnr = ls_base-plnnr.
+      lv_last_plnal = ls_base-plnal.
+      lv_last_plnty = ls_base-plnty.
+      CLEAR lv_last_merknr.
+
+    ENDIF.
+
+    "-------------------------------------------------------
+    " CHARACTERISTICS
+    "-------------------------------------------------------
+    IF gv_show_char = abap_true
+       AND ls_base-merknr IS NOT INITIAL.
+
+      IF ls_base-merknr <> lv_last_merknr.
+
+        CLEAR ls_disp.
+        MOVE-CORRESPONDING ls_base TO ls_disp.
+        ls_disp-row_kind = 'C'.
+
+        APPEND ls_disp TO gt_display.
+
+        lv_last_merknr = ls_base-merknr.
+      ENDIF.
+
+      IF gv_show_ltxt = abap_true.
+        PERFORM append_char_longtext USING ls_base.
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
 
 ENDFORM.
+
+
+
+
+
+FORM build_fieldcat.
+
+  CLEAR gt_fieldcat.
+
+  "-----------------------------------------------------
+  " BASIC VISIBLE FIELDS (FDS ORDER)
+  "-----------------------------------------------------
+  PERFORM add_fc USING 'SEL'        'Select'.
+  PERFORM add_fc USING 'PLNNR'      'Group'.
+  PERFORM add_fc USING 'PLNAL'      'Counter'.
+  PERFORM add_fc USING 'WERKS'      'Plant'.
+  PERFORM add_fc USING 'VORNR'      'Operation'.
+  PERFORM add_fc USING 'ARBPL_O'    'Work Center'.
+  PERFORM add_fc USING 'ARBEI'      'Work'.
+  PERFORM add_fc USING 'KURZT_CHAR' 'Short Text'.
+  PERFORM add_fc USING 'PMETHODE'   'Insp Method'.
+  PERFORM add_fc USING 'MERKNR'     'Insp Number'.
+  PERFORM add_fc USING 'TDFORMAT'   'FK'.
+  PERFORM add_fc USING 'OP_LTXT'    'Op Long Text'.
+  PERFORM add_fc USING 'CHAR_LTXT'  'Char Long Text'.
+
+  "-----------------------------------------------------
+  " ADD ALL HIDDEN FIELDS FROM YOUR STRUCTURE
+  "-----------------------------------------------------
+  DATA lt_all TYPE TABLE OF string.
+  APPEND 'PLNTY' TO lt_all.
+  APPEND 'KTEXT' TO lt_all.
+  APPEND 'TPLNR' TO lt_all.
+  APPEND 'EQUNR' TO lt_all.
+  APPEND 'VERWE' TO lt_all.
+  APPEND 'VAGRP' TO lt_all.
+  APPEND 'STATU_H' TO lt_all.
+  APPEND 'ANLZU_H' TO lt_all.
+  APPEND 'STRAT' TO lt_all.
+  APPEND 'ISTRU_H' TO lt_all.
+  APPEND 'ADPSP' TO lt_all.
+  APPEND 'SLWBEZ' TO lt_all.
+  APPEND 'LOEKZ_H' TO lt_all.
+  APPEND 'ANDAT' TO lt_all.
+  APPEND 'ANNAM' TO lt_all.
+  APPEND 'AEDAT' TO lt_all.
+  APPEND 'AENAM' TO lt_all.
+
+  APPEND 'LTXA1' TO lt_all.
+  APPEND 'STEUS' TO lt_all.
+  APPEND 'WERKS_O' TO lt_all.
+  APPEND 'KTSCH' TO lt_all.
+  APPEND 'ARBEH' TO lt_all.
+  APPEND 'DAUNO' TO lt_all.
+  APPEND 'DAUNE' TO lt_all.
+  APPEND 'KALID' TO lt_all.
+  APPEND 'EXECUTION_STAGE' TO lt_all.
+  APPEND 'ANLZU_O' TO lt_all.
+  APPEND 'ISTRU_O' TO lt_all.
+  APPEND 'LARNT' TO lt_all.
+  APPEND 'EBELN' TO lt_all.
+  APPEND 'EBELP' TO lt_all.
+  APPEND 'LIFNR' TO lt_all.
+  APPEND 'PREIS' TO lt_all.
+  APPEND 'WAERS' TO lt_all.
+  APPEND 'SAKTO' TO lt_all.
+  APPEND 'EKORG' TO lt_all.
+  APPEND 'EKGRP' TO lt_all.
+  APPEND 'TXTSP_OP' TO lt_all.
+  APPEND 'LOEKZ_O' TO lt_all.
+
+  APPEND 'VERWMERKM' TO lt_all.
+  APPEND 'LTEXTKZ'   TO lt_all.
+  APPEND 'TOLERANZUN' TO lt_all.
+  APPEND 'TOLERANZOB' TO lt_all.
+  APPEND 'PRUEFEINH' TO lt_all.
+  APPEND 'STICHPRVER' TO lt_all.
+  APPEND 'KATALGART1' TO lt_all.
+  APPEND 'AUSWMENGE1' TO lt_all.
+  APPEND 'STEUERKZ' TO lt_all.
+  APPEND 'LOEKZ_C' TO lt_all.
+
+  LOOP AT lt_all INTO DATA(lv_f).
+    PERFORM add_fc_hidden USING lv_f.
+  ENDLOOP.
+
+  "-----------------------------------------------------
+  " CI FIELDS CI01–CI28
+  "-----------------------------------------------------
+  DATA lv_index TYPE i.
+  DATA lv_index_char TYPE char2.
+  DATA lv_ciname TYPE char6.
+
+  DO gc_ci_count TIMES.
+    lv_index = sy-index.
+
+    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+      EXPORTING input = lv_index
+      IMPORTING output = lv_index_char.
+
+    CONCATENATE 'CI' lv_index_char INTO lv_ciname.
+
+    PERFORM add_fc_hidden USING lv_ciname.
+  ENDDO.
+
+ENDFORM.
+
+
+
+
+
+FORM add_fc USING pv_field pv_text.
+  CLEAR gs_fieldcat.
+  gs_fieldcat-fieldname = pv_field.
+  gs_fieldcat-seltext_l = pv_text.
+  gs_fieldcat-seltext_m = pv_text.
+  gs_fieldcat-seltext_s = pv_text.
+  gs_fieldcat-col_pos   = sy-tabix.
+  APPEND gs_fieldcat TO gt_fieldcat.
+ENDFORM.
+
+
+
+
+
+FORM add_fc_hidden USING pv_field.
+  CLEAR gs_fieldcat.
+  gs_fieldcat-fieldname = pv_field.
+  gs_fieldcat-no_out    = 'X'.
+  APPEND gs_fieldcat TO gt_fieldcat.
+ENDFORM.
+
+
+
+
+
+FORM display_alv.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      i_callback_program = gv_repid
+      is_layout          = gs_layout
+      it_fieldcat        = gt_fieldcat
+    TABLES
+      t_outtab           = gt_display.
+
+ENDFORM.
+
+
+
+
+
+
+
+a
