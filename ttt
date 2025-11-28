@@ -1,17 +1,147 @@
 "--------------------------------------------------------------
-" Set CI1–CI28 column labels
+" CI fields FDS labels (manual mapping)
 "--------------------------------------------------------------
-DATA(lv_colname) TYPE string.
+TRY.
 
-DO 28 TIMES.
-  lv_colname = |CI{ sy-index }|.
-  TRANSLATE lv_colname TO UPPER CASE.
+  lo_col ?= lo_columns->get_column( 'CI1' ).
+  lo_col->set_long_text( 'Quantitative Characteristic' ).
+  lo_col->set_medium_text( 'Quantitative Char' ).
+  lo_col->set_short_text( 'Quant' ).
 
-  TRY.
-      lo_col ?= lo_columns->get_column( lv_colname ).
-      lo_col->set_short_text( lv_colname ).
-      lo_col->set_medium_text( lv_colname ).
-      lo_col->set_long_text( |CI: { lv_colname }| ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
-ENDDO.
+  lo_col ?= lo_columns->get_column( 'CI2' ).
+  lo_col->set_long_text( 'Measured Values Must Be Recorded' ).
+  lo_col->set_medium_text( 'Record Values' ).
+  lo_col->set_short_text( 'RecVal' ).
+
+  lo_col ?= lo_columns->get_column( 'CI3' ).
+  lo_col->set_long_text( 'Reference to Characteristic Attribute Required' ).
+  lo_col->set_medium_text( 'Ref Attr Req' ).
+  lo_col->set_short_text( 'RefAtt' ).
+
+  lo_col ?= lo_columns->get_column( 'CI4' ).
+  lo_col->set_long_text( 'Upper Specification Limit Indicator' ).
+  lo_col->set_medium_text( 'Upper Spec Limit' ).
+  lo_col->set_short_text( 'USL' ).
+
+  lo_col ?= lo_columns->get_column( 'CI5' ).
+  lo_col->set_long_text( 'Lower Specification Limit Indicator' ).
+  lo_col->set_medium_text( 'Lower Spec Limit' ).
+  lo_col->set_short_text( 'LSL' ).
+
+  lo_col ?= lo_columns->get_column( 'CI6' ).
+  lo_col->set_long_text( 'Check Target Value' ).
+  lo_col->set_medium_text( 'Check Target' ).
+  lo_col->set_short_text( 'Target' ).
+
+  lo_col ?= lo_columns->get_column( 'CI7' ).
+  lo_col->set_long_text( 'Inspection Scope' ).
+  lo_col->set_medium_text( 'Insp Scope' ).
+  lo_col->set_short_text( 'Scope' ).
+
+  lo_col ?= lo_columns->get_column( 'CI8' ).
+  lo_col->set_long_text( 'Long Term Inspection' ).
+  lo_col->set_medium_text( 'LT Inspection' ).
+  lo_col->set_short_text( 'LTInsp' ).
+
+  lo_col ?= lo_columns->get_column( 'CI9' ).
+  lo_col->set_long_text( 'Recording Type' ).
+  lo_col->set_medium_text( 'Rec Type' ).
+  lo_col->set_short_text( 'RecTyp' ).
+
+  lo_col ?= lo_columns->get_column( 'CI10' ).
+  lo_col->set_long_text( 'Document Required for Inspection Results' ).
+  lo_col->set_medium_text( 'Doc Required' ).
+  lo_col->set_short_text( 'DocReq' ).
+
+  lo_col ?= lo_columns->get_column( 'CI11' ).
+  lo_col->set_long_text( 'Characteristic Category' ).
+  lo_col->set_medium_text( 'Char Category' ).
+  lo_col->set_short_text( 'CharCat' ).
+
+  lo_col ?= lo_columns->get_column( 'CI12' ).
+  lo_col->set_long_text( 'Synchronization is Active' ).
+  lo_col->set_medium_text( 'Sync Active' ).
+  lo_col->set_short_text( 'Sync' ).
+
+  lo_col ?= lo_columns->get_column( 'CI13' ).
+  lo_col->set_long_text( 'Sample Quantity is Added' ).
+  lo_col->set_medium_text( 'Add Sample Qty' ).
+  lo_col->set_short_text( 'AddQty' ).
+
+  lo_col ?= lo_columns->get_column( 'CI14' ).
+  lo_col->set_long_text( 'Destructive Inspection' ).
+  lo_col->set_medium_text( 'Destructive Insp' ).
+  lo_col->set_short_text( 'DEInsp' ).
+
+  lo_col ?= lo_columns->get_column( 'CI15' ).
+  lo_col->set_long_text( 'Calculated Characteristic' ).
+  lo_col->set_medium_text( 'Calc Char' ).
+  lo_col->set_short_text( 'Calc' ).
+
+  lo_col ?= lo_columns->get_column( 'CI16' ).
+  lo_col->set_long_text( 'Sampling Procedure Required' ).
+  lo_col->set_medium_text( 'SmplProc Req' ).
+  lo_col->set_short_text( 'SPReq' ).
+
+  lo_col ?= lo_columns->get_column( 'CI17' ).
+  lo_col->set_long_text( 'Characteristic Relevant for Quality Score / Scrap' ).
+  lo_col->set_medium_text( 'Quality Score' ).
+  lo_col->set_short_text( 'QScore' ).
+
+  lo_col ?= lo_columns->get_column( 'CI18' ).
+  lo_col->set_long_text( 'Default Indicators Cannot Be Changed' ).
+  lo_col->set_medium_text( 'No Changes' ).
+  lo_col->set_short_text( 'NoChg' ).
+
+  lo_col ?= lo_columns->get_column( 'CI19' ).
+  lo_col->set_long_text( 'Recording Number of Defects' ).
+  lo_col->set_medium_text( 'Defect Count' ).
+  lo_col->set_short_text( 'DefCnt' ).
+
+  lo_col ?= lo_columns->get_column( 'CI20' ).
+  lo_col->set_long_text( 'QM Subsystem Control Characteristics' ).
+  lo_col->set_medium_text( 'QM Subsystem' ).
+  lo_col->set_short_text( 'QMSS' ).
+
+  lo_col ?= lo_columns->get_column( 'CI21' ).
+  lo_col->set_long_text( 'Specifications Can Be Changed' ).
+  lo_col->set_medium_text( 'Specs Changeable' ).
+  lo_col->set_short_text( 'SpecChg' ).
+
+  lo_col ?= lo_columns->get_column( 'CI22' ).
+  lo_col->set_long_text( 'Test Equipment Required' ).
+  lo_col->set_medium_text( 'Test Equip Req' ).
+  lo_col->set_short_text( 'TEReq' ).
+
+  lo_col ?= lo_columns->get_column( 'CI23' ).
+  lo_col->set_long_text( 'Automatic Defect Recording' ).
+  lo_col->set_medium_text( 'Auto Def Rec' ).
+  lo_col->set_short_text( 'AutoRec' ).
+
+  lo_col ?= lo_columns->get_column( 'CI24' ).
+  lo_col->set_long_text( 'Change Documents Required' ).
+  lo_col->set_medium_text( 'Change Docs' ).
+  lo_col->set_short_text( 'ChgDoc' ).
+
+  lo_col ?= lo_columns->get_column( 'CI25' ).
+  lo_col->set_long_text( 'SPC Characteristic' ).
+  lo_col->set_medium_text( 'SPC Char' ).
+  lo_col->set_short_text( 'SPC' ).
+
+  lo_col ?= lo_columns->get_column( 'CI26' ).
+  lo_col->set_long_text( 'Print Indicator' ).
+  lo_col->set_medium_text( 'Print' ).
+  lo_col->set_short_text( 'Print' ).
+
+  lo_col ?= lo_columns->get_column( 'CI27' ).
+  lo_col->set_long_text( 'Parameter Characteristic' ).
+  lo_col->set_medium_text( 'Param Char' ).
+  lo_col->set_short_text( 'Param' ).
+
+  lo_col ?= lo_columns->get_column( 'CI28' ).
+  lo_col->set_long_text( 'Process Characteristic' ).
+  lo_col->set_medium_text( 'Process Char' ).
+  lo_col->set_short_text( 'Proc' ).
+
+CATCH cx_salv_not_found.
+ENDTRY.
