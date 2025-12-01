@@ -1,16 +1,33 @@
-DO 28 TIMES.
-  lv_idx = sy-index.
+CONSTANTS gc_ci_max TYPE i VALUE 28.
 
-  "Build CI01..CI28
-  DATA(lv_name) = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
-  TRANSLATE lv_name TO UPPER CASE.
+DATA: lv_idx     TYPE i VALUE 0,
+      lv_offset  TYPE i,
+      lv_ciname  TYPE lvc_fname,
+      lv_char    TYPE char1,
+      lv_text    TYPE scrtext_l.
 
-  "Compute offset
-  DATA(lv_offset) = lv_idx - 1.
+LOOP AT lt_ci_texts INTO lv_text.
 
-  "Extract 1 character from STEUERKZ
-  DATA(lv_char) = gs_base-steuerkz+lv_offset(1).
+  lv_idx = lv_idx + 1.
 
-  "Assign to CI field
-  gs_display-(lv_name) = lv_char.
-ENDDO.
+  IF lv_idx > gc_ci_max.
+    EXIT.   " <-- stop before CI29, CI30
+  ENDIF.
+
+  lv_offset = lv_idx - 1.
+
+  lv_ciname = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
+
+  IF lv_offset >= strlen( gs_base-steuerkz ).
+    EXIT.
+  ENDIF.
+
+  lv_char = gs_base-steuerkz+lv_offset(1).
+
+  TRY.
+      gs_display-(lv_ciname) = lv_char.
+    CATCH cx_sy_assign_illegal_component.
+      EXIT.   "Field does not exist → stop loop
+  ENDTRY.
+
+ENDLOOP.
