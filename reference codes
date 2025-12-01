@@ -1,32 +1,21 @@
-DATA: lv_idx      TYPE i VALUE 0,
-      lv_offset   TYPE i,
-      lv_ciname   TYPE lvc_fname,
-      lv_char     TYPE char1,
-      lv_text     TYPE string.
+DATA lv_len TYPE i.
+lv_len = strlen( gs_base-steuerkz ).
 
-LOOP AT lt_ci_texts INTO lv_text.
-  lv_idx = lv_idx + 1.
-  IF lv_idx > 28.
-    EXIT.
+DO 28 TIMES.
+  DATA(lv_idx) = sy-index.
+  DATA(lv_offset) = lv_idx - 1.
+
+  DATA(lv_name) = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
+
+  DATA(lv_char) = ''.
+
+  IF lv_offset < lv_len.
+    lv_char = gs_base-steuerkz+lv_offset(1).   "extract correct character
   ENDIF.
 
-  " Build CI01 ... CI28
-  lv_ciname = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
-
-  " Extract from STEUERKZ (PLMK-STEIERKZ)
-  lv_offset = lv_idx - 1.
-  lv_char   = gs_base-steuerkz+lv_offset(1).
-
-  " Assign dynamically into gs_display structure
-  ASSIGN COMPONENT lv_ciname OF STRUCTURE gs_display TO FIELD-SYMBOL(<f_ci>).
-  IF sy-subrc = 0.
-    <f_ci> = lv_char.
+  ASSIGN COMPONENT lv_name OF STRUCTURE gs_display TO FIELD-SYMBOL(<fs_ci>).
+  IF <fs_ci> IS ASSIGNED.
+    <fs_ci> = lv_char.
   ENDIF.
 
-ENDLOOP.
-
-
-
-
-
-a
+ENDDO.
