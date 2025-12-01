@@ -1,23 +1,205 @@
-DATA: lv_name  TYPE c LENGTH 30,
-      lv_label TYPE c LENGTH 30.
+FORM fill_ci_fields
+  USING    pv_steuerkz TYPE plmk-steuerkz
+  CHANGING ps_disp     TYPE ty_task_disp.
 
-DO 28 TIMES.
+  ps_disp-ci1  = pv_steuerkz+0(1).
+  ps_disp-ci2  = pv_steuerkz+1(1).
+  ps_disp-ci3  = pv_steuerkz+2(1).
+  ps_disp-ci4  = pv_steuerkz+3(1).
+  ps_disp-ci5  = pv_steuerkz+4(1).
+  ps_disp-ci6  = pv_steuerkz+5(1).
+  ps_disp-ci7  = pv_steuerkz+6(1).
+  ps_disp-ci8  = pv_steuerkz+7(1).
+  ps_disp-ci9  = pv_steuerkz+8(1).
+  ps_disp-ci10 = pv_steuerkz+9(1).
+  ps_disp-ci11 = pv_steuerkz+10(1).
+  ps_disp-ci12 = pv_steuerkz+11(1).
+  ps_disp-ci13 = pv_steuerkz+12(1).
+  ps_disp-ci14 = pv_steuerkz+13(1).
+  ps_disp-ci15 = pv_steuerkz+14(1).
+  ps_disp-ci16 = pv_steuerkz+15(1).
+  ps_disp-ci17 = pv_steuerkz+16(1).
+  ps_disp-ci18 = pv_steuerkz+17(1).
+  ps_disp-ci19 = pv_steuerkz+18(1).
+  ps_disp-ci20 = pv_steuerkz+19(1).
+  ps_disp-ci21 = pv_steuerkz+20(1).
+  ps_disp-ci22 = pv_steuerkz+21(1).
+  ps_disp-ci23 = pv_steuerkz+22(1).
+  ps_disp-ci24 = pv_steuerkz+23(1).
+  ps_disp-ci25 = pv_steuerkz+24(1).
+  ps_disp-ci26 = pv_steuerkz+25(1).
+  ps_disp-ci27 = pv_steuerkz+26(1).
+  ps_disp-ci28 = pv_steuerkz+27(1).
 
-  lv_name = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
-  lv_label = lv_name.
+ENDFORM.
+
+
+
+
+
+
+
+FORM set_ci_headers USING lo_columns TYPE REF TO cl_salv_columns_table.
 
   TRY.
-      lo_col ?= lo_columns->get_column( lv_name ).
-
-      lo_col->set_short_text(  lv_label ).
-      lo_col->set_medium_text( lv_label ).
-      lo_col->set_long_text(   lv_label ).
-
-      lo_col->set_visible(   abap_true ).
-      lo_col->set_technical( abap_false ).
-
+      lo_columns->get_column( 'CI1' )->set_long_text( 'Quantitative Characteristic' ).
+      lo_columns->get_column( 'CI2' )->set_long_text( 'Measured Values Must Be Recorded' ).
+      lo_columns->get_column( 'CI3' )->set_long_text( 'Ref to Char Attribute Required' ).
+      lo_columns->get_column( 'CI4' )->set_long_text( 'Upper Specification Limit Indicator' ).
+      lo_columns->get_column( 'CI5' )->set_long_text( 'Lower Specification Limit Indicator' ).
+      lo_columns->get_column( 'CI6' )->set_long_text( 'Check Target Value' ).
+      lo_columns->get_column( 'CI7' )->set_long_text( 'Inspection Scope' ).
+      lo_columns->get_column( 'CI8' )->set_long_text( 'Long Term Inspection' ).
+      lo_columns->get_column( 'CI9' )->set_long_text( 'Recording Type' ).
+      lo_columns->get_column( 'CI10' )->set_long_text( 'Document Required' ).
+      lo_columns->get_column( 'CI11' )->set_long_text( 'Characteristic Category' ).
+      lo_columns->get_column( 'CI12' )->set_long_text( 'Sync Active' ).
+      lo_columns->get_column( 'CI13' )->set_long_text( 'Sample Qty Added' ).
+      lo_columns->get_column( 'CI14' )->set_long_text( 'Destructive Inspection' ).
+      lo_columns->get_column( 'CI15' )->set_long_text( 'Calculated Characteristic' ).
+      lo_columns->get_column( 'CI16' )->set_long_text( 'Sampling Proc Required' ).
+      lo_columns->get_column( 'CI17' )->set_long_text( 'Quality Score Relevant' ).
+      lo_columns->get_column( 'CI18' )->set_long_text( 'No Changes Allowed' ).
+      lo_columns->get_column( 'CI19' )->set_long_text( 'Record Number of Defects' ).
+      lo_columns->get_column( 'CI20' )->set_long_text( 'QM Subsystem Characteristic' ).
+      lo_columns->get_column( 'CI21' )->set_long_text( 'Specs Changeable' ).
+      lo_columns->get_column( 'CI22' )->set_long_text( 'Test Equipment Required' ).
+      lo_columns->get_column( 'CI23' )->set_long_text( 'Auto Defect Recording' ).
+      lo_columns->get_column( 'CI24' )->set_long_text( 'Change Documents Required' ).
+      lo_columns->get_column( 'CI25' )->set_long_text( 'SPC Characteristic' ).
+      lo_columns->get_column( 'CI26' )->set_long_text( 'Print Indicator' ).
+      lo_columns->get_column( 'CI27' )->set_long_text( 'Parameter Characteristic' ).
+      lo_columns->get_column( 'CI28' )->set_long_text( 'Process Characteristic' ).
     CATCH cx_salv_not_found.
-      "Ignore if column doesn't exist
   ENDTRY.
 
-ENDDO.
+ENDFORM.
+
+
+
+
+
+
+FORM set_position USING pv_colname TYPE lvc_fname
+                        pv_pos     TYPE i.
+
+  DATA lo_col TYPE REF TO cl_salv_column.
+
+  TRY.
+      lo_col ?= lo_alv->get_columns( )->get_column( pv_colname ).
+      lo_col->set_position( pv_pos ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+ENDFORM.
+
+
+
+
+
+
+
+FORM build_display.
+
+  DATA: ls_base        TYPE ty_task_base,
+        ls_disp        TYPE ty_task_disp,
+        lv_last_plnty  TYPE plnty,
+        lv_last_plnnr  TYPE plnnr,
+        lv_last_plnal  TYPE plnal,
+        lv_last_vornr  TYPE plnkn,
+        lv_last_merknr TYPE merknr,
+        ls_color       TYPE lvc_s_scol.
+
+  CLEAR: gt_display,
+         lv_last_plnty,
+         lv_last_plnnr,
+         lv_last_plnal,
+         lv_last_vornr,
+         lv_last_merknr.
+
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+
+  LOOP AT gt_base INTO ls_base.
+
+    " NEW OPERATION GROUP
+    IF ls_base-vornr <> lv_last_vornr
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
+
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+      ls_disp-row_kind = 'O'.
+
+      " Fill CI fields here
+      PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+
+      APPEND ls_disp TO gt_display.
+
+      lv_last_plnty = ls_base-plnty.
+      lv_last_plnnr = ls_base-plnnr.
+      lv_last_plnal = ls_base-plnal.
+      lv_last_vornr = ls_base-vornr.
+
+      CLEAR lv_last_merknr.
+
+    ENDIF.
+
+    " CHARACTERISTIC ROW
+    IF gv_show_char = abap_true
+    AND ls_base-merknr IS NOT INITIAL.
+
+      IF ls_base-merknr <> lv_last_merknr.
+
+        CLEAR ls_disp.
+        MOVE-CORRESPONDING ls_base TO ls_disp.
+        ls_disp-row_kind = 'C'.
+
+        " fill CI
+        PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+
+        ls_color-color-col = 6.
+        ls_color-color-int = 1.
+        APPEND ls_color TO ls_disp-line_color.
+
+        APPEND ls_disp TO gt_display.
+
+        lv_last_merknr = ls_base-merknr.
+
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+
+
+FORM set_column_visibility_by_state.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_columns = lo_alv->get_columns( ).
+
+  " ===== Hide CI1–CI28 but NOT technical =====
+  DO 28 TIMES.
+    DATA(lv_ci) = |CI{ sy-index }|.
+    TRY.
+        lo_col ?= lo_columns->get_column( lv_ci ).
+        lo_col->set_visible( abap_false ).     "Hidden in ALV
+        lo_col->set_technical( abap_false ).   "Available in Layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  ENDDO.
+
+  " rest of your show/hide logic unchanged…
+
+ENDFORM.
