@@ -1,20 +1,15 @@
 "===========================================================
-" DEBUG : Print all SALV column names (ECC-compatible)
+" DEBUG : Print all SALV column names (ECC compatible)
 "===========================================================
-DATA: lo_columns TYPE REF TO cl_salv_columns_table,
-      lt_colrefs TYPE salv_t_column_ref,
-      lo_col     TYPE REF TO cl_salv_column,
-      lv_name    TYPE lvc_fname.
 
-lo_columns = lo_alv->get_columns( ).
+DATA(lo_columns) = lo_alv->get_columns( ).
+DATA lt_cols TYPE salv_t_column.
+DATA ls_col TYPE salv_s_column.
+DATA lv_name TYPE lvc_fname.
 
-" Return internal table of column references
-lt_colrefs = lo_columns->get( ).
+lt_cols = lo_columns->get( ).
 
-LOOP AT lt_colrefs INTO lo_col.
-  TRY.
-      lv_name = lo_col->get_columnname( ).
-      WRITE: / lv_name.
-    CATCH cx_salv_not_found.
-  ENDTRY.
+LOOP AT lt_cols INTO ls_col.
+  lv_name = ls_col-columnname.
+  WRITE: / lv_name.
 ENDLOOP.
