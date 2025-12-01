@@ -1,10 +1,12 @@
 "===========================================================
-" DEBUG : Print all SALV column names (ECC compatible)
+" DEBUG: Print all SALV column names (Old ECC compatible)
 "===========================================================
 
 DATA(lo_columns) = lo_alv->get_columns( ).
-DATA lt_cols TYPE salv_t_column.
-DATA ls_col TYPE salv_s_column.
+
+" Use class-based type definitions
+DATA lt_cols TYPE cl_salv_columns_table=>t_columns.
+DATA ls_col  TYPE cl_salv_columns_table=>s_column.
 DATA lv_name TYPE lvc_fname.
 
 lt_cols = lo_columns->get( ).
