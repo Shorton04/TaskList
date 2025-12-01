@@ -1,16 +1,23 @@
-DATA: lv_name  TYPE lvc_fname,
-      lv_label TYPE string.
+DATA: lv_name  TYPE c LENGTH 30,
+      lv_label TYPE c LENGTH 30.
 
 DO 28 TIMES.
-  lv_name  = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+
+  lv_name = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
   lv_label = lv_name.
 
   TRY.
       lo_col ?= lo_columns->get_column( lv_name ).
-      lo_col->set_short_text( lv_label ).
+
+      lo_col->set_short_text(  lv_label ).
       lo_col->set_medium_text( lv_label ).
-      lo_col->set_long_text( lv_label ).
-      lo_col->set_visible( abap_true ).
+      lo_col->set_long_text(   lv_label ).
+
+      lo_col->set_visible(   abap_true ).
+      lo_col->set_technical( abap_false ).
+
     CATCH cx_salv_not_found.
+      "Ignore if column doesn't exist
   ENDTRY.
+
 ENDDO.
