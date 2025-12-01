@@ -1,22 +1,26 @@
 "===========================================================
-" DEBUG: Print all SALV column names (correct for your SAP version)
+" DEBUG: List ALL SALV column names (old SALV compatible)
 "===========================================================
-DATA(lo_columns) = lo_alv->get_columns( ).
+DATA: lo_columns TYPE REF TO cl_salv_columns_table,
+      lo_col     TYPE REF TO cl_salv_column,
+      lt_names   TYPE STANDARD TABLE OF lvc_fname,
+      lv_name    TYPE lvc_fname.
 
-" Your system uses salv_t_column (VALUE type, not reference)
-DATA lt_cols TYPE salv_t_column.
-DATA lo_col TYPE REF TO cl_salv_column.
+lo_columns = lo_alv->get_columns( ).
 
-lt_cols = lo_columns->get( ).  " returns VALUE objects
+CLEAR lt_names.
 
-LOOP AT lt_cols INTO DATA(ls_col).   " ls_col is VALUE (not reference)
+" Try reading column names using index 1..200
+DO 200 TIMES.
+  TRY.
+      lv_name = lo_columns->get_column( sy-index )->get_columnname( ).
+      INSERT lv_name INTO TABLE lt_names.
+    CATCH cx_salv_not_found.
+      EXIT. " stop when a column index does not exist
+  ENDTRY.
+ENDDO.
 
-  " convert VALUE → REFERENCE automatically through constructor
-  CREATE OBJECT lo_col
-    TYPE cl_salv_column
-    EXPORTING
-      columnname = ls_col-columnname.
-
-  WRITE: / ls_col-columnname.
-
+" Print out the discovered column names
+LOOP AT lt_names INTO lv_name.
+  WRITE: / lv_name.
 ENDLOOP.
