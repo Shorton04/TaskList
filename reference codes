@@ -1,59 +1,8 @@
-FORM set_ci_headers.
+DATA(lo_cols) = lo_alv->get_columns( ).
+DATA(lo_col)  TYPE REF TO cl_salv_column.
+DATA(name)    TYPE lvc_fname.
 
-  DATA: lo_columns TYPE REF TO cl_salv_columns_table,
-        lo_col     TYPE REF TO cl_salv_column_table.
-
-  TRY.
-      lo_columns = lo_alv->get_columns( ).
-    CATCH cx_salv_msg.
-      RETURN.
-  ENDTRY.
-
-  "----------------------------------------------
-  " Helper: convert literal text safely (CHAR40)
-  "----------------------------------------------
-  DEFINE set_hdr.
-    TRY.
-        lo_col ?= lo_columns->get_column( &1 ).
-
-        lo_col->set_short_text(  CONV #( &2 ) ). "CHAR10/20/40 all accepted
-        lo_col->set_medium_text( CONV #( &2 ) ).
-        lo_col->set_long_text(   CONV #( &2 ) ).
-
-      CATCH cx_salv_not_found.
-    ENDTRY.
-  END-OF-DEFINITION.
-
-  "----------------------------------------------
-  " CI01 – CI28 Headers
-  "----------------------------------------------
-  set_hdr 'CI1'  'Quantitative Char'.
-  set_hdr 'CI2'  'Record Values'.
-  set_hdr 'CI3'  'Ref Char Required'.
-  set_hdr 'CI4'  'Upper Spec Limit'.
-  set_hdr 'CI5'  'Lower Spec Limit'.
-  set_hdr 'CI6'  'Check Target'.
-  set_hdr 'CI7'  'Inspection Scope'.
-  set_hdr 'CI8'  'Long Term Insp'.
-  set_hdr 'CI9'  'Recording Type'.
-  set_hdr 'CI10' 'Document Required'.
-  set_hdr 'CI11' 'Characteristic Cat'.
-  set_hdr 'CI12' 'Sync Active'.
-  set_hdr 'CI13' 'Sample Qty Add'.
-  set_hdr 'CI14' 'Destructive Insp'.
-  set_hdr 'CI15' 'Calculated Char'.
-  set_hdr 'CI16' 'Sampling Proc Req'.
-  set_hdr 'CI17' 'Quality Score Rel'.
-  set_hdr 'CI18' 'No Changes Allowed'.
-  set_hdr 'CI19' 'Defects Count'.
-  set_hdr 'CI20' 'QM Subsystem Char'.
-  set_hdr 'CI21' 'Specs Changeable'.
-  set_hdr 'CI22' 'Test Equip Req'.
-  set_hdr 'CI23' 'Auto Defect Rec'.
-  set_hdr 'CI24' 'Change Docs Req'.
-  set_hdr 'CI25' 'SPC Characteristic'.
-  set_hdr 'CI26' 'Print Indicator'.
-  set_hdr 'CI27' 'Parameter Char'.
-  set_hdr 'CI28' 'Process Char'.
-
-ENDFORM.
+LOOP AT lo_cols->get( ) INTO lo_col.
+  name = lo_col->get_columnname( ).
+  WRITE: / name.
+ENDLOOP.
