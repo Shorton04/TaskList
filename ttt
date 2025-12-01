@@ -1,9 +1,9 @@
 *&---------------------------------------------------------------------*
-*& Report ZTEST_123
+*& Report ZTEST_VT
 *&---------------------------------------------------------------------*
 *&
 *&---------------------------------------------------------------------*
-REPORT ZTEST_123.
+REPORT ZTEST_VT.
 
 *----------------------------------------------------------------------
 * TYPES & DATA DECLARATIONS
@@ -22,7 +22,19 @@ DATA: lt_ci_texts TYPE STANDARD TABLE OF string WITH EMPTY KEY,
       ls_ci       TYPE ty_ci,
       lv_idx      TYPE i VALUE 0,
       lv_offset   TYPE i,
-      lv_steuerkz TYPE char28 VALUE 'XXXXXXXXXXXXXXXXXXXXXXXXXXXX'. "Sample data
+      lv_steuerkz TYPE char28.
+
+*----------------------------------------------------------------------
+* Fetch PLMK-STEUERKZ from database for PLNNR = 200021
+*----------------------------------------------------------------------
+SELECT SINGLE steuerkz
+  INTO lv_steuerkz
+  FROM plmk
+  WHERE plnnr = '00200021'.
+
+IF sy-subrc <> 0.
+  MESSAGE 'No data found for PLNNR = 200021' TYPE 'E'.
+ENDIF.
 
 *----------------------------------------------------------------------
 * Populate characteristic descriptions
@@ -63,7 +75,6 @@ LOOP AT lt_ci_texts ASSIGNING FIELD-SYMBOL(<text>).
   lv_idx = lv_idx + 1.
   lv_offset = lv_idx - 1.
 
-  " CI name with zero padding
   ls_ci-ci_name       = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
   ls_ci-description   = <text>.
   ls_ci-char_position = lv_idx.
