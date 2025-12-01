@@ -3,101 +3,136 @@
 *&---------------------------------------------------------------------*
 *&
 *&---------------------------------------------------------------------*
-REPORT ZTEST_VT.
+REPORT ztest_vt.
 
 *----------------------------------------------------------------------
 * TYPES & DATA DECLARATIONS
 *----------------------------------------------------------------------
 TYPES: BEGIN OF ty_ci,
-         ci_name        TYPE char4,
-         description    TYPE string,
-         char_position  TYPE i,
-         data_element   TYPE string,
-         extracted_val  TYPE char1,
-         possible_vals  TYPE string,
+         ci01 TYPE char1,
+         ci02 TYPE char1,
+         ci03 TYPE char1,
+         ci04 TYPE char1,
+         ci05 TYPE char1,
+         ci06 TYPE char1,
+         ci07 TYPE char1,
+         ci08 TYPE char1,
+         ci09 TYPE char1,
+         ci10 TYPE char1,
+         ci11 TYPE char1,
+         ci12 TYPE char1,
+         ci13 TYPE char1,
+         ci14 TYPE char1,
+         ci15 TYPE char1,
+         ci16 TYPE char1,
+         ci17 TYPE char1,
+         ci18 TYPE char1,
+         ci19 TYPE char1,
+         ci20 TYPE char1,
+         ci21 TYPE char1,
+         ci22 TYPE char1,
+         ci23 TYPE char1,
+         ci24 TYPE char1,
+         ci25 TYPE char1,
+         ci26 TYPE char1,
+         ci27 TYPE char1,
+         ci28 TYPE char1,
        END OF ty_ci.
 
-DATA: lt_ci_texts TYPE STANDARD TABLE OF string WITH EMPTY KEY,
-      lt_ci       TYPE STANDARD TABLE OF ty_ci,
-      ls_ci       TYPE ty_ci,
-      lv_idx      TYPE i VALUE 0,
-      lv_offset   TYPE i,
-      lv_steuerkz TYPE char28.
+DATA: lt_ci TYPE STANDARD TABLE OF ty_ci,
+      ls_ci TYPE ty_ci,
+      lv_steuerkz TYPE char28,
+      lv_plnnr TYPE plmk-plnnr VALUE '00200021'.
 
 *----------------------------------------------------------------------
-* Fetch PLMK-STEUERKZ from database for PLNNR = 200021
+* Fetch PLMK-STEUERKZ from database
 *----------------------------------------------------------------------
 SELECT SINGLE steuerkz
   INTO lv_steuerkz
   FROM plmk
-  WHERE plnnr = '00200021'.
+  WHERE plnnr = lv_plnnr.
 
 IF sy-subrc <> 0.
-  MESSAGE 'No data found for PLNNR = 200021' TYPE 'E'.
+  MESSAGE 'No data found for PLNNR = 00200021' TYPE 'E'.
 ENDIF.
 
 *----------------------------------------------------------------------
-* Populate characteristic descriptions
+* Split characters into columns
 *----------------------------------------------------------------------
-APPEND 'Quantitative Characteristic'           TO lt_ci_texts.
-APPEND 'Measured Values Must Be Recorded'      TO lt_ci_texts.
-APPEND 'Ref to Char Attribute Required'        TO lt_ci_texts.
-APPEND 'Upper Specification Limit Indicator'   TO lt_ci_texts.
-APPEND 'Lower Specification Limit Indicator'   TO lt_ci_texts.
-APPEND 'Check Target Value'                    TO lt_ci_texts.
-APPEND 'Inspection Scope'                      TO lt_ci_texts.
-APPEND 'Long Term Inspection'                  TO lt_ci_texts.
-APPEND 'Recording Type'                        TO lt_ci_texts.
-APPEND 'Document Required'                     TO lt_ci_texts.
-APPEND 'Characteristic Category'               TO lt_ci_texts.
-APPEND 'Sync Active'                           TO lt_ci_texts.
-APPEND 'Sample Qty Added'                      TO lt_ci_texts.
-APPEND 'Destructive Inspection'                TO lt_ci_texts.
-APPEND 'Calculated Characteristic'             TO lt_ci_texts.
-APPEND 'Sampling Proc Required'                TO lt_ci_texts.
-APPEND 'Quality Score Relevant'                TO lt_ci_texts.
-APPEND 'No Changes Allowed'                    TO lt_ci_texts.
-APPEND 'Record Number of Defects'              TO lt_ci_texts.
-APPEND 'QM Subsystem Characteristic'           TO lt_ci_texts.
-APPEND 'Specs Changeable'                      TO lt_ci_texts.
-APPEND 'Test Equipment Required'               TO lt_ci_texts.
-APPEND 'Auto Defect Recording'                 TO lt_ci_texts.
-APPEND 'Change Documents Required'             TO lt_ci_texts.
-APPEND 'SPC Characteristic'                    TO lt_ci_texts.
-APPEND 'Print Indicator'                       TO lt_ci_texts.
-APPEND 'Parameter Characteristic'              TO lt_ci_texts.
-APPEND 'Process Characteristic'                TO lt_ci_texts.
+ls_ci-ci01 = lv_steuerkz+0(1).
+ls_ci-ci02 = lv_steuerkz+1(1).
+ls_ci-ci03 = lv_steuerkz+2(1).
+ls_ci-ci04 = lv_steuerkz+3(1).
+ls_ci-ci05 = lv_steuerkz+4(1).
+ls_ci-ci06 = lv_steuerkz+5(1).
+ls_ci-ci07 = lv_steuerkz+6(1).
+ls_ci-ci08 = lv_steuerkz+7(1).
+ls_ci-ci09 = lv_steuerkz+8(1).
+ls_ci-ci10 = lv_steuerkz+9(1).
+ls_ci-ci11 = lv_steuerkz+10(1).
+ls_ci-ci12 = lv_steuerkz+11(1).
+ls_ci-ci13 = lv_steuerkz+12(1).
+ls_ci-ci14 = lv_steuerkz+13(1).
+ls_ci-ci15 = lv_steuerkz+14(1).
+ls_ci-ci16 = lv_steuerkz+15(1).
+ls_ci-ci17 = lv_steuerkz+16(1).
+ls_ci-ci18 = lv_steuerkz+17(1).
+ls_ci-ci19 = lv_steuerkz+18(1).
+ls_ci-ci20 = lv_steuerkz+19(1).
+ls_ci-ci21 = lv_steuerkz+20(1).
+ls_ci-ci22 = lv_steuerkz+21(1).
+ls_ci-ci23 = lv_steuerkz+22(1).
+ls_ci-ci24 = lv_steuerkz+23(1).
+ls_ci-ci25 = lv_steuerkz+24(1).
+ls_ci-ci26 = lv_steuerkz+25(1).
+ls_ci-ci27 = lv_steuerkz+26(1).
+ls_ci-ci28 = lv_steuerkz+27(1).
 
-*----------------------------------------------------------------------
-* Build mapping table
-*----------------------------------------------------------------------
-LOOP AT lt_ci_texts ASSIGNING FIELD-SYMBOL(<text>).
-  lv_idx = lv_idx + 1.
-  lv_offset = lv_idx - 1.
-
-  ls_ci-ci_name       = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
-  ls_ci-description   = <text>.
-  ls_ci-char_position = lv_idx.
-  ls_ci-data_element  = 'PLMK-STEUERKZ'.
-
-  " Extract character from PLMK-STEUERKZ
-  ls_ci-extracted_val = lv_steuerkz+lv_offset(1).
-
-  " Possible values (customize per position if needed)
-  ls_ci-possible_vals = 'X = Yes, blank = No'.
-
-  APPEND ls_ci TO lt_ci.
-ENDLOOP.
+APPEND ls_ci TO lt_ci.
 
 *----------------------------------------------------------------------
-* Display in ALV
+* Display in ALV with custom column headers
 *----------------------------------------------------------------------
-DATA: lo_alv TYPE REF TO cl_salv_table.
+DATA: lo_alv TYPE REF TO cl_salv_table,
+      lo_cols TYPE REF TO cl_salv_columns_table,
+      lo_col  TYPE REF TO cl_salv_column.
 
 TRY.
     cl_salv_table=>factory(
       IMPORTING r_salv_table = lo_alv
       CHANGING  t_table      = lt_ci ).
+
+    lo_cols = lo_alv->get_columns( ).
+
+    " Set descriptive column headers
+    lo_cols->get_column( 'CI01' )->set_long_text( 'Quantitative Characteristic' ).
+    lo_cols->get_column( 'CI02' )->set_long_text( 'Measured Values Must Be Recorded' ).
+    lo_cols->get_column( 'CI03' )->set_long_text( 'Ref to Char Attribute Required' ).
+    lo_cols->get_column( 'CI04' )->set_long_text( 'Upper Specification Limit Indicator' ).
+    lo_cols->get_column( 'CI05' )->set_long_text( 'Lower Specification Limit Indicator' ).
+    lo_cols->get_column( 'CI06' )->set_long_text( 'Check Target Value' ).
+    lo_cols->get_column( 'CI07' )->set_long_text( 'Inspection Scope' ).
+    lo_cols->get_column( 'CI08' )->set_long_text( 'Long Term Inspection' ).
+    lo_cols->get_column( 'CI09' )->set_long_text( 'Recording Type' ).
+    lo_cols->get_column( 'CI10' )->set_long_text( 'Document Required' ).
+    lo_cols->get_column( 'CI11' )->set_long_text( 'Characteristic Category' ).
+    lo_cols->get_column( 'CI12' )->set_long_text( 'Sync Active' ).
+    lo_cols->get_column( 'CI13' )->set_long_text( 'Sample Qty Added' ).
+    lo_cols->get_column( 'CI14' )->set_long_text( 'Destructive Inspection' ).
+    lo_cols->get_column( 'CI15' )->set_long_text( 'Calculated Characteristic' ).
+    lo_cols->get_column( 'CI16' )->set_long_text( 'Sampling Proc Required' ).
+    lo_cols->get_column( 'CI17' )->set_long_text( 'Quality Score Relevant' ).
+    lo_cols->get_column( 'CI18' )->set_long_text( 'No Changes Allowed' ).
+    lo_cols->get_column( 'CI19' )->set_long_text( 'Record Number of Defects' ).
+    lo_cols->get_column( 'CI20' )->set_long_text( 'QM Subsystem Characteristic' ).
+    lo_cols->get_column( 'CI21' )->set_long_text( 'Specs Changeable' ).
+    lo_cols->get_column( 'CI22' )->set_long_text( 'Test Equipment Required' ).
+    lo_cols->get_column( 'CI23' )->set_long_text( 'Auto Defect Recording' ).
+    lo_cols->get_column( 'CI24' )->set_long_text( 'Change Documents Required' ).
+    lo_cols->get_column( 'CI25' )->set_long_text( 'SPC Characteristic' ).
+    lo_cols->get_column( 'CI26' )->set_long_text( 'Print Indicator' ).
+    lo_cols->get_column( 'CI27' )->set_long_text( 'Parameter Characteristic' ).
+    lo_cols->get_column( 'CI28' )->set_long_text( 'Process Characteristic' ).
 
     lo_alv->display( ).
   CATCH cx_salv_msg INTO DATA(lx_msg).
