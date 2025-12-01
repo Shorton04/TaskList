@@ -1,14 +1,22 @@
 "===========================================================
-" DEBUG: Print all SALV column names (your system-compatible)
+" DEBUG: Print all SALV column names (correct for your SAP version)
 "===========================================================
 DATA(lo_columns) = lo_alv->get_columns( ).
 
-DATA lt_cols TYPE salv_t_column_ref.
-DATA lo_col  TYPE REF TO cl_salv_column.
+" Your system uses salv_t_column (VALUE type, not reference)
+DATA lt_cols TYPE salv_t_column.
+DATA lo_col TYPE REF TO cl_salv_column.
 
-lt_cols = lo_columns->get( ).
+lt_cols = lo_columns->get( ).  " returns VALUE objects
 
-LOOP AT lt_cols INTO DATA(lo_col_table).
-  lo_col ?= lo_col_table.
-  WRITE: / lo_col->get_columnname( ).
+LOOP AT lt_cols INTO DATA(ls_col).   " ls_col is VALUE (not reference)
+
+  " convert VALUE → REFERENCE automatically through constructor
+  CREATE OBJECT lo_col
+    TYPE cl_salv_column
+    EXPORTING
+      columnname = ls_col-columnname.
+
+  WRITE: / ls_col-columnname.
+
 ENDLOOP.
