@@ -1,8 +1,11 @@
-DATA(lo_cols) = lo_alv->get_columns( ).
-DATA(lo_col)  TYPE REF TO cl_salv_column.
-DATA(name)    TYPE lvc_fname.
+"===========================================================
+" DEBUG: Print all SALV column names
+"===========================================================
+DATA(lo_columns) = lo_alv->get_columns( ).
+DATA(lt_names)   = lo_columns->get_column_names( ).
+DATA(lv_name)    TYPE lvc_fname.
 
-LOOP AT lo_cols->get( ) INTO lo_col.
-  name = lo_col->get_columnname( ).
-  WRITE: / name.
+LOOP AT lt_names INTO lv_name.
+  WRITE: / lv_name.
 ENDLOOP.
+"===========================================================
