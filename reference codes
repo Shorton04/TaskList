@@ -1,26 +1,20 @@
 "===========================================================
-" DEBUG: List ALL SALV column names (old SALV compatible)
+" DEBUG : Print all SALV column names (ECC-compatible)
 "===========================================================
 DATA: lo_columns TYPE REF TO cl_salv_columns_table,
+      lt_colrefs TYPE salv_t_column_ref,
       lo_col     TYPE REF TO cl_salv_column,
-      lt_names   TYPE STANDARD TABLE OF lvc_fname,
       lv_name    TYPE lvc_fname.
 
 lo_columns = lo_alv->get_columns( ).
 
-CLEAR lt_names.
+" Return internal table of column references
+lt_colrefs = lo_columns->get( ).
 
-" Try reading column names using index 1..200
-DO 200 TIMES.
+LOOP AT lt_colrefs INTO lo_col.
   TRY.
-      lv_name = lo_columns->get_column( sy-index )->get_columnname( ).
-      INSERT lv_name INTO TABLE lt_names.
+      lv_name = lo_col->get_columnname( ).
+      WRITE: / lv_name.
     CATCH cx_salv_not_found.
-      EXIT. " stop when a column index does not exist
   ENDTRY.
-ENDDO.
-
-" Print out the discovered column names
-LOOP AT lt_names INTO lv_name.
-  WRITE: / lv_name.
 ENDLOOP.
