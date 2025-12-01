@@ -1,22 +1,21 @@
 "===========================================================
-" DEBUG: Print all SALV column names (oldest ECC-compatible)
+" DEBUG: Print SALV column names (old SALV structure version)
 "===========================================================
 
-DATA(lo_columns) = lo_alv->get_columns( ).
+DATA: lo_columns TYPE REF TO cl_salv_columns,
+      lt_cols    TYPE STANDARD TABLE OF salv_s_column,
+      ls_col     TYPE salv_s_column,
+      lv_name    TYPE lvc_fname.
 
-" internal table of object references (REF TO cl_salv_column)
-DATA: lt_cols TYPE STANDARD TABLE OF REF TO cl_salv_column,
-      lo_col  TYPE REF TO cl_salv_column,
-      lv_name TYPE lvc_fname.
+lo_columns = lo_alv->get_columns( ).
 
-" get internal column list
+" get internal SALV column structure table
 lt_cols = lo_columns->get( ).
 
-LOOP AT lt_cols INTO lo_col.
+LOOP AT lt_cols INTO ls_col.
   TRY.
-      lv_name = lo_col->get_columnname( ).
+      lv_name = ls_col-columnname.
       WRITE: / lv_name.
     CATCH cx_salv_not_found.
-      CONTINUE.
   ENDTRY.
 ENDLOOP.
