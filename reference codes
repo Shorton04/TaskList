@@ -1,10 +1,14 @@
 "===========================================================
-" DEBUG: Print all SALV column names (universal-compatible)
+" DEBUG: Print all SALV column names (your system-compatible)
 "===========================================================
 DATA(lo_columns) = lo_alv->get_columns( ).
-DATA(lo_col_ref) TYPE REF TO cl_salv_column.
 
-LOOP AT lo_columns->get( ) INTO lo_col_ref.
-  WRITE: / lo_col_ref->get_columnname( ).
+DATA lt_cols TYPE salv_t_column_ref.
+DATA lo_col  TYPE REF TO cl_salv_column.
+
+lt_cols = lo_columns->get( ).
+
+LOOP AT lt_cols INTO DATA(lo_col_table).
+  lo_col ?= lo_col_table.
+  WRITE: / lo_col->get_columnname( ).
 ENDLOOP.
-"===========================================================
