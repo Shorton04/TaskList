@@ -1,33 +1,32 @@
-CONSTANTS gc_ci_max TYPE i VALUE 28.
-
-DATA: lv_idx     TYPE i VALUE 0,
-      lv_offset  TYPE i,
-      lv_ciname  TYPE lvc_fname,
-      lv_char    TYPE char1,
-      lv_text    TYPE scrtext_l.
+DATA: lv_idx      TYPE i VALUE 0,
+      lv_offset   TYPE i,
+      lv_ciname   TYPE lvc_fname,
+      lv_char     TYPE char1,
+      lv_text     TYPE string.
 
 LOOP AT lt_ci_texts INTO lv_text.
-
   lv_idx = lv_idx + 1.
-
-  IF lv_idx > gc_ci_max.
-    EXIT.   " <-- stop before CI29, CI30
-  ENDIF.
-
-  lv_offset = lv_idx - 1.
-
-  lv_ciname = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
-
-  IF lv_offset >= strlen( gs_base-steuerkz ).
+  IF lv_idx > 28.
     EXIT.
   ENDIF.
 
-  lv_char = gs_base-steuerkz+lv_offset(1).
+  " Build CI01 ... CI28
+  lv_ciname = |CI{ lv_idx WIDTH = 2 PAD = '0' }|.
 
-  TRY.
-      gs_display-(lv_ciname) = lv_char.
-    CATCH cx_sy_assign_illegal_component.
-      EXIT.   "Field does not exist → stop loop
-  ENDTRY.
+  " Extract from STEUERKZ (PLMK-STEIERKZ)
+  lv_offset = lv_idx - 1.
+  lv_char   = gs_base-steuerkz+lv_offset(1).
+
+  " Assign dynamically into gs_display structure
+  ASSIGN COMPONENT lv_ciname OF STRUCTURE gs_display TO FIELD-SYMBOL(<f_ci>).
+  IF sy-subrc = 0.
+    <f_ci> = lv_char.
+  ENDIF.
 
 ENDLOOP.
+
+
+
+
+
+a
