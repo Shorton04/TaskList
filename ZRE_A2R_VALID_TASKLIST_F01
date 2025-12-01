@@ -640,80 +640,85 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 FORM build_display.
 
-  CLEAR gt_display.
+  DATA: ls_base        TYPE ty_task_base,
+        ls_disp        TYPE ty_task_disp,
+        lv_last_plnty  TYPE plnty,
+        lv_last_plnnr  TYPE plnnr,
+        lv_last_plnal  TYPE plnal,
+        lv_last_vornr  TYPE plnkn,
+        lv_last_merknr TYPE merknr,
+        ls_color       TYPE lvc_s_scol,
+        lv_indent      TYPE string.
 
-  DATA: lv_index      TYPE i,
-        lv_index_char TYPE char2,
-        lv_ciname     TYPE lvc_fname,
-        lv_char       TYPE c.
+  CLEAR: gt_display,
+         lv_last_plnty,
+         lv_last_plnnr,
+         lv_last_plnal,
+         lv_last_vornr,
+         lv_last_merknr.
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
 
-  LOOP AT gt_base INTO gs_base.
+  gs_display-sel = ''.
 
-    CLEAR gs_display.
-    MOVE-CORRESPONDING gs_base TO gs_display.
+  LOOP AT gt_base INTO ls_base.
 
-    "-----------------------------------------------------------------
-    " 1. CI1–CI28 (from PLMK-STEUERKZ)
-    "-----------------------------------------------------------------
-    lv_index = 0.
+    "—————————————————————————————
+    " NEW OPERATION GROUP
+    "—————————————————————————————
+    IF ls_base-vornr <> lv_last_vornr
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
 
-DO 28 TIMES.
-  lv_index = lv_index + 1.
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+      ls_disp-row_kind = 'O'.
 
-  "Manually zero-pad 1 → '01', 2 → '02', ... 10 → '10'
-  lv_index_char = lv_index.
+      APPEND ls_disp TO gt_display.
 
-  IF lv_index < 10.
-    lv_index_char = |0{ lv_index }|.
-  ELSE.
-    lv_index_char = |{ lv_index }|.
-  ENDIF.
+      "Operation long text only if CHAR OFF and LTXT ON
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING ls_base.
+      ENDIF.
 
-  "Build CI01..CI28
-  CONCATENATE 'CI' lv_index_char INTO lv_ciname.
+      "Reset last characteristic
+      CLEAR lv_last_merknr.
 
-  "Extract 1 char from STEUERKZ
-  lv_char = gs_base-steuerkz+lv_index(1).
+      "Track operation grouping keys
+      lv_last_plnty = ls_base-plnty.
+      lv_last_plnnr = ls_base-plnnr.
+      lv_last_plnal = ls_base-plnal.
+      lv_last_vornr = ls_base-vornr.
 
-  "Place into CI column
-  gs_display-(lv_ciname) = lv_char.
-
-ENDDO.
-
-
-    "-----------------------------------------------------------------
-    " 2. Operation row
-    "-----------------------------------------------------------------
-    gs_display-row_kind = 'O'.
-    APPEND gs_display TO gt_display.
-
-    " If long text is ON and characteristics OFF → add op text
-    IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
-      PERFORM append_op_longtext USING gs_base.
     ENDIF.
 
 
-    "-----------------------------------------------------------------
-    " 3. Characteristics
-    "-----------------------------------------------------------------
-    IF gv_show_char = abap_true AND gs_base-merknr IS NOT INITIAL.
+    "—————————————————————————————
+    " CHARACTERISTICS
+    "—————————————————————————————
+    IF gv_show_char = gc_true
+   AND ls_base-merknr IS NOT INITIAL.
 
-      CLEAR gs_display.
-      MOVE-CORRESPONDING gs_base TO gs_display.
-      gs_display-row_kind = 'C'.
+      IF ls_base-merknr <> lv_last_merknr.
 
-      " Color for characteristics (blue)
-      DATA ls_color TYPE lvc_s_scol.
-      CLEAR ls_color.
-      ls_color-color-col = 6.
-      ls_color-color-int = 1.
-      APPEND ls_color TO gs_display-line_color.
+        CLEAR ls_disp.
+        MOVE-CORRESPONDING ls_base TO ls_disp.
+        ls_disp-row_kind = 'C'.
 
-      APPEND gs_display TO gt_display.
 
-      " Long text for characteristic
-      IF gv_show_ltxt = abap_true.
-        PERFORM append_char_longtext USING gs_base.
+        CLEAR ls_color.
+        ls_color-color-col = 6.
+        ls_color-color-int = 1.
+        APPEND ls_color TO ls_disp-line_color.
+
+        APPEND ls_disp TO gt_display.
+
+        lv_last_merknr = ls_base-merknr.
+
+      ENDIF.
+
+      IF gv_show_ltxt = gc_true.
+        PERFORM append_char_longtext USING ls_base.
       ENDIF.
 
     ENDIF.
@@ -721,8 +726,6 @@ ENDDO.
   ENDLOOP.
 
 ENDFORM.
-
-
 
 
 
@@ -822,25 +825,51 @@ FORM display_alv.
       CATCH cx_salv_not_found cx_salv_data_error.
     ENDTRY.
 
+    "==================================================
+    " Enable layout saving
+    "==================================================
     lo_layout = lo_alv->get_layout( ).
-    DATA ls_key TYPE salv_s_layout_key.
-    ls_key-report = sy-repid.
+    DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
     lo_layout->set_key( ls_key ).
     lo_layout->set_default( abap_true ).
     lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
 
+    "==================================================
+    " Enable toolbar buttons
+    "==================================================
     lo_funcs = lo_alv->get_functions( ).
     lo_funcs->set_all( abap_true ).
 
-    lo_sel = lo_alv->get_selections( ).
+    "==================================================
+    " Enable MULTIPLE selection (old SALV)
+    "==================================================
+    DATA(lo_sel) = lo_alv->get_selections( ).
     lo_sel->set_selection_mode( if_salv_c_selection_mode=>multiple ).
 
+    "==================================================
+    " Make SEL a clickable checkbox
+    "==================================================
+    TRY.
+        DATA(lo_col) = lo_columns->get_column( 'SEL' ).
+        lo_col->set_short_text( ' ' ).
+        lo_col->set_medium_text( 'Select' ).
+        lo_col->set_long_text( 'Select' ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+
+    "==================================================
+    " Register hotspot click + button events
+    "==================================================
     lo_events = lo_alv->get_event( ).
+
     SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+    SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
 
   ELSE.
     lo_alv->refresh( ).
   ENDIF.
+
+  PERFORM set_position USING 'SEL' 1.
 
   PERFORM set_column_visibility_by_state.
   PERFORM set_pfstatus_from_state.
@@ -848,85 +877,6 @@ FORM display_alv.
   lo_alv->display( ).
 
 ENDFORM.
-
-
-
-FORM build_fieldcat.
-
-  CLEAR gt_fieldcat.
-
-  DATA: ls_fieldcat TYPE slis_fieldcat_alv,
-        lv_fname    TYPE fieldname.
-
-  "-------------------------------------------------------
-  " LOOP OVER ALL FIELDS OF TY_TASK_DISP
-  " (this guarantees gt_fieldcat is always populated)
-  "-------------------------------------------------------
-  LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp>) FROM 1 TO 1.
-
-    LOOP AT SCREEN.
-      "Ignore screen loop
-    ENDLOOP.
-
-  ENDLOOP.
-
-  "-------------------------------------------------------
-  " Use RTTS to read structure definition automatically
-  "-------------------------------------------------------
-  DATA: lr_descr TYPE REF TO cl_abap_structdescr,
-        lt_comp  TYPE STANDARD TABLE OF abap_compdescr,
-        ls_comp  TYPE abap_compdescr.
-
-  lr_descr ?= cl_abap_typedescr=>describe_by_data( gt_display ).
-  lt_comp = lr_descr->components.
-
-  LOOP AT lt_comp INTO ls_comp.
-
-    CLEAR ls_fieldcat.
-
-    ls_fieldcat-fieldname = ls_comp-name.
-    ls_fieldcat-seltext_l   = ls_comp-name.
-    ls_fieldcat-seltext_l = ls_comp-name.
-    ls_fieldcat-seltext_m = ls_comp-name.
-    ls_fieldcat-seltext_s = ls_comp-name.
-
-    "Hide CI fields by default
-    IF ls_comp-name CP 'CI*'.
-      ls_fieldcat-no_out = abap_true.
-    ENDIF.
-
-    "Make long texts blue/expandable
-    IF ls_comp-name = 'OP_LTXT' OR ls_comp-name = 'CHAR_LTXT'.
-      ls_fieldcat-outputlen = 200.
-    ENDIF.
-
-    APPEND ls_fieldcat TO gt_fieldcat.
-
-  ENDLOOP.
-
-ENDFORM.
-
-FORM add_fc USING pv_field pv_text.
-  CLEAR gs_fieldcat.
-  gs_fieldcat-fieldname = pv_field.
-  gs_fieldcat-seltext_l = pv_text.
-  gs_fieldcat-seltext_m = pv_text.
-  gs_fieldcat-seltext_s = pv_text.
-  gs_fieldcat-col_pos   = sy-tabix.
-  APPEND gs_fieldcat TO gt_fieldcat.
-ENDFORM.
-
-
-
-
-
-FORM add_fc_hidden USING pv_field.
-  CLEAR gs_fieldcat.
-  gs_fieldcat-fieldname = pv_field.
-  gs_fieldcat-no_out    = 'X'.
-  APPEND gs_fieldcat TO gt_fieldcat.
-ENDFORM.
-
 
 *&---------------------------------------------------------------------*
 *& Form APPEND_OP_LONGTEXT
@@ -1159,19 +1109,17 @@ ENDFORM.
 *---------------------------------------------------------------------*
 * Helper: set column position (uses columns->set_column_position)
 *---------------------------------------------------------------------*
-FORM set_position USING pv_col TYPE lvc_fname
-                        pv_pos TYPE i.
+FORM set_position USING pv_field pv_pos.
 
   TRY.
+      DATA(lo_col) = lo_columns->get_column( pv_field ).
       lo_columns->set_column_position(
-        columnname = pv_col
+        columnname = pv_field
         position   = pv_pos ).
     CATCH cx_salv_not_found.
-      " Ignore if column does not exist
   ENDTRY.
 
 ENDFORM.
-
 
 *---------------------------------------------------------------------*
 * Helper: set column technical flag (visible / hidden)
@@ -1203,21 +1151,24 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM set_column_visibility_by_state.
 
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
+
   IF lo_alv IS INITIAL.
     RETURN.
   ENDIF.
 
   lo_columns = lo_alv->get_columns( ).
-  DATA: lo_col TYPE REF TO cl_salv_column_table.
 
-  "------------------------------------------------------
-  " Macros: show / hide
-  "------------------------------------------------------
+
+  "--------------------------------------------------------------
+  " Helper macros
+  "--------------------------------------------------------------
   DEFINE show_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_visible( abap_true ).
         lo_col->set_technical( abap_false ).
+        lo_col->set_visible(   abap_true  ).
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
@@ -1225,120 +1176,647 @@ FORM set_column_visibility_by_state.
   DEFINE hide_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_visible( abap_false ).
+        lo_col->set_technical( abap_false ).
+        lo_col->set_visible(   abap_false ).
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
 
-  "------------------------------------------------------
-  " Hide all CI columns first
-  "------------------------------------------------------
-  " Hide all CI columns first
-  "---- Hide CI columns CI01..CI28 ----
-  DATA: lv_num        TYPE i,
-        lv_index_char TYPE c LENGTH 2,
-        lv_ciname     TYPE lvc_fname.
+  TRY.
+      DATA(lo_col_sel) = lo_columns->get_column( 'SEL' ).
+      lo_col_sel->set_visible( abap_true ).
+      lo_col_sel->set_technical( abap_false ).  "Shown in ALV
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
-  DO 28 TIMES.
-    lv_num = sy-index.
+  "==============================================================
+  " ALWAYS HIDE NON-FDS COLUMNS
+  "==============================================================
 
-    " Convert number to 2 digits (01..28)
-    lv_index_char = lv_num.
-    IF lv_num < 10.
-      CONCATENATE '0' lv_index_char INTO lv_index_char.
-    ENDIF.
+  "--- Header fields not required in FDS ---
+  hide_col 'PLNTY'.
+  hide_col 'KTEXT'.
+  hide_col 'TPLNR'.
+  hide_col 'EQUNR'.
+  hide_col 'VERWE'.
+  hide_col 'VAGRP'.
+  hide_col 'STATU_H'.
+  hide_col 'ANLZU_H'.
+  hide_col 'STRAT'.
+  hide_col 'ISTRU_H'.
+  hide_col 'ADPSP'.
+  hide_col 'SLWBEZ'.
+  hide_col 'LOEKZ_H'.
+  hide_col 'ANDAT'.
+  hide_col 'ANNAM'.
+  hide_col 'AEDAT'.
+  hide_col 'AENAM'.
 
-    " Build CI01, CI02 ... CI28
-    CONCATENATE 'CI' lv_index_char INTO lv_ciname.
+  "--- Operation fields not required in FDS ---
+  hide_col 'LTXA1'.
+  hide_col 'STEUS'.
+  hide_col 'WERKS_O'.
+  hide_col 'KTSCH'.
+  hide_col 'ARBEH'.
+  hide_col 'DAUNO'.
+  hide_col 'DAUNE'.
+  hide_col 'KALID'.
+  hide_col 'EXECUTION_STAGE'.
+  hide_col 'ANLZU_O'.
+  hide_col 'ISTRU_O'.
+  hide_col 'LARNT'.
+  hide_col 'EBELN'.
+  hide_col 'EBELP'.
+  hide_col 'LIFNR'.
+  hide_col 'PREIS'.
+  hide_col 'WAERS'.
+  hide_col 'SAKTO'.
+  hide_col 'EKORG'.
+  hide_col 'EKGRP'.
+  hide_col 'TXTSP_OP'.
+  hide_col 'LOEKZ_O'.
 
-    " Hide CI column
-    hide_col lv_ciname.
+  "--- Characteristic fields not in FDS ---
+  hide_col 'VERWMERKM'.
+  hide_col 'LTEXTKZ'.
+  hide_col 'TOLERANZUN'.
+  hide_col 'TOLERANZOB'.
+  hide_col 'PRUEFEINH'.
+  hide_col 'STICHPRVER'.
+  hide_col 'KATALGART1'.
+  hide_col 'AUSWMENGE1'.
+  hide_col 'STEUERKZ'.
+  hide_col 'LOEKZ_C'.
 
-  ENDDO.
+  "--- CI1..CI28 ghost columns ---
+  hide_col 'CI1'.
+  hide_col 'CI2'.
+  hide_col 'CI3'.
+  hide_col 'CI4'.
+  hide_col 'CI5'.
+  hide_col 'CI6'.
+  hide_col 'CI7'.
+  hide_col 'CI8'.
+  hide_col 'CI9'.
+  hide_col 'CI10'.
+  hide_col 'CI11'.
+  hide_col 'CI12'.
+  hide_col 'CI13'.
+  hide_col 'CI14'.
+  hide_col 'CI15'.
+  hide_col 'CI16'.
+  hide_col 'CI17'.
+  hide_col 'CI18'.
+  hide_col 'CI19'.
+  hide_col 'CI20'.
+  hide_col 'CI21'.
+  hide_col 'CI22'.
+  hide_col 'CI23'.
+  hide_col 'CI24'.
+  hide_col 'CI25'.
+  hide_col 'CI26'.
+  hide_col 'CI27'.
+  hide_col 'CI28'.
 
-  "------------------------------------------------------
-  " FDS core visible columns
-  "------------------------------------------------------
-  show_col 'PLNNR'.
-  show_col 'PLNAL'.
-  show_col 'WERKS'.
-  show_col 'VORNR'.
-  show_col 'ARBPL_O'.
-  show_col 'ARBEI'.
-  show_col 'KURZT_CHAR'.
-  show_col 'PMETHODE'.
-  show_col 'MERKNR'.
-  show_col 'TDFORMAT'.
-  show_col 'OP_LTXT'.
-  show_col 'CHAR_LTXT'.
+  "--- Internal / Technical fields ---
+  hide_col 'ROW_KIND'.
 
-  "------------------------------------------------------
-  " CI LABELS
-  "------------------------------------------------------
-  DATA lt_ci_texts TYPE STANDARD TABLE OF string WITH EMPTY KEY.
 
-  APPEND 'Quantitative Characteristic'           TO lt_ci_texts.
-  APPEND 'Measured Values Must Be Recorded'      TO lt_ci_texts.
-  APPEND 'Ref to Char Attribute Required'        TO lt_ci_texts.
-  APPEND 'Upper Specification Limit Indicator'   TO lt_ci_texts.
-  APPEND 'Lower Specification Limit Indicator'   TO lt_ci_texts.
-  APPEND 'Check Target Value'                    TO lt_ci_texts.
-  APPEND 'Inspection Scope'                      TO lt_ci_texts.
-  APPEND 'Long Term Inspection'                  TO lt_ci_texts.
-  APPEND 'Recording Type'                        TO lt_ci_texts.
-  APPEND 'Document Required'                     TO lt_ci_texts.
-  APPEND 'Characteristic Category'               TO lt_ci_texts.
-  APPEND 'Sync Active'                           TO lt_ci_texts.
-  APPEND 'Sample Qty Added'                      TO lt_ci_texts.
-  APPEND 'Destructive Inspection'                TO lt_ci_texts.
-  APPEND 'Calculated Characteristic'             TO lt_ci_texts.
-  APPEND 'Sampling Proc Required'                TO lt_ci_texts.
-  APPEND 'Quality Score Relevant'                TO lt_ci_texts.
-  APPEND 'No Changes Allowed'                    TO lt_ci_texts.
-  APPEND 'Record Number of Defects'              TO lt_ci_texts.
-  APPEND 'QM Subsystem Characteristic'           TO lt_ci_texts.
-  APPEND 'Specs Changeable'                      TO lt_ci_texts.
-  APPEND 'Test Equipment Required'               TO lt_ci_texts.
-  APPEND 'Auto Defect Recording'                 TO lt_ci_texts.
-  APPEND 'Change Documents Required'             TO lt_ci_texts.
-  APPEND 'SPC Characteristic'                    TO lt_ci_texts.
-  APPEND 'Print Indicator'                       TO lt_ci_texts.
-  APPEND 'Parameter Characteristic'              TO lt_ci_texts.
-  APPEND 'Process Characteristic'                TO lt_ci_texts.
+  "==============================================================
+  " ALWAYS SHOW CORE FDS COLUMNS
+  "==============================================================
+  show_col 'PLNNR'.        "Group
+  show_col 'PLNAL'.        "Counter
+  show_col 'WERKS'.        "Plant
+  show_col 'VORNR'.        "Operation
+  show_col 'ARBPL_O'.      "Work Center
+  show_col 'ARBEI'.        "Work
+  show_col 'KURZT_CHAR'.   "Description
+  show_col 'PMETHODE'.     "Insp Method
+  show_col 'MERKNR'.       "Insp Number
+  show_col 'TDFORMAT'.     "FK
+  show_col 'OP_LTXT'.      "Operation Long Text
+  show_col 'CHAR_LTXT'.    "Characteristic Long Text
 
-  FIELD-SYMBOLS <text> TYPE scrtext_l.
 
-  DATA: lv_idx   TYPE i VALUE 0,
-        lv_idx_c TYPE char2.
 
-  LOOP AT lt_ci_texts ASSIGNING <text>.
-    lv_idx = lv_idx + 1.
+  "==============================================================
+  " CASE A/B/C/D – Your Original Logic
+  "==============================================================
 
-    "Build CI01..CI28
-    IF lv_idx < 10.
-      lv_idx_c = |0{ lv_idx }|.
-    ELSE.
-      lv_idx_c = lv_idx.
-    ENDIF.
+  "CASE A – No Char, No LT
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
-    CONCATENATE 'CI' lv_idx_c INTO lv_ciname.
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
 
-    TRY.
-        lo_col ?= lo_columns->get_column( lv_ciname ).
 
-        "Use FIELD SYMBOL <text> (your system accepts this!)
-        lo_col->set_long_text(   <text> ).
-        lo_col->set_medium_text( <text> ).
-        lo_col->set_short_text(  <text> ).
+    "CASE B – Show Char, No LT
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
 
-      CATCH cx_salv_not_found.
-    ENDTRY.
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
 
-  ENDLOOP.
+
+    "CASE C – Hide Char, Show LT
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+    "CASE D – Char + LT
+  ELSE.
+
+    show_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
+
+  ENDIF.
+
+  PERFORM set_position USING 'SEL'        1.
+  PERFORM set_position USING 'PLNNR'      2.
+  PERFORM set_position USING 'PLNAL'      3.
+  PERFORM set_position USING 'WERKS'      4.
+  PERFORM set_position USING 'VORNR'      5.
+  PERFORM set_position USING 'ARBPL_O'    6.
+  PERFORM set_position USING 'ARBEI'      7.
+  PERFORM set_position USING 'KURZT_CHAR' 8.
+  PERFORM set_position USING 'PMETHODE'   9.
+  PERFORM set_position USING 'MERKNR'    10.
+  PERFORM set_position USING 'TDFORMAT'  11.
+  PERFORM set_position USING 'OP_LTXT'   12.
+  PERFORM set_position USING 'CHAR_LTXT' 13.
+  TRY.
+
+*----------------------------------------------------------------------
+* HEADER FIELDS
+*----------------------------------------------------------------------
+      lo_col ?= lo_columns->get_column( 'PLNTY' ).
+      lo_col->set_long_text( 'Task List Type' ).
+      lo_col->set_medium_text( 'Task List Type' ).
+      lo_col->set_short_text( 'TL Type' ).
+
+      lo_col ?= lo_columns->get_column( 'PLNNR' ).
+      lo_col->set_long_text( 'Group' ).
+      lo_col->set_medium_text( 'Group' ).
+      lo_col->set_short_text( 'Group' ).
+
+      lo_col ?= lo_columns->get_column( 'PLNAL' ).
+      lo_col->set_long_text( 'Group Counter' ).
+      lo_col->set_medium_text( 'Group Counter' ).
+      lo_col->set_short_text( 'Counter' ).
+
+      lo_col ?= lo_columns->get_column( 'TAPLR' ). "Where applicable
+      "skip if not used
+
+      lo_col ?= lo_columns->get_column( 'TPLNR' ).
+      lo_col->set_long_text( 'Functional Location' ).
+      lo_col->set_medium_text( 'Func. Location' ).
+      lo_col->set_short_text( 'FLoc' ).
+
+      lo_col ?= lo_columns->get_column( 'EQUNR' ).
+      lo_col->set_long_text( 'Equipment' ).
+      lo_col->set_medium_text( 'Equipment' ).
+      lo_col->set_short_text( 'Equip' ).
+
+      lo_col ?= lo_columns->get_column( 'KTEXT' ).
+      lo_col->set_long_text( 'Header Text' ).
+      lo_col->set_medium_text( 'Header Text' ).
+      lo_col->set_short_text( 'H Text' ).
+
+      lo_col ?= lo_columns->get_column( 'WERKS' ).
+      lo_col->set_long_text( 'Planning Plant' ).
+      lo_col->set_medium_text( 'Planning Plant' ).
+      lo_col->set_short_text( 'Plant' ).
+
+      lo_col ?= lo_columns->get_column( 'VAGRP' ).
+      lo_col->set_long_text( 'Planner Group' ).
+      lo_col->set_medium_text( 'Planner Group' ).
+      lo_col->set_short_text( 'PlGrp' ).
+
+      lo_col ?= lo_columns->get_column( 'VERWE' ).
+      lo_col->set_long_text( 'Usage' ).
+      lo_col->set_medium_text( 'Usage' ).
+      lo_col->set_short_text( 'Usage' ).
+
+      lo_col ?= lo_columns->get_column( 'STATU_H' ).
+      lo_col->set_long_text( 'Status' ).
+      lo_col->set_medium_text( 'Status' ).
+      lo_col->set_short_text( 'Status' ).
+
+      lo_col ?= lo_columns->get_column( 'ANLZU_H' ).
+      lo_col->set_long_text( 'System Condition' ).
+      lo_col->set_medium_text( 'System Condition' ).
+      lo_col->set_short_text( 'SysCond' ).
+
+      lo_col ?= lo_columns->get_column( 'STRAT' ).
+      lo_col->set_long_text( 'Maintenance Strategy' ).
+      lo_col->set_medium_text( 'Maint. Strategy' ).
+      lo_col->set_short_text( 'Strategy' ).
+
+      lo_col ?= lo_columns->get_column( 'ISTRU_H' ).
+      lo_col->set_long_text( 'Assembly' ).
+      lo_col->set_medium_text( 'Assembly' ).
+      lo_col->set_short_text( 'Asmbly' ).
+
+      lo_col ?= lo_columns->get_column( 'ADPSP' ).
+      lo_col->set_long_text( 'Reference Element PM/PS' ).
+      lo_col->set_medium_text( 'Ref Element PM/PS' ).
+      lo_col->set_short_text( 'Ref PM/PS' ).
+
+      lo_col ?= lo_columns->get_column( 'SLWBEZ' ).
+      lo_col->set_long_text( 'Inspection Points' ).
+      lo_col->set_medium_text( 'Inspection Points' ).
+      lo_col->set_short_text( 'InspPts' ).
+
+      lo_col ?= lo_columns->get_column( 'ANDAT' ).
+      lo_col->set_long_text( 'Created On' ).
+      lo_col->set_medium_text( 'Created On' ).
+      lo_col->set_short_text( 'CrOn' ).
+
+      lo_col ?= lo_columns->get_column( 'ANNAM' ).
+      lo_col->set_long_text( 'Created By' ).
+      lo_col->set_medium_text( 'Created By' ).
+      lo_col->set_short_text( 'CrBy' ).
+
+      lo_col ?= lo_columns->get_column( 'AEDAT' ).
+      lo_col->set_long_text( 'Changed On' ).
+      lo_col->set_medium_text( 'Changed On' ).
+      lo_col->set_short_text( 'ChOn' ).
+
+      lo_col ?= lo_columns->get_column( 'AENAM' ).
+      lo_col->set_long_text( 'Changed By' ).
+      lo_col->set_medium_text( 'Changed By' ).
+      lo_col->set_short_text( 'ChBy' ).
+
+*----------------------------------------------------------------------
+* OPERATION FIELDS
+*----------------------------------------------------------------------
+      lo_col ?= lo_columns->get_column( 'VORNR' ).
+      lo_col->set_long_text( 'Operation' ).
+      lo_col->set_medium_text( 'Operation' ).
+      lo_col->set_short_text( 'Oper' ).
+
+      lo_col ?= lo_columns->get_column( 'LTXA1' ).
+      lo_col->set_long_text( 'Operation Short Text' ).
+      lo_col->set_medium_text( 'Oper. Short Text' ).
+      lo_col->set_short_text( 'OpText' ).
+
+      lo_col ?= lo_columns->get_column( 'STEUS' ).
+      lo_col->set_long_text( 'Control Key' ).
+      lo_col->set_medium_text( 'Control Key' ).
+      lo_col->set_short_text( 'CtrlKey' ).
+
+      lo_col ?= lo_columns->get_column( 'ARBPL_O' ).
+      lo_col->set_long_text( 'Work Center (Operation)' ).
+      lo_col->set_medium_text( 'Work Center (Oper.)' ).
+      lo_col->set_short_text( 'WkCtr' ).
+
+      lo_col ?= lo_columns->get_column( 'WERKS_O' ).
+      lo_col->set_long_text( 'Work Center Plant' ).
+      lo_col->set_medium_text( 'WC Plant' ).
+      lo_col->set_short_text( 'WCPlt' ).
+
+      lo_col ?= lo_columns->get_column( 'KTSCH' ).
+      lo_col->set_long_text( 'Standard Text Key' ).
+      lo_col->set_medium_text( 'Std Text Key' ).
+      lo_col->set_short_text( 'StdTxt' ).
+
+      lo_col ?= lo_columns->get_column( 'ARBEI' ).
+      lo_col->set_long_text( 'Work' ).
+      lo_col->set_medium_text( 'Work' ).
+      lo_col->set_short_text( 'Work' ).
+
+      lo_col ?= lo_columns->get_column( 'ARBEH' ).
+      lo_col->set_long_text( 'Unit of Work' ).
+      lo_col->set_medium_text( 'Unit of Work' ).
+      lo_col->set_short_text( 'UoW' ).
+
+      lo_col ?= lo_columns->get_column( 'DAUNO' ).
+      lo_col->set_long_text( 'Duration' ).
+      lo_col->set_medium_text( 'Duration' ).
+      lo_col->set_short_text( 'Dur' ).
+
+      lo_col ?= lo_columns->get_column( 'DAUNE' ).
+      lo_col->set_long_text( 'Duration UoM' ).
+      lo_col->set_medium_text( 'Duration UoM' ).
+      lo_col->set_short_text( 'DurUoM' ).
+
+      lo_col ?= lo_columns->get_column( 'KALID' ).
+      lo_col->set_long_text( 'Factory Calendar' ).
+      lo_col->set_medium_text( 'Factory Calendar' ).
+      lo_col->set_short_text( 'Cal' ).
+
+      lo_col ?= lo_columns->get_column( 'EXECUTION_STAGE' ).
+      lo_col->set_long_text( 'Execution Stage' ).
+      lo_col->set_medium_text( 'Exec Stage' ).
+      lo_col->set_short_text( 'Exec' ).
+
+      lo_col ?= lo_columns->get_column( 'ANLZU_O' ).
+      lo_col->set_long_text( 'System Condition' ).
+      lo_col->set_medium_text( 'System Condition' ).
+      lo_col->set_short_text( 'SysCond' ).
+
+      lo_col ?= lo_columns->get_column( 'ISTRU_O' ).
+      lo_col->set_long_text( 'Assembly' ).
+      lo_col->set_medium_text( 'Assembly' ).
+      lo_col->set_short_text( 'Asmbly' ).
+
+      lo_col ?= lo_columns->get_column( 'LARNT' ).
+      lo_col->set_long_text( 'Activity Type' ).
+      lo_col->set_medium_text( 'Activity Type' ).
+      lo_col->set_short_text( 'ActTyp' ).
+
+      lo_col ?= lo_columns->get_column( 'EBELN' ).
+      lo_col->set_long_text( 'Outline Agreement' ).
+      lo_col->set_medium_text( 'Outline Agmt' ).
+      lo_col->set_short_text( 'OA' ).
+
+      lo_col ?= lo_columns->get_column( 'EBELP' ).
+      lo_col->set_long_text( 'Outline Agreement Item' ).
+      lo_col->set_medium_text( 'OA Item' ).
+      lo_col->set_short_text( 'OAItm' ).
+
+      lo_col ?= lo_columns->get_column( 'LIFNR' ).
+      lo_col->set_long_text( 'Supplier' ).
+      lo_col->set_medium_text( 'Supplier' ).
+      lo_col->set_short_text( 'Supp' ).
+
+      lo_col ?= lo_columns->get_column( 'PREIS' ).
+      lo_col->set_long_text( 'Price' ).
+      lo_col->set_medium_text( 'Price' ).
+      lo_col->set_short_text( 'Price' ).
+
+      lo_col ?= lo_columns->get_column( 'WAERS' ).
+      lo_col->set_long_text( 'Currency' ).
+      lo_col->set_medium_text( 'Currency' ).
+      lo_col->set_short_text( 'Curr' ).
+
+      lo_col ?= lo_columns->get_column( 'SAKTO' ).
+      lo_col->set_long_text( 'Cost Element' ).
+      lo_col->set_medium_text( 'Cost Element' ).
+      lo_col->set_short_text( 'CostEl' ).
+
+      lo_col ?= lo_columns->get_column( 'EKORG' ).
+      lo_col->set_long_text( 'Purchasing Organization' ).
+      lo_col->set_medium_text( 'Purchasing Org.' ).
+      lo_col->set_short_text( 'POrg' ).
+
+      lo_col ?= lo_columns->get_column( 'EKGRP' ).
+      lo_col->set_long_text( 'Purchasing Group' ).
+      lo_col->set_medium_text( 'Purchasing Group' ).
+      lo_col->set_short_text( 'PGrp' ).
+
+*----------------------------------------------------------------------
+* CHARACTERISTIC FIELDS
+*----------------------------------------------------------------------
+      lo_col ?= lo_columns->get_column( 'MERKNR' ).
+      lo_col->set_long_text( 'Characteristic Number' ).
+      lo_col->set_medium_text( 'Char Number' ).
+      lo_col->set_short_text( 'Char#' ).
+
+      lo_col ?= lo_columns->get_column( 'VERWMERKM' ).
+      lo_col->set_long_text( 'Master Inspection Characteristic' ).
+      lo_col->set_medium_text( 'MIC' ).
+      lo_col->set_short_text( 'MIC' ).
+
+      lo_col ?= lo_columns->get_column( 'KURZT_CHAR' ).
+      lo_col->set_long_text( 'Characteristic Short Text' ).
+      lo_col->set_medium_text( 'Char. Short Text' ).
+      lo_col->set_short_text( 'CharTxt' ).
+
+      lo_col ?= lo_columns->get_column( 'LTEXTKZ' ).
+      lo_col->set_long_text( 'Long Text Indicator' ).
+      lo_col->set_medium_text( 'LT Indicator' ).
+      lo_col->set_short_text( 'LTInd' ).
+
+      lo_col ?= lo_columns->get_column( 'TOLERANZUN' ).
+      lo_col->set_long_text( 'Lower Specification Limit' ).
+      lo_col->set_medium_text( 'Lower Spec Limit' ).
+      lo_col->set_short_text( 'LSL' ).
+
+      lo_col ?= lo_columns->get_column( 'TOLERANZOB' ).
+      lo_col->set_long_text( 'Upper Specification Limit' ).
+      lo_col->set_medium_text( 'Upper Spec Limit' ).
+      lo_col->set_short_text( 'USL' ).
+
+      lo_col ?= lo_columns->get_column( 'PRUEFEINH' ).
+      lo_col->set_long_text( 'Base Sample Quantity' ).
+      lo_col->set_medium_text( 'Sample Qty' ).
+      lo_col->set_short_text( 'SQty' ).
+
+      lo_col ?= lo_columns->get_column( 'STICHPRVER' ).
+      lo_col->set_long_text( 'Sampling Procedure' ).
+      lo_col->set_medium_text( 'Sampling Proc.' ).
+      lo_col->set_short_text( 'SmplPr' ).
+
+      lo_col ?= lo_columns->get_column( 'PMETHODE' ).
+      lo_col->set_long_text( 'Inspection Method' ).
+      lo_col->set_medium_text( 'Insp. Method' ).
+      lo_col->set_short_text( 'Method' ).
+
+      lo_col ?= lo_columns->get_column( 'KATALGART1' ).
+      lo_col->set_long_text( 'Catalog Type' ).
+      lo_col->set_medium_text( 'Catalog Type' ).
+      lo_col->set_short_text( 'CatType' ).
+
+      lo_col ?= lo_columns->get_column( 'AUSWMENGE1' ).
+      lo_col->set_long_text( 'Code Group/Selected Set' ).
+      lo_col->set_medium_text( 'Code Group' ).
+      lo_col->set_short_text( 'CodeGrp' ).
+
+      lo_col ?= lo_columns->get_column( 'STEUERKZ' ).
+      lo_col->set_long_text( 'Characteristic Control Key' ).
+      lo_col->set_medium_text( 'Char Ctrl Key' ).
+      lo_col->set_short_text( 'CtrlKz' ).
+
+      "--------------------------------------------------------------
+      " CI fields FDS labels (manual mapping)
+      "--------------------------------------------------------------
+      lo_col ?= lo_columns->get_column( 'CI1' ).
+      lo_col->set_long_text( 'Quantitative Char' ).
+      lo_col->set_medium_text( 'Quant Char' ).
+      lo_col->set_short_text( 'Quant' ).
+
+      lo_col ?= lo_columns->get_column( 'CI2' ).
+      lo_col->set_long_text( 'Record Values' ).
+      lo_col->set_medium_text( 'Rec Values' ).
+      lo_col->set_short_text( 'RecVal' ).
+
+      lo_col ?= lo_columns->get_column( 'CI3' ).
+      lo_col->set_long_text( 'Ref to Char Attribute' ).
+      lo_col->set_medium_text( 'Ref Char Attr' ).
+      lo_col->set_short_text( 'RefAtt' ).
+
+      lo_col ?= lo_columns->get_column( 'CI4' ).
+      lo_col->set_long_text( 'Upper Spec Limit' ).
+      lo_col->set_medium_text( 'Upper Spec' ).
+      lo_col->set_short_text( 'USL' ).
+
+      lo_col ?= lo_columns->get_column( 'CI5' ).
+      lo_col->set_long_text( 'Lower Spec Limit' ).
+      lo_col->set_medium_text( 'Lower Spec' ).
+      lo_col->set_short_text( 'LSL' ).
+
+      lo_col ?= lo_columns->get_column( 'CI6' ).
+      lo_col->set_long_text( 'Check Target Value' ).
+      lo_col->set_medium_text( 'Check Target' ).
+      lo_col->set_short_text( 'Target' ).
+
+      lo_col ?= lo_columns->get_column( 'CI7' ).
+      lo_col->set_long_text( 'Inspection Scope' ).
+      lo_col->set_medium_text( 'Insp Scope' ).
+      lo_col->set_short_text( 'Scope' ).
+
+      lo_col ?= lo_columns->get_column( 'CI8' ).
+      lo_col->set_long_text( 'Long Term Inspection' ).
+      lo_col->set_medium_text( 'LT Inspect' ).
+      lo_col->set_short_text( 'LTInsp' ).
+
+      lo_col ?= lo_columns->get_column( 'CI9' ).
+      lo_col->set_long_text( 'Recording Type' ).
+      lo_col->set_medium_text( 'Rec Type' ).
+      lo_col->set_short_text( 'RecTyp' ).
+
+      lo_col ?= lo_columns->get_column( 'CI10' ).
+      lo_col->set_long_text( 'Document Required' ).
+      lo_col->set_medium_text( 'Doc Req' ).
+      lo_col->set_short_text( 'DocReq' ).
+
+      lo_col ?= lo_columns->get_column( 'CI11' ).
+      lo_col->set_long_text( 'Characteristic Category' ).
+      lo_col->set_medium_text( 'Char Category' ).
+      lo_col->set_short_text( 'CharCat' ).
+
+      lo_col ?= lo_columns->get_column( 'CI12' ).
+      lo_col->set_long_text( 'Sync Active' ).
+      lo_col->set_medium_text( 'Sync Active' ).
+      lo_col->set_short_text( 'Sync' ).
+
+      lo_col ?= lo_columns->get_column( 'CI13' ).
+      lo_col->set_long_text( 'Add Sample Quantity' ).
+      lo_col->set_medium_text( 'Add Sample' ).
+      lo_col->set_short_text( 'AddQty' ).
+
+      lo_col ?= lo_columns->get_column( 'CI14' ).
+      lo_col->set_long_text( 'Destructive Insp' ).
+      lo_col->set_medium_text( 'Dest Insp' ).
+      lo_col->set_short_text( 'DEInsp' ).
+
+      lo_col ?= lo_columns->get_column( 'CI15' ).
+      lo_col->set_long_text( 'Calculated Char' ).
+      lo_col->set_medium_text( 'Calc Char' ).
+      lo_col->set_short_text( 'Calc' ).
+
+      lo_col ?= lo_columns->get_column( 'CI16' ).
+      lo_col->set_long_text( 'Sampling Proc Req' ).
+      lo_col->set_medium_text( 'SmplProc Req' ).
+      lo_col->set_short_text( 'SPReq' ).
+
+      lo_col ?= lo_columns->get_column( 'CI17' ).
+      lo_col->set_long_text( 'Quality Score Relevant' ).
+      lo_col->set_medium_text( 'QScore Rel' ).
+      lo_col->set_short_text( 'QScore' ).
+
+      lo_col ?= lo_columns->get_column( 'CI18' ).
+      lo_col->set_long_text( 'No Changes Allowed' ).
+      lo_col->set_medium_text( 'No Change' ).
+      lo_col->set_short_text( 'NoChg' ).
+
+      lo_col ?= lo_columns->get_column( 'CI19' ).
+      lo_col->set_long_text( 'Defect Count' ).
+      lo_col->set_medium_text( 'Defects' ).
+      lo_col->set_short_text( 'DefCnt' ).
+
+      lo_col ?= lo_columns->get_column( 'CI20' ).
+      lo_col->set_long_text( 'QM Subsystem Char' ).
+      lo_col->set_medium_text( 'QM System' ).
+      lo_col->set_short_text( 'QMSS' ).
+
+      lo_col ?= lo_columns->get_column( 'CI21' ).
+      lo_col->set_long_text( 'Specs Changeable' ).
+      lo_col->set_medium_text( 'Spec Change' ).
+      lo_col->set_short_text( 'SpecChg' ).
+
+      lo_col ?= lo_columns->get_column( 'CI22' ).
+      lo_col->set_long_text( 'Test Equip Req' ).
+      lo_col->set_medium_text( 'Test Equip' ).
+      lo_col->set_short_text( 'TEReq' ).
+
+      lo_col ?= lo_columns->get_column( 'CI23' ).
+      lo_col->set_long_text( 'Auto Defect Record' ).
+      lo_col->set_medium_text( 'Auto Def Rec' ).
+      lo_col->set_short_text( 'AutoRec' ).
+
+      lo_col ?= lo_columns->get_column( 'CI24' ).
+      lo_col->set_long_text( 'Change Docs Req' ).
+      lo_col->set_medium_text( 'Change Docs' ).
+      lo_col->set_short_text( 'ChgDoc' ).
+
+      lo_col ?= lo_columns->get_column( 'CI25' ).
+      lo_col->set_long_text( 'SPC Characteristic' ).
+      lo_col->set_medium_text( 'SPC Char' ).
+      lo_col->set_short_text( 'SPC' ).
+
+      lo_col ?= lo_columns->get_column( 'CI26' ).
+      lo_col->set_long_text( 'Print Indicator' ).
+      lo_col->set_medium_text( 'Print Ind' ).
+      lo_col->set_short_text( 'Print' ).
+
+      lo_col ?= lo_columns->get_column( 'CI27' ).
+      lo_col->set_long_text( 'Param Characteristic' ).
+      lo_col->set_medium_text( 'Param Char' ).
+      lo_col->set_short_text( 'Param' ).
+
+      lo_col ?= lo_columns->get_column( 'CI28' ).
+      lo_col->set_long_text( 'Process Characteristic' ).
+      lo_col->set_medium_text( 'Proc Char' ).
+      lo_col->set_short_text( 'Proc' ).
+
+*----------------------------------------------------------------------
+* LONG TEXT FIELDS
+*----------------------------------------------------------------------
+      lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
+      lo_col->set_long_text( 'Format Key' ).
+      lo_col->set_medium_text( 'Format Key' ).
+      lo_col->set_short_text( 'FK' ).
+
+      lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
+      lo_col->set_long_text( 'Operation Long Text' ).
+      lo_col->set_medium_text( 'Op Long Text' ).
+      lo_col->set_short_text( 'OpLT' ).
+
+      lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).
+      lo_col->set_long_text( 'Characteristic Long Text' ).
+      lo_col->set_medium_text( 'Char Long Text' ).
+      lo_col->set_short_text( 'CharLT' ).
+
+*----------------------------------------------------------------------
+* INTERNAL FIELDS
+*----------------------------------------------------------------------
+      lo_col ?= lo_columns->get_column( 'ROW_KIND' ).
+      lo_col->set_long_text( 'Row Kind' ).
+      lo_col->set_medium_text( 'Row Kind' ).
+      lo_col->set_short_text( 'Kind' ).
+
+      lo_col ?= lo_columns->get_column( 'LINE_COLOR' ).
+      lo_col->set_long_text( 'Line Color' ).
+      lo_col->set_medium_text( 'Line Color' ).
+      lo_col->set_short_text( 'Color' ).
+
+      lo_col ?= lo_columns->get_column( 'SEL' ).
+      lo_col->set_long_text( 'Select' ).
+      lo_col->set_medium_text( 'Select' ).
+      lo_col->set_short_text( 'Sel' ).
+
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
 ENDFORM.
-
-
 
 *&---------------------------------------------------------------------*
 *& Form CLEANUP_DUPLICATES
