@@ -1,28 +1,37 @@
-ps_disp-ci1  = get_ci_equivalent( 1  lv+0(1) ).
-ps_disp-ci2  = get_ci_equivalent( 2  lv+1(1) ).
-ps_disp-ci3  = get_ci_equivalent( 3  lv+2(1) ).
-ps_disp-ci4  = get_ci_equivalent( 4  lv+3(1) ).
-ps_disp-ci5  = get_ci_equivalent( 5  lv+4(1) ).
-ps_disp-ci6  = get_ci_equivalent( 6  lv+5(1) ).
-ps_disp-ci7  = get_ci_equivalent( 7  lv+6(1) ).
-ps_disp-ci8  = get_ci_equivalent( 8  lv+7(1) ).
-ps_disp-ci9  = get_ci_equivalent( 9  lv+8(1) ).
-ps_disp-ci10 = get_ci_equivalent( 10 lv+9(1) ).
-ps_disp-ci11 = get_ci_equivalent( 11 lv+10(1) ).
-ps_disp-ci12 = get_ci_equivalent( 12 lv+11(1) ).
-ps_disp-ci13 = get_ci_equivalent( 13 lv+12(1) ).
-ps_disp-ci14 = get_ci_equivalent( 14 lv+13(1) ).
-ps_disp-ci15 = get_ci_equivalent( 15 lv+14(1) ).
-ps_disp-ci16 = get_ci_equivalent( 16 lv+15(1) ).
-ps_disp-ci17 = get_ci_equivalent( 17 lv+16(1) ).
-ps_disp-ci18 = get_ci_equivalent( 18 lv+17(1) ).
-ps_disp-ci19 = get_ci_equivalent( 19 lv+18(1) ).
-ps_disp-ci20 = get_ci_equivalent( 20 lv+19(1) ).
-ps_disp-ci21 = get_ci_equivalent( 21 lv+20(1) ).
-ps_disp-ci22 = get_ci_equivalent( 22 lv+21(1) ).
-ps_disp-ci23 = get_ci_equivalent( 23 lv+22(1) ).
-ps_disp-ci24 = get_ci_equivalent( 24 lv+23(1) ).
-ps_disp-ci25 = get_ci_equivalent( 25 lv+24(1) ).
-ps_disp-ci26 = get_ci_equivalent( 26 lv+25(1) ).
-ps_disp-ci27 = get_ci_equivalent( 27 lv+26(1) ).
-ps_disp-ci28 = get_ci_equivalent( 28 lv+27(1) ).
+FORM fill_ci_fields
+  USING    pv_steuerkz TYPE plmk-steuerkz
+  CHANGING ps_disp      TYPE ty_task_disp.
+
+  DATA lv_flat TYPE char28.
+  lv_flat = pv_steuerkz.   "Force flattening
+
+
+
+ps_disp-ci1  = get_ci_equivalent( 1  lv_flat+0(1) ).
+ps_disp-ci2  = get_ci_equivalent( 2  lv_flat+1(1) ).
+ps_disp-ci3  = get_ci_equivalent( 3  lv_flat+2(1) ).
+ps_disp-ci4  = get_ci_equivalent( 4  lv_flat+3(1) ).
+ps_disp-ci5  = get_ci_equivalent( 5  lv_flat+4(1) ).
+ps_disp-ci6  = get_ci_equivalent( 6  lv_flat+5(1) ).
+ps_disp-ci7  = get_ci_equivalent( 7  lv_flat+6(1) ).
+ps_disp-ci8  = get_ci_equivalent( 8  lv_flat+7(1) ).
+ps_disp-ci9  = get_ci_equivalent( 9  lv_flat+8(1) ).
+ps_disp-ci10 = get_ci_equivalent( 10 lv_flat+9(1) ).
+ps_disp-ci11 = get_ci_equivalent( 11 lv_flat+10(1) ).
+ps_disp-ci12 = get_ci_equivalent( 12 lv_flat+11(1) ).
+ps_disp-ci13 = get_ci_equivalent( 13 lv_flat+12(1) ).
+ps_disp-ci14 = get_ci_equivalent( 14 lv_flat+13(1) ).
+ps_disp-ci15 = get_ci_equivalent( 15 lv_flat+14(1) ).
+ps_disp-ci16 = get_ci_equivalent( 16 lv_flat+15(1) ).
+ps_disp-ci17 = get_ci_equivalent( 17 lv_flat+16(1) ).
+ps_disp-ci18 = get_ci_equivalent( 18 lv_flat+17(1) ).
+ps_disp-ci19 = get_ci_equivalent( 19 lv_flat+18(1) ).
+ps_disp-ci20 = get_ci_equivalent( 20 lv_flat+19(1) ).
+ps_disp-ci21 = get_ci_equivalent( 21 lv_flat+20(1) ).
+ps_disp-ci22 = get_ci_equivalent( 22 lv_flat+21(1) ).
+ps_disp-ci23 = get_ci_equivalent( 23 lv_flat+22(1) ).
+ps_disp-ci24 = get_ci_equivalent( 24 lv_flat+23(1) ).
+ps_disp-ci25 = get_ci_equivalent( 25 lv_flat+24(1) ).
+ps_disp-ci26 = get_ci_equivalent( 26 lv_flat+25(1) ).
+ps_disp-ci27 = get_ci_equivalent( 27 lv_flat+26(1) ).
+ps_disp-ci28 = get_ci_equivalent( 28 lv_flat+27(1) ).
