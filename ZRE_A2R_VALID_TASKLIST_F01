@@ -419,11 +419,11 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_tplnr-low IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
       CONTINUE.
     ENDIF.
 
-    IF so_equnr-low IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
+    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
       CONTINUE.
     ENDIF.
 
@@ -483,6 +483,7 @@ FORM get_data.
     "===================================================================*
     "* OPERATION FILTERS
     "===================================================================*
+
     IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
       CONTINUE.
     ENDIF.
@@ -866,6 +867,8 @@ FORM set_ci_headers.
   set_hdr 'CI26_TXT' 'Print Indicator'.
   set_hdr 'CI27_TXT' 'Parameter Char'.
   set_hdr 'CI28_TXT' 'Process Char'.
+  set_hdr 'OP_LTXT'   'Operation Long Text'.
+  set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
 
 ENDFORM.
 
@@ -1085,7 +1088,19 @@ FORM display_alv.
     lo_alv->refresh( ).
   ENDIF.
 
-  PERFORM set_position USING 'SEL' 1.
+  PERFORM set_position USING 'SELECT'     1.
+  PERFORM set_position USING 'PLNNR'     2.
+  PERFORM set_position USING 'PLNAL'     3.
+  PERFORM set_position USING 'WERKS'     4.
+  PERFORM set_position USING 'VORNR'     6.
+  PERFORM set_position USING 'ARBPL_O'   7.
+  PERFORM set_position USING 'ARBEI'     8.
+  PERFORM set_position USING 'KURZT_CHAR' 9.
+  PERFORM set_position USING 'PMETHODE'   10.
+  PERFORM set_position USING 'MERKNR'     11.
+  PERFORM set_position USING 'TDFORMAT'   12.   "Format
+  PERFORM set_position USING 'OP_LTXT'    13.   "Operation Long Text
+  PERFORM set_position USING 'CHAR_LTXT'  14.   "Characteristic Long Text
 
   PERFORM set_column_visibility_by_state.
   PERFORM set_pfstatus_from_state.
@@ -1625,6 +1640,8 @@ FORM set_column_visibility_by_state.
     hide_col 'TDFORMAT'.
     hide_col 'OP_LTXT'.
     hide_col 'CHAR_LTXT'.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
 
 
     "CASE B – Show Char, No LT
@@ -1641,6 +1658,8 @@ FORM set_column_visibility_by_state.
     show_col 'TDFORMAT'.
     show_col 'OP_LTXT'.
     hide_col 'CHAR_LTXT'.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
 
 
     "CASE D – Char + LT
