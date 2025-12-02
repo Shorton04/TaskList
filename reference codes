@@ -1,18 +1,27 @@
-DATA(lo_cols) = lo_alv->get_columns( ).
-DATA lt_names TYPE STANDARD TABLE OF lvc_fname WITH EMPTY KEY.
+set_hdr 'OP_LTXT'   'Operation Long Text'.
+set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
+
+
+
 DATA lo_col TYPE REF TO cl_salv_column_table.
-DATA lv_name TYPE lvc_fname.
 
-"Read all column names
-LOOP AT lo_cols->get( ) INTO lo_col.
-  TRY.
-      lv_name = lo_col->get_columnname( ).
-      INSERT lv_name INTO TABLE lt_names.
-    CATCH cx_salv_not_found.
-  ENDTRY.
-ENDLOOP.
+" FORMAT first
+TRY.
+    lo_col ?= lo_columns->get_column( 'TDFORMAT' ).  "Format field
+    lo_col->set_position( 10 ).                      "set as first logical column
+CATCH cx_salv_not_found.
+ENDTRY.
 
-"Print list (will show in ABAP list)
-LOOP AT lt_names INTO lv_name.
-  WRITE: / lv_name.
-ENDLOOP.
+" OP Long Text
+TRY.
+    lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
+    lo_col->set_position( 11 ).
+CATCH cx_salv_not_found.
+ENDTRY.
+
+" Characteristic Long Text
+TRY.
+    lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).
+    lo_col->set_position( 12 ).
+CATCH cx_salv_not_found.
+ENDTRY.
