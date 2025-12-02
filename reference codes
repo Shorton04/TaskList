@@ -3,6 +3,8 @@ FORM get_ci_equivalent
            pv_char  TYPE char1
   RETURNING VALUE(rv_text) TYPE string.
 
+  rv_text = pv_char.   "default: return raw value
+
   CASE pv_index.
 
     "---------------------------------------------------
@@ -12,11 +14,10 @@ FORM get_ci_equivalent
       CASE pv_char.
         WHEN 'X'.   rv_text = 'Quantitative'.
         WHEN ' '.   rv_text = 'Qualitative'.
-        WHEN OTHERS rv_text = pv_char.
       ENDCASE.
 
     "---------------------------------------------------
-    "* Character 7
+    "* Character 7 – Inspection Scope
     "---------------------------------------------------
     WHEN 7.
       CASE pv_char.
@@ -24,11 +25,10 @@ FORM get_ci_equivalent
         WHEN '='. rv_text = 'Fixed scope'.
         WHEN '<'. rv_text = 'Smaller scope'.
         WHEN '>'. rv_text = 'Larger scope'.
-        WHEN OTHERS. rv_text = pv_char.
       ENDCASE.
 
     "---------------------------------------------------
-    "* Character 9
+    "* Character 9 – Recording Type
     "---------------------------------------------------
     WHEN 9.
       CASE pv_char.
@@ -36,22 +36,20 @@ FORM get_ci_equivalent
         WHEN '+'. rv_text = 'Single result'.
         WHEN '-'. rv_text = 'No characteristic recording'.
         WHEN '*'. rv_text = 'Classed recording'.
-        WHEN OTHERS. rv_text = pv_char.
       ENDCASE.
 
     "---------------------------------------------------
-    "* Character 10
+    "* Character 10 – Documentation Indicator
     "---------------------------------------------------
     WHEN 10.
       CASE pv_char.
         WHEN ' '. rv_text = 'No documentation'.
         WHEN '.'. rv_text = 'Documentation if rejected'.
         WHEN '+'. rv_text = 'Documentation required'.
-        WHEN OTHERS. rv_text = pv_char.
       ENDCASE.
 
     "---------------------------------------------------
-    "* Character 11
+    "* Character 11 – Characteristic Category
     "---------------------------------------------------
     WHEN 11.
       CASE pv_char.
@@ -59,37 +57,27 @@ FORM get_ci_equivalent
         WHEN ' '. rv_text = 'Optional Characteristic'.
         WHEN '+'. rv_text = 'After acceptance'.
         WHEN '-'. rv_text = 'After rejection'.
-        WHEN OTHERS. rv_text = pv_char.
       ENDCASE.
 
     "---------------------------------------------------
-    "* Character 15
+    "* Character 15 – Formula Indicator
     "---------------------------------------------------
     WHEN 15.
       CASE pv_char.
         WHEN ' '. rv_text = 'No formula'.
         WHEN 'X'. rv_text = 'Calculated characteristic'.
         WHEN '1'. rv_text = 'Input processing'.
-        WHEN OTHERS. rv_text = pv_char.
       ENDCASE.
 
     "---------------------------------------------------
-    "* Character 26
+    "* Character 26 – Printing Indicator
     "---------------------------------------------------
     WHEN 26.
       CASE pv_char.
         WHEN ' '. rv_text = 'Print'.
         WHEN 'X'. rv_text = 'Do not print'.
         WHEN '*'. rv_text = 'Do not print at skip'.
-        WHEN OTHERS. rv_text = pv_char.
       ENDCASE.
-
-    "---------------------------------------------------
-    "* All other CI (2,3,4,5,6,8,12-14,16-25,27,28)
-    "* No defined equivalent — return raw character
-    "---------------------------------------------------
-    WHEN OTHERS.
-      rv_text = pv_char.
 
   ENDCASE.
 
@@ -97,5 +85,35 @@ ENDFORM.
 
 
 
-ls_disp-ci1 = gv_steuerkz+0(1).
-ls_disp-ci1_eq = get_ci_equivalent( 1 ls_disp-ci1 ).
+
+
+DATA(lv_stkz) = ls_base-steuerkz.
+
+ls_disp-ci1  = get_ci_equivalent( 1  lv_stkz+0(1) ).
+ls_disp-ci2  = get_ci_equivalent( 2  lv_stkz+1(1) ).
+ls_disp-ci3  = get_ci_equivalent( 3  lv_stkz+2(1) ).
+ls_disp-ci4  = get_ci_equivalent( 4  lv_stkz+3(1) ).
+ls_disp-ci5  = get_ci_equivalent( 5  lv_stkz+4(1) ).
+ls_disp-ci6  = get_ci_equivalent( 6  lv_stkz+5(1) ).
+ls_disp-ci7  = get_ci_equivalent( 7  lv_stkz+6(1) ).
+ls_disp-ci8  = get_ci_equivalent( 8  lv_stkz+7(1) ).
+ls_disp-ci9  = get_ci_equivalent( 9  lv_stkz+8(1) ).
+ls_disp-ci10 = get_ci_equivalent( 10 lv_stkz+9(1) ).
+ls_disp-ci11 = get_ci_equivalent( 11 lv_stkz+10(1) ).
+ls_disp-ci12 = get_ci_equivalent( 12 lv_stkz+11(1) ).
+ls_disp-ci13 = get_ci_equivalent( 13 lv_stkz+12(1) ).
+ls_disp-ci14 = get_ci_equivalent( 14 lv_stkz+13(1) ).
+ls_disp-ci15 = get_ci_equivalent( 15 lv_stkz+14(1) ).
+ls_disp-ci16 = get_ci_equivalent( 16 lv_stkz+15(1) ).
+ls_disp-ci17 = get_ci_equivalent( 17 lv_stkz+16(1) ).
+ls_disp-ci18 = get_ci_equivalent( 18 lv_stkz+17(1) ).
+ls_disp-ci19 = get_ci_equivalent( 19 lv_stkz+18(1) ).
+ls_disp-ci20 = get_ci_equivalent( 20 lv_stkz+19(1) ).
+ls_disp-ci21 = get_ci_equivalent( 21 lv_stkz+20(1) ).
+ls_disp-ci22 = get_ci_equivalent( 22 lv_stkz+21(1) ).
+ls_disp-ci23 = get_ci_equivalent( 23 lv_stkz+22(1) ).
+ls_disp-ci24 = get_ci_equivalent( 24 lv_stkz+23(1) ).
+ls_disp-ci25 = get_ci_equivalent( 25 lv_stkz+24(1) ).
+ls_disp-ci26 = get_ci_equivalent( 26 lv_stkz+25(1) ).
+ls_disp-ci27 = get_ci_equivalent( 27 lv_stkz+26(1) ).
+ls_disp-ci28 = get_ci_equivalent( 28 lv_stkz+27(1) ).
