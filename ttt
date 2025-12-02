@@ -1,11 +1,258 @@
-IF so_opltx[] IS NOT INITIAL AND gs_base-op_ltxt NOT IN so_opltx.
-  CONTINUE.
-ENDIF.
+FORM display_salv_table.
+  DATA:
+    lo_functions  TYPE REF TO cl_salv_functions_list,
+    lo_display    TYPE REF TO cl_salv_display_settings,
+    lo_columns    TYPE REF TO cl_salv_columns_table,
+    lo_selections TYPE REF TO cl_salv_selections,
+    lo_layout     TYPE REF TO cl_salv_layout,
+    ls_layout_key TYPE salv_s_layout_key,
+    lo_events     TYPE REF TO cl_salv_events_table,
+    lx_msg        TYPE REF TO cx_salv_msg,
+    lv_message    TYPE string,
+    lv_pfstatus   TYPE sypfkey,
+    lv_title      TYPE lvc_title,
+    lo_col_last   TYPE REF TO cl_salv_column_table,
+    lo_col_open   TYPE REF TO cl_salv_column_table,
+    lo_col_add    TYPE REF TO cl_salv_column_table,
+    lv_has_ltxt   TYPE abap_bool.
 
-IF so_ckltx[] IS NOT INITIAL AND gs_base-char_ltxt NOT IN so_ckltx.
-  CONTINUE.
-ENDIF.
+  " Initial state
+  IF p_olist = gc_yes.
+    gv_show_olist = abap_true.
+    gv_show_ltxt = abap_false.
+    lv_pfstatus = 'ZSALV_OLIST_SHOW'.  " Start with object list shown
+  ELSEIF p_ltxt = gc_yes.
+    gv_show_ltxt = abap_true.
+    gv_show_olist = abap_false.
+    lv_pfstatus = 'ZSALV_LTXT_SHOW'.   " Start with long text shown
+  ELSE.
+    gv_show_olist = abap_false.
+    gv_show_ltxt = abap_false.
+    lv_pfstatus = 'ZSALV_BOTH_HIDE'.   " Start with both hidden
+  ENDIF.
 
-IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
-  CONTINUE.
-ENDIF.
+
+  " Build display based on initial state
+  PERFORM build_salv CHANGING gt_display_enh.
+
+  IF gt_display_enh IS INITIAL.
+    MESSAGE i017.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING
+          r_salv_table = lo_alv
+        CHANGING
+          t_table      = gt_display_enh ).
+
+      lo_functions = lo_alv->get_functions( ).
+      lo_functions->set_all( abap_true ).
+
+      " Set initial PF-STATUS based on selection screen
+      lo_alv->set_screen_status(
+        EXPORTING
+          pfstatus      = lv_pfstatus
+          report        = sy-repid
+          set_functions = lo_alv->c_functions_all ).
+
+      lo_display = lo_alv->get_display_settings( ).
+      lo_display->set_striped_pattern( abap_false ).
+
+      lv_title = gc_title.
+      IF gv_show_olist = abap_true.
+        CONCATENATE lv_title gc_act_obj INTO lv_title.
+      ENDIF.
+      IF gv_show_ltxt = abap_true.
+        CONCATENATE lv_title gc_act_txt INTO lv_title.
+      ENDIF.
+      lo_display->set_list_header( lv_title ).
+
+      lo_selections = lo_alv->get_selections( ).
+      lo_selections->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+      lo_layout = lo_alv->get_layout( ).
+      ls_layout_key-report = sy-repid.
+      lo_layout->set_key( ls_layout_key ).
+      lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+      lo_layout->set_default( abap_true ).
+
+      lo_columns = lo_alv->get_columns( ).
+      lo_columns->set_optimize( abap_false ).
+
+      PERFORM set_columns_enhanced USING lo_columns.
+
+
+      TRY.
+          lo_col_last ?= lo_columns->get_column( 'LASTORDER' ).
+          lo_col_last->set_short_text( 'LastOrder' ).
+          lo_col_last->set_medium_text( 'Last Order' ).
+          lo_col_last->set_long_text( 'Last Completed Order' ).
+          lo_col_last->set_output_length( 15 ).
+          lo_col_last->set_cell_type( if_salv_c_cell_type=>hotspot ).
+          lo_col_last->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_open ?= lo_columns->get_column( 'OPENORDER' ).
+          lo_col_open->set_long_text( 'Open Order' ).
+          lo_col_open->set_medium_text( 'OpnOrder' ).
+          lo_col_open->set_short_text( 'Order' ).
+          lo_col_open->set_output_length( 15 ).
+          lo_col_open->set_cell_type( if_salv_c_cell_type=>hotspot ).
+          lo_col_open->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'HORIZ' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'HORIZ_DAYS' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'HORIZ_QUALIFIER' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'KOSTL' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'SFAKT' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'VSNEG' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'TONEG' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'FABKL' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'EQKTX' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'PLTXT' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'VSPOS' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'TOPOS' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'LAUFN' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'KTEXT' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'LTKNZ' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'CALL_CONFIRM' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'ANDOR' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'HUNIT' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'STICH' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'ABRHO' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      TRY.
+          lo_col_add ?= lo_columns->get_column( 'IAUFNR' ).
+          lo_col_add->set_visible( abap_false ).
+        CATCH cx_salv_not_found.
+      ENDTRY.
+
+      LOOP AT gt_display_enh ASSIGNING FIELD-SYMBOL(<disp_check>)
+       WHERE row_type = gc_row_ltxt
+         AND tdline IS NOT INITIAL.
+        lv_has_ltxt = abap_true.
+        EXIT.
+      ENDLOOP.
+
+      TRY.
+          lo_columns->set_color_column( 'ROW_COLOR' ).
+        CATCH cx_salv_data_error.
+      ENDTRY.
+
+      lo_events = lo_alv->get_event( ).
+      SET HANDLER lcl_event_handler_enh=>on_user_command FOR lo_events.
+      SET HANDLER lcl_event_handler_enh=>on_double_click FOR lo_events.
+
+      lo_alv->display( ).
+
+    CATCH cx_salv_msg INTO lx_msg.
+      lv_message = lx_msg->get_text( ).
+      MESSAGE lv_message TYPE 'E'.
+  ENDTRY.
+ENDFORM.
