@@ -1,8 +1,42 @@
-" Force rename VORNR column
-TRY.
-    DATA(lo_col2) = lo_columns->get_column( 'VORNR' ).
-    lo_col2->set_short_text(  'Oper.' ).
-    lo_col2->set_medium_text( 'Operation' ).
-    lo_col2->set_long_text(   'Operation' ).
-  CATCH cx_salv_not_found.
-ENDTRY.
+"====================================================
+" FORCE FDS COLUMN ORDER (APPLIED AFTER VISIBILITY)
+"====================================================
+FORM apply_fds_column_order.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      lo_columns = lo_alv->get_columns( ).
+    CATCH cx_salv_msg.
+      RETURN.
+  ENDTRY.
+
+  "--- Helper to move columns safely
+  DEFINE move_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_position( &2 ).
+      CATCH cx_salv_not_found cx_salv_not_supported.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  "===== FDS Column Order =====
+  move_col 'PLNNR'      1.   "Group
+  move_col 'PLNAL'      2.   "Counter
+  move_col 'WERKS'      3.   "Plant
+  move_col 'VORNR'      4.   "Operation
+  move_col 'ARBPL_O'    5.   "Work Center
+  move_col 'ARBEI'      6.   "Work
+  move_col 'KURZT_CHAR' 7.   "Description
+  move_col 'PMETHODE'   8.   "Insp Method
+  move_col 'MERKNR'     9.   "Inspection Number
+  move_col 'TDFORMAT'   10.  "Format
+  move_col 'OP_LTXT'    11.  "Operation Long Text
+  move_col 'CHAR_LTXT'  12.  "Characteristic Long Text
+
+ENDFORM.
