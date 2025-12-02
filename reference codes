@@ -1,25 +1,26 @@
-  "==============================================================
-  " Set Column Order (ECC-compatible)
-  "==============================================================
-  DATA lo_col TYPE REF TO cl_salv_column_table.
+FORM set_position USING pv_col TYPE lvc_fname
+                        pv_pos TYPE i.
 
-  " FORMAT first
   TRY.
-      lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
-      lo_col->set_sequence( 10 ).
+      lo_columns->set_column_position(
+        columnname = pv_col
+        position   = pv_pos ).
     CATCH cx_salv_not_found.
+      " Ignore if the column does not exist
   ENDTRY.
 
-  " Operation Long Text
-  TRY.
-      lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
-      lo_col->set_sequence( 11 ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
+ENDFORM.
 
-  " Characteristic Long Text
-  TRY.
-      lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).
-      lo_col->set_sequence( 12 ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
+
+PERFORM set_position USING 'PLNNR'     1.
+PERFORM set_position USING 'PLNAL'     2.
+PERFORM set_position USING 'WERKS'     3.
+PERFORM set_position USING 'VORNR'     4.
+PERFORM set_position USING 'ARBPL_O'   5.
+PERFORM set_position USING 'ARBEI'     6.
+PERFORM set_position USING 'KURZT_CHAR' 7.
+PERFORM set_position USING 'PMETHODE'   8.
+PERFORM set_position USING 'MERKNR'     9.
+PERFORM set_position USING 'TDFORMAT'   10.   "Format
+PERFORM set_position USING 'OP_LTXT'    11.   "Operation Long Text
+PERFORM set_position USING 'CHAR_LTXT'  12.   "Characteristic Long Text
