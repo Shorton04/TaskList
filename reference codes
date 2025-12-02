@@ -1,8 +1,103 @@
-  set_hdr 'OP_LTXT'   'Operation Long Text'.
-  set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
-  set_hdr 'KURZT_CHAR' 'Description'.
-  set_hdr 'PMETHODE'   'Insp Method'.
-  set_hdr 'TDFORMAT'   'Format Key'.
-  set_hdr 'MERKNR'     'Characteristic No'.
-  set_hdr 'ARBPL_O'    'Work Center'.
-  set_hdr 'ARBEI'      'Work'.
+
+Character 1 of field PLMK-STEUERKZ, values: 
+
+“X” means “Quantitative” 
+
+“ “ means "Qualitative” 
+
+Character 2 of field PLMK-STEUERKZ 
+
+Character 3 of field PLMK-STEUERKZ 
+
+Character 4 of field PLMK-STEUERKZ 
+
+Character 5 of field PLMK-STEUERKZ 
+
+Character 6 of field PLMK-STEUERKZ 
+
+Character 7 of field PLMK-STEUERKZ, values: 
+
+“ ” means “Scope not fixed” 
+
+“=” means “Fixed scope” 
+
+“<” means “Smaller scope” 
+
+“>” means “Larger scope” 
+
+Character 8 of field PLMK-STEUERKZ 
+
+Character 9 of field PLMK-STEUERKZ, values: 
+
+“ “ means “Summarized recording” 
+
+“+” means “Single result” 
+
+“-” means “No characteristic recording” 
+
+“*” means “Classed recording” 
+
+Character 10 of field PLMK-STEUERKZ, values: 
+
+“ “ means “No documentation” 
+
+“.” means “Documentation if rejected” 
+
+“+” means “Documentation required” 
+
+Character 11 of field PLMK-STEUERKZ, values: 
+
+“X” means “Required Characteristic” 
+
+“ “ means “Optional Characteristic” 
+
+“+” means “After acceptance” 
+
+“-” means “After rejection” 
+
+Character 12 of field PLMK-STEUERKZ 
+
+Character 13 of field PLMK-STEUERKZ 
+
+Character 14 of field PLMK-STEUERKZ 
+
+Character 15 of field PLMK-STEUERKZ, values: 
+
+“ “ means “No formula” 
+
+“X” means “Calculated characteristic” 
+
+“1” means “Input processing” 
+
+Character 16 of field PLMK-STEUERKZ 
+
+Character 17 of field PLMK-STEUERKZ 
+
+Character 18 of field PLMK-STEUERKZ 
+
+Character 19 of field PLMK-STEUERKZ 
+
+Character 20 of field PLMK-STEUERKZ 
+
+Character 21 of field PLMK-STEUERKZ 
+
+Character 22 of field PLMK-STEUERKZ 
+
+Character 23 of field PLMK-STEUERKZ 
+
+Character 24 of field PLMK-STEUERKZ 
+
+Character 25 of field PLMK-STEUERKZ 
+
+Character 26 of field PLMK-STEUERKZ, values: 
+
+“ “ means “Print” 
+
+“X” means “Do not print” 
+
+“*” means “Do not print at skip” 
+
+Character 27 of field PLMK-STEUERKZ 
+
+Character 28 of field PLMK-STEUERKZ 
+
