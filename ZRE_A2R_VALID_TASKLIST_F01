@@ -731,6 +731,7 @@ FORM fill_ci_fields
   USING    pv_steuerkz TYPE plmk-steuerkz
   CHANGING ps_disp     TYPE ty_task_disp.
 
+  " Raw CI values (still needed for change layout)
   ps_disp-ci1  = pv_steuerkz+0(1).
   ps_disp-ci2  = pv_steuerkz+1(1).
   ps_disp-ci3  = pv_steuerkz+2(1).
@@ -760,7 +761,38 @@ FORM fill_ci_fields
   ps_disp-ci27 = pv_steuerkz+26(1).
   ps_disp-ci28 = pv_steuerkz+27(1).
 
+  " Equivalent full text (CIx_TXT)
+  PERFORM get_ci_equivalent USING  1 ps_disp-ci1  CHANGING ps_disp-ci1_txt.
+  PERFORM get_ci_equivalent USING  2 ps_disp-ci2  CHANGING ps_disp-ci2_txt.
+  PERFORM get_ci_equivalent USING  3 ps_disp-ci3  CHANGING ps_disp-ci3_txt.
+  PERFORM get_ci_equivalent USING  4 ps_disp-ci4  CHANGING ps_disp-ci4_txt.
+  PERFORM get_ci_equivalent USING  5 ps_disp-ci5  CHANGING ps_disp-ci5_txt.
+  PERFORM get_ci_equivalent USING  6 ps_disp-ci6  CHANGING ps_disp-ci6_txt.
+  PERFORM get_ci_equivalent USING  7 ps_disp-ci7  CHANGING ps_disp-ci7_txt.
+  PERFORM get_ci_equivalent USING  8 ps_disp-ci8  CHANGING ps_disp-ci8_txt.
+  PERFORM get_ci_equivalent USING  9 ps_disp-ci9  CHANGING ps_disp-ci9_txt.
+  PERFORM get_ci_equivalent USING 10 ps_disp-ci10 CHANGING ps_disp-ci10_txt.
+  PERFORM get_ci_equivalent USING 11 ps_disp-ci11 CHANGING ps_disp-ci11_txt.
+  PERFORM get_ci_equivalent USING 12 ps_disp-ci12 CHANGING ps_disp-ci12_txt.
+  PERFORM get_ci_equivalent USING 13 ps_disp-ci13 CHANGING ps_disp-ci13_txt.
+  PERFORM get_ci_equivalent USING 14 ps_disp-ci14 CHANGING ps_disp-ci14_txt.
+  PERFORM get_ci_equivalent USING 15 ps_disp-ci15 CHANGING ps_disp-ci15_txt.
+  PERFORM get_ci_equivalent USING 16 ps_disp-ci16 CHANGING ps_disp-ci16_txt.
+  PERFORM get_ci_equivalent USING 17 ps_disp-ci17 CHANGING ps_disp-ci17_txt.
+  PERFORM get_ci_equivalent USING 18 ps_disp-ci18 CHANGING ps_disp-ci18_txt.
+  PERFORM get_ci_equivalent USING 19 ps_disp-ci19 CHANGING ps_disp-ci19_txt.
+  PERFORM get_ci_equivalent USING 20 ps_disp-ci20 CHANGING ps_disp-ci20_txt.
+  PERFORM get_ci_equivalent USING 21 ps_disp-ci21 CHANGING ps_disp-ci21_txt.
+  PERFORM get_ci_equivalent USING 22 ps_disp-ci22 CHANGING ps_disp-ci22_txt.
+  PERFORM get_ci_equivalent USING 23 ps_disp-ci23 CHANGING ps_disp-ci23_txt.
+  PERFORM get_ci_equivalent USING 24 ps_disp-ci24 CHANGING ps_disp-ci24_txt.
+  PERFORM get_ci_equivalent USING 25 ps_disp-ci25 CHANGING ps_disp-ci25_txt.
+  PERFORM get_ci_equivalent USING 26 ps_disp-ci26 CHANGING ps_disp-ci26_txt.
+  PERFORM get_ci_equivalent USING 27 ps_disp-ci27 CHANGING ps_disp-ci27_txt.
+  PERFORM get_ci_equivalent USING 28 ps_disp-ci28 CHANGING ps_disp-ci28_txt.
+
 ENDFORM.
+
 
 
 FORM set_ci_headers.
@@ -794,37 +826,121 @@ FORM set_ci_headers.
     ENDTRY.
   END-OF-DEFINITION.
 
+  TRY.
+      lo_col ?= lo_columns->get_column( 'KTEXT' ).
+      lo_col->set_long_text( 'Header Text' ).
+      lo_col->set_medium_text( 'Header Text' ).
+      lo_col->set_short_text( 'Hdr Text' ).
+      lo_col->set_fixed_header_text( value = 'L' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
   "----------------------------------------------
   " CI01 – CI28 Headers
   "----------------------------------------------
-  set_hdr 'CI1'  'Quantitative Char'.
-  set_hdr 'CI2'  'Record Values'.
-  set_hdr 'CI3'  'Ref Char Required'.
-  set_hdr 'CI4'  'Upper Spec Limit'.
-  set_hdr 'CI5'  'Lower Spec Limit'.
-  set_hdr 'CI6'  'Check Target'.
-  set_hdr 'CI7'  'Inspection Scope'.
-  set_hdr 'CI8'  'Long Term Insp'.
-  set_hdr 'CI9'  'Recording Type'.
-  set_hdr 'CI10' 'Document Required'.
-  set_hdr 'CI11' 'Characteristic Cat'.
-  set_hdr 'CI12' 'Sync Active'.
-  set_hdr 'CI13' 'Sample Qty Add'.
-  set_hdr 'CI14' 'Destructive Insp'.
-  set_hdr 'CI15' 'Calculated Char'.
-  set_hdr 'CI16' 'Sampling Proc Req'.
-  set_hdr 'CI17' 'Quality Score Rel'.
-  set_hdr 'CI18' 'No Changes Allowed'.
-  set_hdr 'CI19' 'Defects Count'.
-  set_hdr 'CI20' 'QM Subsystem Char'.
-  set_hdr 'CI21' 'Specs Changeable'.
-  set_hdr 'CI22' 'Test Equip Req'.
-  set_hdr 'CI23' 'Auto Defect Rec'.
-  set_hdr 'CI24' 'Change Docs Req'.
-  set_hdr 'CI25' 'SPC Characteristic'.
-  set_hdr 'CI26' 'Print Indicator'.
-  set_hdr 'CI27' 'Parameter Char'.
-  set_hdr 'CI28' 'Process Char'.
+  set_hdr 'CI1_TXT'  'Quantitative Char'.
+  set_hdr 'CI2_TXT'  'Record Values'.
+  set_hdr 'CI3_TXT'  'Ref Char Required'.
+  set_hdr 'CI4_TXT'  'Upper Spec Limit'.
+  set_hdr 'CI5_TXT'  'Lower Spec Limit'.
+  set_hdr 'CI6_TXT'  'Check Target'.
+  set_hdr 'CI7_TXT'  'Inspection Scope'.
+  set_hdr 'CI8_TXT'  'Long Term Insp'.
+  set_hdr 'CI9_TXT'  'Recording Type'.
+  set_hdr 'CI10_TXT' 'Document Required'.
+  set_hdr 'CI11_TXT' 'Characteristic Cat'.
+  set_hdr 'CI12_TXT' 'Sync Active'.
+  set_hdr 'CI13_TXT' 'Sample Qty Add'.
+  set_hdr 'CI14_TXT' 'Destructive Insp'.
+  set_hdr 'CI15_TXT' 'Calculated Char'.
+  set_hdr 'CI16_TXT' 'Sampling Proc Req'.
+  set_hdr 'CI17_TXT' 'Quality Score Rel'.
+  set_hdr 'CI18_TXT' 'No Changes Allowed'.
+  set_hdr 'CI19_TXT' 'Defects Count'.
+  set_hdr 'CI20_TXT' 'QM Subsystem Char'.
+  set_hdr 'CI21_TXT' 'Specs Changeable'.
+  set_hdr 'CI22_TXT' 'Test Equip Req'.
+  set_hdr 'CI23_TXT' 'Auto Defect Rec'.
+  set_hdr 'CI24_TXT' 'Change Docs Req'.
+  set_hdr 'CI25_TXT' 'SPC Characteristic'.
+  set_hdr 'CI26_TXT' 'Print Indicator'.
+  set_hdr 'CI27_TXT' 'Parameter Char'.
+  set_hdr 'CI28_TXT' 'Process Char'.
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* CI Equivalent Text Resolver
+*---------------------------------------------------------------------*
+FORM get_ci_equivalent
+  USING    pv_index  TYPE i
+           pv_char   TYPE char1
+  CHANGING pv_result TYPE string.
+
+  CASE pv_index.
+
+    WHEN 1.
+      CASE pv_char.
+        WHEN 'X'. pv_result = 'Quantitative'.
+        WHEN ' '. pv_result = 'Qualitative'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 7.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'Scope not fixed'.
+        WHEN '='. pv_result = 'Fixed scope'.
+        WHEN '<'. pv_result = 'Smaller scope'.
+        WHEN '>'. pv_result = 'Larger scope'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 9.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'Summarized recording'.
+        WHEN '+'. pv_result = 'Single result'.
+        WHEN '-'. pv_result = 'No recording'.
+        WHEN '*'. pv_result = 'Classed recording'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 10.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'No documentation'.
+        WHEN '.'. pv_result = 'Doc if rejected'.
+        WHEN '+'. pv_result = 'Documentation required'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 11.
+      CASE pv_char.
+        WHEN 'X'. pv_result = 'Required'.
+        WHEN ' '. pv_result = 'Optional'.
+        WHEN '+'. pv_result = 'After acceptance'.
+        WHEN '-'. pv_result = 'After rejection'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 15.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'No formula'.
+        WHEN 'X'. pv_result = 'Calculated characteristic'.
+        WHEN '1'. pv_result = 'Input processing'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 26.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'Print'.
+        WHEN 'X'. pv_result = 'Do not print'.
+        WHEN '*'. pv_result = 'Do not print (skip)'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN OTHERS.
+      pv_result = pv_char.
+
+  ENDCASE.
 
 ENDFORM.
 
@@ -1282,11 +1398,21 @@ FORM set_column_visibility_by_state.
   "--------------------------------------------------------------
   " MACROS
   "--------------------------------------------------------------
+  DEFINE hide_col_total.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_false ).   "Not visible
+        lo_col->set_technical( abap_true ).  "Also hidden in layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+
   DEFINE hide_col.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
-        lo_col->set_visible( abap_false ).
-        lo_col->set_technical( abap_false ).
+        lo_col->set_visible( abap_false ).   "Hidden initially
+        lo_col->set_technical( abap_false ). "Still available in Change Layout
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
@@ -1299,6 +1425,25 @@ FORM set_column_visibility_by_state.
       CATCH cx_salv_not_found.
     ENDTRY.
   END-OF-DEFINITION.
+
+  DATA: col     TYPE lvc_fname,
+        col_txt TYPE lvc_fname.
+
+  "=====================================================
+  " 1️ Hide CI1–CI28 COMPLETELY (ALV + layout)
+  "=====================================================
+  DO 28 TIMES.
+    col = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+    hide_col_total col.
+  ENDDO.
+
+  "=====================================================
+  " 2️ Hide CI1_TXT–CI28_TXT ONLY IN ALV (but allow layout)
+  "=====================================================
+  DO 28 TIMES.
+    col_txt = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
+    hide_col col_txt.      "Hidden in ALV, visible in Change Layout
+  ENDDO.
 
 
   "--- Header fields not required in FDS ---
@@ -1355,7 +1500,6 @@ FORM set_column_visibility_by_state.
   hide_col 'AUSWMENGE1'.
   hide_col 'STEUERKZ'.
   hide_col 'LOEKZ_C'.
-  hide_col 'PMETHODE'.
 
   "--- CI1..CI28 ghost columns ---
   hide_col 'CI1'.
@@ -1387,8 +1531,70 @@ FORM set_column_visibility_by_state.
   hide_col 'CI27'.
   hide_col 'CI28'.
 
+  "--- hide ---
+  hide_col 'CI1_TXT'.
+  hide_col 'CI2_TXT'.
+  hide_col 'CI3_TXT'.
+  hide_col 'CI4_TXT'.
+  hide_col 'CI5_TXT'.
+  hide_col 'CI6_TXT'.
+  hide_col 'CI7_TXT'.
+  hide_col 'CI8_TXT'.
+  hide_col 'CI9_TXT'.
+  hide_col 'CI10_TXT'.
+  hide_col 'CI11_TXT'.
+  hide_col 'CI12_TXT'.
+  hide_col 'CI13_TXT'.
+  hide_col 'CI14_TXT'.
+  hide_col 'CI15_TXT'.
+  hide_col 'CI16_TXT'.
+  hide_col 'CI17_TXT'.
+  hide_col 'CI18_TXT'.
+  hide_col 'CI19_TXT'.
+  hide_col 'CI20_TXT'.
+  hide_col 'CI21_TXT'.
+  hide_col 'CI22_TXT'.
+  hide_col 'CI23_TXT'.
+  hide_col 'CI24_TXT'.
+  hide_col 'CI25_TXT'.
+  hide_col 'CI26_TXT'.
+  hide_col 'CI27_TXT'.
+  hide_col 'CI28_TXT'.
+
   "--- Internal / Technical fields ---
-  hide_col 'ROW_KIND'.
+  hide_col_total 'ROW_KIND'.
+  hide_col_total 'LINE_COLOR'.
+  hide_col_total 'T_COLOR'.
+  hide_col_total 'CELLSTYLE'.
+  hide_col_total 'ROWSTYLE'.
+  hide_col_total 'CI1'.
+  hide_col_total 'CI2'.
+  hide_col_total 'CI3'.
+  hide_col_total 'CI4'.
+  hide_col_total 'CI5'.
+  hide_col_total 'CI6'.
+  hide_col_total 'CI7'.
+  hide_col_total 'CI8'.
+  hide_col_total 'CI9'.
+  hide_col_total 'CI10'.
+  hide_col_total 'CI11'.
+  hide_col_total 'CI12'.
+  hide_col_total 'CI13'.
+  hide_col_total 'CI14'.
+  hide_col_total 'CI15'.
+  hide_col_total 'CI16'.
+  hide_col_total 'CI17'.
+  hide_col_total 'CI18'.
+  hide_col_total 'CI19'.
+  hide_col_total 'CI20'.
+  hide_col_total 'CI21'.
+  hide_col_total 'CI22'.
+  hide_col_total 'CI23'.
+  hide_col_total 'CI24'.
+  hide_col_total 'CI25'.
+  hide_col_total 'CI26'.
+  hide_col_total 'CI27'.
+  hide_col_total 'CI28'.
 
 
   "==============================================================
