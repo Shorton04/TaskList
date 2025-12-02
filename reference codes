@@ -1,47 +1,30 @@
-  "--------------------------------------------------------------
-  " CIx_TXT Headers (Equivalents for displayed fields)
-  "--------------------------------------------------------------
-  set_hdr 'CI1_TXT'  'Quantitative Char'.
-  set_hdr 'CI2_TXT'  'Record Values'.
-  set_hdr 'CI3_TXT'  'Ref Char Required'.
-  set_hdr 'CI4_TXT'  'Upper Spec Limit'.
-  set_hdr 'CI5_TXT'  'Lower Spec Limit'.
-  set_hdr 'CI6_TXT'  'Check Target'.
-  set_hdr 'CI7_TXT'  'Inspection Scope'.
-  set_hdr 'CI8_TXT'  'Long Term Insp'.
-  set_hdr 'CI9_TXT'  'Recording Type'.
-  set_hdr 'CI10_TXT' 'Document Required'.
-  set_hdr 'CI11_TXT' 'Characteristic Cat'.
-  set_hdr 'CI12_TXT' 'Sync Active'.
-  set_hdr 'CI13_TXT' 'Sample Qty Add'.
-  set_hdr 'CI14_TXT' 'Destructive Insp'.
-  set_hdr 'CI15_TXT' 'Calculated Char'.
-  set_hdr 'CI16_TXT' 'Sampling Proc Req'.
-  set_hdr 'CI17_TXT' 'Quality Score Rel'.
-  set_hdr 'CI18_TXT' 'No Changes Allowed'.
-  set_hdr 'CI19_TXT' 'Defects Count'.
-  set_hdr 'CI20_TXT' 'QM Subsystem Char'.
-  set_hdr 'CI21_TXT' 'Specs Changeable'.
-  set_hdr 'CI22_TXT' 'Test Equip Req'.
-  set_hdr 'CI23_TXT' 'Auto Defect Rec'.
-  set_hdr 'CI24_TXT' 'Change Docs Req'.
-  set_hdr 'CI25_TXT' 'SPC Characteristic'.
-  set_hdr 'CI26_TXT' 'Print Indicator'.
-  set_hdr 'CI27_TXT' 'Parameter Char'.
-  set_hdr 'CI28_TXT' 'Process Char'.
-
-
-
-
-
-"Hide raw CI1..CI28, but keep available in change layout
+"-------------------------------------------------------------
+" Hide CI01..CI28 everywhere (ALV + Change Layout)
+"-------------------------------------------------------------
 DO 28 TIMES.
-  DATA(col) = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
-  hide_col col.
+  DATA col TYPE lvc_fname.
+  col = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+
+  TRY.
+      DATA(lo_col) = lo_columns->get_column( col ).
+      lo_col->set_visible( abap_false ).   "hide in ALV
+      lo_col->set_technical( abap_true ).  "hide in change layout
+    CATCH cx_salv_not_found.
+  ENDTRY.
 ENDDO.
 
-"Show CIx_TXT
+
+"-------------------------------------------------------------
+" Hide CI01_TXT..CI28_TXT in ALV, BUT allow in change layout
+"-------------------------------------------------------------
 DO 28 TIMES.
-  DATA(col_txt) = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
-  show_col col_txt.
+  DATA col_txt TYPE lvc_fname.
+  col_txt = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
+
+  TRY.
+      DATA(lo_col2) = lo_columns->get_column( col_txt ).
+      lo_col2->set_visible( abap_false ).    "hidden in ALV
+      lo_col2->set_technical( abap_false ).  "but selectable in layout
+    CATCH cx_salv_not_found.
+  ENDTRY.
 ENDDO.
