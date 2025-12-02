@@ -13,52 +13,51 @@ FORM apply_column_order.
   ENDTRY.
 
   "=====================================================
-  " Helper Macro (renamed — NOT MOVE anymore)
+  " Macro to set column position
   "=====================================================
   DEFINE pos.
     TRY.
         lo_columns->set_column_position(
-            columnname = &1
-            position   = &2 ).
+           columnname = &1
+           position   = &2 ).
       CATCH cx_salv_msg.
-        "ignore
     ENDTRY.
   END-OF-DEFINITION.
 
   "=====================================================
-  " BASE COLUMNS (always shown)
+  " ALWAYS FIRST 4 COLUMNS
   "=====================================================
-  pos 'PLNNR'       1.   "Group
-  pos 'PLNAL'       2.   "Counter
-  pos 'WERKS'       3.   "Plant
-  pos 'VORNR'       4.   "Operation
+  pos 'PLNNR'      1.   "Group
+  pos 'PLNAL'      2.   "Counter
+  pos 'WERKS'      3.   "Plant
+  pos 'VORNR'      4.   "Operation
 
   "=====================================================
-  " CASE 1: Show LT = TRUE, Show Char = FALSE
+  " CASE 1: Show Long Text = TRUE AND Show Characteristics = FALSE
   "=====================================================
   IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
 
-    pos 'TDFORMAT'     5    "Format
-    pos 'OP_LTXT'      6    "Operation Long Text
+    pos 'TDFORMAT'     5.   "FK
+    pos 'OP_LTXT'      6.   "Operation Long Text
 
-    pos 'ARBPL_O'      7    "Work Center
-    pos 'ARBEI'        8    "Work
-    pos 'KURZT_CHAR'   9    "Description
-    pos 'PMETHODE'     10   "Method
+    pos 'ARBPL_O'      7.   "Work Center
+    pos 'ARBEI'        8.   "Work
+    pos 'KURZT_CHAR'   9.   "Description
+    pos 'PMETHODE'     10.  "Method
 
   "=====================================================
-  " CASE 2: Show LT = TRUE, Show Char = TRUE
+  " CASE 2: Show Long Text = TRUE AND Show Characteristics = TRUE
   "=====================================================
   ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_true.
 
-    pos 'ARBPL_O'      5    "Work Center
-    pos 'ARBEI'        6    "Work
-    pos 'KURZT_CHAR'   7    "Description
-    pos 'PMETHODE'     8    "Method
+    pos 'ARBPL_O'      5.   "Work Center
+    pos 'ARBEI'        6.   "Work
+    pos 'KURZT_CHAR'   7.   "Description
+    pos 'PMETHODE'     8.   "Method
 
-    pos 'MERKNR'       9    "Char Number
-    pos 'TDFORMAT'     10   "Format
-    pos 'CHAR_LTXT'    11   "Characteristic Long Text
+    pos 'MERKNR'       9.   "Characteristic Number
+    pos 'TDFORMAT'     10.  "Format
+    pos 'CHAR_LTXT'    11.  "Characteristic Long Text
 
   ENDIF.
 
