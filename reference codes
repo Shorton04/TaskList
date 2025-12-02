@@ -1,61 +1,226 @@
-TRY.
-      lo_col ?= lo_columns->get_column( 'KTEXT' ).
-      lo_col->set_long_text( 'Header Text' ).
-      lo_col->set_medium_text( 'Header Text' ).
-      lo_col->set_short_text( 'Hdr Text' ).
-      lo_col->set_fixed_header_text( value = 'L' ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
+FORM set_column_visibility_by_state.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_columns = lo_alv->get_columns( ).
+
+  " ===== Hide CI1–CI28 but NOT technical =====
+  DO 28 TIMES.
+    DATA lv_ci TYPE lvc_fname.
+    lv_ci = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+
+    TRY.
+        lo_col ?= lo_columns->get_column( lv_ci ).
+        lo_col->set_visible( abap_false ).   "Hidden in ALV
+        lo_col->set_technical( abap_false ). "Visible in Change Layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  ENDDO.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_columns = lo_alv->get_columns( ).
+
+  "--------------------------------------------------------------
+  " MACROS
+  "--------------------------------------------------------------
+  DEFINE hide_col_total.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_false ).   "Not visible
+        lo_col->set_technical( abap_true ).  "Also hidden in layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
 
 
-DEFINE hide_col_total.
-  TRY.
-      lo_col ?= lo_columns->get_column( &1 ).
-      lo_col->set_visible( abap_false ).   "Not visible
-      lo_col->set_technical( abap_true ).  "Also hidden in layout
-    CATCH cx_salv_not_found.
-  ENDTRY.
-END-OF-DEFINITION.
+  DEFINE hide_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_false ).   "Hidden initially
+        lo_col->set_technical( abap_false ). "Still available in Change Layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
 
+  DEFINE show_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_true ).
+        lo_col->set_technical( abap_false ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
 
+  DATA: col     TYPE lvc_fname,
+        col_txt TYPE lvc_fname.
 
-
-DEFINE hide_col.
-  TRY.
-      lo_col ?= lo_columns->get_column( &1 ).
-      lo_col->set_visible( abap_false ).   "Hidden initially
-      lo_col->set_technical( abap_false ). "Still available in Change Layout
-    CATCH cx_salv_not_found.
-  ENDTRY.
-END-OF-DEFINITION.
-
-
-
-DEFINE show_col.
-  TRY.
-      lo_col ?= lo_columns->get_column( &1 ).
-      lo_col->set_visible( abap_true ).
-      lo_col->set_technical( abap_false ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
-END-OF-DEFINITION.
-
-
-
-
-"=====================================================
-  " 1️⃣ Hide CI1–CI28 COMPLETELY (ALV + layout)
+  "=====================================================
+  " 1️ Hide CI1–CI28 COMPLETELY (ALV + layout)
   "=====================================================
   DO 28 TIMES.
-    DATA(col) = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+    col = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
     hide_col_total col.
   ENDDO.
 
   "=====================================================
-  " 2️⃣ Hide CI1_TXT–CI28_TXT ONLY IN ALV (but allow layout)
+  " 2️ Hide CI1_TXT–CI28_TXT ONLY IN ALV (but allow layout)
   "=====================================================
   DO 28 TIMES.
-    DATA(col_txt) = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
+    col_txt = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
     hide_col col_txt.      "Hidden in ALV, visible in Change Layout
   ENDDO.
 
+
+  "--- Header fields not required in FDS ---
+  hide_col 'PLNTY'.
+  hide_col 'KTEXT'.
+  hide_col 'TPLNR'.
+  hide_col 'EQUNR'.
+  hide_col 'VERWE'.
+  hide_col 'VAGRP'.
+  hide_col 'STATU_H'.
+  hide_col 'ANLZU_H'.
+  hide_col 'STRAT'.
+  hide_col 'ISTRU_H'.
+  hide_col 'ADPSP'.
+  hide_col 'SLWBEZ'.
+  hide_col 'LOEKZ_H'.
+  hide_col 'ANDAT'.
+  hide_col 'ANNAM'.
+  hide_col 'AEDAT'.
+  hide_col 'AENAM'.
+
+  "--- Operation fields not required in FDS ---
+  hide_col 'LTXA1'.
+  hide_col 'STEUS'.
+  hide_col 'WERKS_O'.
+  hide_col 'KTSCH'.
+  hide_col 'ARBEH'.
+  hide_col 'DAUNO'.
+  hide_col 'DAUNE'.
+  hide_col 'KALID'.
+  hide_col 'EXECUTION_STAGE'.
+  hide_col 'ANLZU_O'.
+  hide_col 'ISTRU_O'.
+  hide_col 'LARNT'.
+  hide_col 'EBELN'.
+  hide_col 'EBELP'.
+  hide_col 'LIFNR'.
+  hide_col 'PREIS'.
+  hide_col 'WAERS'.
+  hide_col 'SAKTO'.
+  hide_col 'EKORG'.
+  hide_col 'EKGRP'.
+  hide_col 'TXTSP_OP'.
+  hide_col 'LOEKZ_O'.
+
+  "--- Characteristic fields not in FDS ---
+  hide_col 'VERWMERKM'.
+  hide_col 'LTEXTKZ'.
+  hide_col 'TOLERANZUN'.
+  hide_col 'TOLERANZOB'.
+  hide_col 'PRUEFEINH'.
+  hide_col 'STICHPRVER'.
+  hide_col 'KATALGART1'.
+  hide_col 'AUSWMENGE1'.
+  hide_col 'STEUERKZ'.
+  hide_col 'LOEKZ_C'.
+
+  "--- CI1..CI28 ghost columns ---
+  hide_col 'CI1'.
+  hide_col 'CI2'.
+  hide_col 'CI3'.
+  hide_col 'CI4'.
+  hide_col 'CI5'.
+  hide_col 'CI6'.
+  hide_col 'CI7'.
+  hide_col 'CI8'.
+  hide_col 'CI9'.
+  hide_col 'CI10'.
+  hide_col 'CI11'.
+  hide_col 'CI12'.
+  hide_col 'CI13'.
+  hide_col 'CI14'.
+  hide_col 'CI15'.
+  hide_col 'CI16'.
+  hide_col 'CI17'.
+  hide_col 'CI18'.
+  hide_col 'CI19'.
+  hide_col 'CI20'.
+  hide_col 'CI21'.
+  hide_col 'CI22'.
+  hide_col 'CI23'.
+  hide_col 'CI24'.
+  hide_col 'CI25'.
+  hide_col 'CI26'.
+  hide_col 'CI27'.
+  hide_col 'CI28'.
+
+  "--- Internal / Technical fields ---
+  hide_col 'ROW_KIND'.
+
+
+  "==============================================================
+  " ALWAYS SHOW CORE FDS COLUMNS
+  "==============================================================
+  show_col 'PLNNR'.        "Group
+  show_col 'PLNAL'.        "Counter
+  show_col 'WERKS'.        "Plant
+  show_col 'VORNR'.        "Operation
+  show_col 'ARBPL_O'.      "Work Center
+  show_col 'ARBEI'.        "Work
+  show_col 'KURZT_CHAR'.   "Description
+  show_col 'PMETHODE'.     "Insp Method
+  show_col 'MERKNR'.       "Insp Number
+  show_col 'TDFORMAT'.     "FK
+  show_col 'OP_LTXT'.      "Operation Long Text
+  show_col 'CHAR_LTXT'.    "Characteristic Long Text
+
+
+
+  "==============================================================
+  " CASE A/B/C/D – Your Original Logic
+  "==============================================================
+
+  "CASE A – No Char, No LT
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+    "CASE B – Show Char, No LT
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+    "CASE C – Hide Char, Show LT
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+    "CASE D – Char + LT
+  ELSE.
+
+    show_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
+
+  ENDIF.
+
+ENDFORM.
