@@ -1,30 +1,61 @@
-"-------------------------------------------------------------
-" Hide CI01..CI28 everywhere (ALV + Change Layout)
-"-------------------------------------------------------------
-DO 28 TIMES.
-  DATA col TYPE lvc_fname.
-  col = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
-
-  TRY.
-      DATA(lo_col) = lo_columns->get_column( col ).
-      lo_col->set_visible( abap_false ).   "hide in ALV
-      lo_col->set_technical( abap_true ).  "hide in change layout
+TRY.
+      lo_col ?= lo_columns->get_column( 'KTEXT' ).
+      lo_col->set_long_text( 'Header Text' ).
+      lo_col->set_medium_text( 'Header Text' ).
+      lo_col->set_short_text( 'Hdr Text' ).
+      lo_col->set_fixed_header_text( value = 'L' ).
     CATCH cx_salv_not_found.
   ENDTRY.
-ENDDO.
 
 
-"-------------------------------------------------------------
-" Hide CI01_TXT..CI28_TXT in ALV, BUT allow in change layout
-"-------------------------------------------------------------
-DO 28 TIMES.
-  DATA col_txt TYPE lvc_fname.
-  col_txt = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
-
+DEFINE hide_col_total.
   TRY.
-      DATA(lo_col2) = lo_columns->get_column( col_txt ).
-      lo_col2->set_visible( abap_false ).    "hidden in ALV
-      lo_col2->set_technical( abap_false ).  "but selectable in layout
+      lo_col ?= lo_columns->get_column( &1 ).
+      lo_col->set_visible( abap_false ).   "Not visible
+      lo_col->set_technical( abap_true ).  "Also hidden in layout
     CATCH cx_salv_not_found.
   ENDTRY.
-ENDDO.
+END-OF-DEFINITION.
+
+
+
+
+DEFINE hide_col.
+  TRY.
+      lo_col ?= lo_columns->get_column( &1 ).
+      lo_col->set_visible( abap_false ).   "Hidden initially
+      lo_col->set_technical( abap_false ). "Still available in Change Layout
+    CATCH cx_salv_not_found.
+  ENDTRY.
+END-OF-DEFINITION.
+
+
+
+DEFINE show_col.
+  TRY.
+      lo_col ?= lo_columns->get_column( &1 ).
+      lo_col->set_visible( abap_true ).
+      lo_col->set_technical( abap_false ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+END-OF-DEFINITION.
+
+
+
+
+"=====================================================
+  " 1️⃣ Hide CI1–CI28 COMPLETELY (ALV + layout)
+  "=====================================================
+  DO 28 TIMES.
+    DATA(col) = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+    hide_col_total col.
+  ENDDO.
+
+  "=====================================================
+  " 2️⃣ Hide CI1_TXT–CI28_TXT ONLY IN ALV (but allow layout)
+  "=====================================================
+  DO 28 TIMES.
+    DATA(col_txt) = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
+    hide_col col_txt.      "Hidden in ALV, visible in Change Layout
+  ENDDO.
+
