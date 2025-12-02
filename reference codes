@@ -1,19 +1,8 @@
-"===========================================================
-" DEBUG: Print SALV column names (universal fallback)
-"===========================================================
-
-DATA: lo_columns TYPE REF TO cl_salv_columns,
-      lo_col     TYPE REF TO cl_salv_column,
-      lv_name    TYPE lvc_fname.
-
-lo_columns = lo_alv->get_columns( ).
-
-DO 200 TIMES.  " Max 200 columns safeguard
-  TRY.
-      lo_col = lo_columns->get_column( sy-index ).
-      lv_name = lo_col->get_columnname( ).
-      WRITE: / lv_name.
-    CATCH cx_salv_not_found.
-      EXIT. " Stop when index is no longer valid
-  ENDTRY.
-ENDDO.
+  set_hdr 'OP_LTXT'   'Operation Long Text'.
+  set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
+  set_hdr 'KURZT_CHAR' 'Description'.
+  set_hdr 'PMETHODE'   'Insp Method'.
+  set_hdr 'TDFORMAT'   'Format Key'.
+  set_hdr 'MERKNR'     'Characteristic No'.
+  set_hdr 'ARBPL_O'    'Work Center'.
+  set_hdr 'ARBEI'      'Work'.
