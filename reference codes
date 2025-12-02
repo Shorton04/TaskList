@@ -1,65 +1,65 @@
 FORM get_ci_equivalent
-  USING    pv_index TYPE i
-           pv_char  TYPE char1
-  CHANGING pv_result TYPE char40.
+  USING    pv_index  TYPE i
+           pv_char   TYPE char1
+  CHANGING pv_result TYPE char1.
 
   CASE pv_index.
 
     WHEN 1.
       CASE pv_char.
-        WHEN 'X'. pv_result = 'Quantitative'.
-        WHEN ' '. pv_result = 'Qualitative'.
+        WHEN 'X'. pv_result = 'X'.   "Quantitative
+        WHEN ' '. pv_result = ' '.   "Qualitative
         WHEN OTHERS. pv_result = pv_char.
       ENDCASE.
 
     WHEN 7.
       CASE pv_char.
-        WHEN ' '. pv_result = 'Scope not fixed'.
-        WHEN '='. pv_result = 'Fixed scope'.
-        WHEN '<'. pv_result = 'Smaller scope'.
-        WHEN '>'. pv_result = 'Larger scope'.
+        WHEN ' '. pv_result = '='.   "Scope not fixed → just keep original
+        WHEN '='. pv_result = '='.
+        WHEN '<'. pv_result = '<'.
+        WHEN '>'. pv_result = '>'.
         WHEN OTHERS. pv_result = pv_char.
       ENDCASE.
 
     WHEN 9.
       CASE pv_char.
-        WHEN ' '. pv_result = 'Summarized recording'.
-        WHEN '+'. pv_result = 'Single result'.
-        WHEN '-'. pv_result = 'No recording'.
-        WHEN '*'. pv_result = 'Classed recording'.
+        WHEN ' '. pv_result = ' '.
+        WHEN '+'. pv_result = '+'.
+        WHEN '-'. pv_result = '-'.
+        WHEN '*'. pv_result = '*'.
         WHEN OTHERS. pv_result = pv_char.
       ENDCASE.
 
     WHEN 10.
       CASE pv_char.
-        WHEN ' '. pv_result = 'No documentation'.
-        WHEN '.'. pv_result = 'Doc if rejected'.
-        WHEN '+'. pv_result = 'Documentation required'.
+        WHEN ' '. pv_result = ' '.
+        WHEN '.'. pv_result = '.'.
+        WHEN '+'. pv_result = '+'.
         WHEN OTHERS. pv_result = pv_char.
       ENDCASE.
 
     WHEN 11.
       CASE pv_char.
-        WHEN 'X'. pv_result = 'Required Char'.
-        WHEN ' '. pv_result = 'Optional'.
-        WHEN '+'. pv_result = 'After acceptance'.
-        WHEN '-'. pv_result = 'After rejection'.
+        WHEN 'X'. pv_result = 'X'.
+        WHEN ' '. pv_result = ' '.
+        WHEN '+'. pv_result = '+'.
+        WHEN '-'. pv_result = '-'.
         WHEN OTHERS. pv_result = pv_char.
       ENDCASE.
 
     WHEN 15.
       CASE pv_char.
-        WHEN ' '. pv_result = 'No formula'.
-        WHEN 'X'. pv_result = 'Calculated Char'.
-        WHEN '1'. pv_result = 'Input processing'.
+        WHEN ' '. pv_result = ' '.
+        WHEN 'X'. pv_result = 'X'.
+        WHEN '1'. pv_result = '1'.
         WHEN OTHERS. pv_result = pv_char.
       ENDCASE.
 
     WHEN 26.
       CASE pv_char.
-        WHEN ' '. pv_result = 'Print'.
-        WHEN 'X'. pv_result = 'Do not print'.
-        WHEN '*'. pv_result = 'Skip printing'.
+        WHEN ' '. pv_result = ' '.
+        WHEN 'X'. pv_result = 'X'.
+        WHEN '*'. pv_result = '*'.
         WHEN OTHERS. pv_result = pv_char.
       ENDCASE.
 
