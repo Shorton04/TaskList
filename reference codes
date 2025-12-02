@@ -1,103 +1,101 @@
+FORM get_ci_equivalent
+  USING    pv_index TYPE i
+           pv_char  TYPE char1
+  RETURNING VALUE(rv_text) TYPE string.
 
-Character 1 of field PLMK-STEUERKZ, values: 
+  CASE pv_index.
 
-“X” means “Quantitative” 
+    "---------------------------------------------------
+    "* Character 1
+    "---------------------------------------------------
+    WHEN 1.
+      CASE pv_char.
+        WHEN 'X'.   rv_text = 'Quantitative'.
+        WHEN ' '.   rv_text = 'Qualitative'.
+        WHEN OTHERS rv_text = pv_char.
+      ENDCASE.
 
-“ “ means "Qualitative” 
+    "---------------------------------------------------
+    "* Character 7
+    "---------------------------------------------------
+    WHEN 7.
+      CASE pv_char.
+        WHEN ' '. rv_text = 'Scope not fixed'.
+        WHEN '='. rv_text = 'Fixed scope'.
+        WHEN '<'. rv_text = 'Smaller scope'.
+        WHEN '>'. rv_text = 'Larger scope'.
+        WHEN OTHERS. rv_text = pv_char.
+      ENDCASE.
 
-Character 2 of field PLMK-STEUERKZ 
+    "---------------------------------------------------
+    "* Character 9
+    "---------------------------------------------------
+    WHEN 9.
+      CASE pv_char.
+        WHEN ' '. rv_text = 'Summarized recording'.
+        WHEN '+'. rv_text = 'Single result'.
+        WHEN '-'. rv_text = 'No characteristic recording'.
+        WHEN '*'. rv_text = 'Classed recording'.
+        WHEN OTHERS. rv_text = pv_char.
+      ENDCASE.
 
-Character 3 of field PLMK-STEUERKZ 
+    "---------------------------------------------------
+    "* Character 10
+    "---------------------------------------------------
+    WHEN 10.
+      CASE pv_char.
+        WHEN ' '. rv_text = 'No documentation'.
+        WHEN '.'. rv_text = 'Documentation if rejected'.
+        WHEN '+'. rv_text = 'Documentation required'.
+        WHEN OTHERS. rv_text = pv_char.
+      ENDCASE.
 
-Character 4 of field PLMK-STEUERKZ 
+    "---------------------------------------------------
+    "* Character 11
+    "---------------------------------------------------
+    WHEN 11.
+      CASE pv_char.
+        WHEN 'X'. rv_text = 'Required Characteristic'.
+        WHEN ' '. rv_text = 'Optional Characteristic'.
+        WHEN '+'. rv_text = 'After acceptance'.
+        WHEN '-'. rv_text = 'After rejection'.
+        WHEN OTHERS. rv_text = pv_char.
+      ENDCASE.
 
-Character 5 of field PLMK-STEUERKZ 
+    "---------------------------------------------------
+    "* Character 15
+    "---------------------------------------------------
+    WHEN 15.
+      CASE pv_char.
+        WHEN ' '. rv_text = 'No formula'.
+        WHEN 'X'. rv_text = 'Calculated characteristic'.
+        WHEN '1'. rv_text = 'Input processing'.
+        WHEN OTHERS. rv_text = pv_char.
+      ENDCASE.
 
-Character 6 of field PLMK-STEUERKZ 
+    "---------------------------------------------------
+    "* Character 26
+    "---------------------------------------------------
+    WHEN 26.
+      CASE pv_char.
+        WHEN ' '. rv_text = 'Print'.
+        WHEN 'X'. rv_text = 'Do not print'.
+        WHEN '*'. rv_text = 'Do not print at skip'.
+        WHEN OTHERS. rv_text = pv_char.
+      ENDCASE.
 
-Character 7 of field PLMK-STEUERKZ, values: 
+    "---------------------------------------------------
+    "* All other CI (2,3,4,5,6,8,12-14,16-25,27,28)
+    "* No defined equivalent — return raw character
+    "---------------------------------------------------
+    WHEN OTHERS.
+      rv_text = pv_char.
 
-“ ” means “Scope not fixed” 
+  ENDCASE.
 
-“=” means “Fixed scope” 
+ENDFORM.
 
-“<” means “Smaller scope” 
 
-“>” means “Larger scope” 
 
-Character 8 of field PLMK-STEUERKZ 
-
-Character 9 of field PLMK-STEUERKZ, values: 
-
-“ “ means “Summarized recording” 
-
-“+” means “Single result” 
-
-“-” means “No characteristic recording” 
-
-“*” means “Classed recording” 
-
-Character 10 of field PLMK-STEUERKZ, values: 
-
-“ “ means “No documentation” 
-
-“.” means “Documentation if rejected” 
-
-“+” means “Documentation required” 
-
-Character 11 of field PLMK-STEUERKZ, values: 
-
-“X” means “Required Characteristic” 
-
-“ “ means “Optional Characteristic” 
-
-“+” means “After acceptance” 
-
-“-” means “After rejection” 
-
-Character 12 of field PLMK-STEUERKZ 
-
-Character 13 of field PLMK-STEUERKZ 
-
-Character 14 of field PLMK-STEUERKZ 
-
-Character 15 of field PLMK-STEUERKZ, values: 
-
-“ “ means “No formula” 
-
-“X” means “Calculated characteristic” 
-
-“1” means “Input processing” 
-
-Character 16 of field PLMK-STEUERKZ 
-
-Character 17 of field PLMK-STEUERKZ 
-
-Character 18 of field PLMK-STEUERKZ 
-
-Character 19 of field PLMK-STEUERKZ 
-
-Character 20 of field PLMK-STEUERKZ 
-
-Character 21 of field PLMK-STEUERKZ 
-
-Character 22 of field PLMK-STEUERKZ 
-
-Character 23 of field PLMK-STEUERKZ 
-
-Character 24 of field PLMK-STEUERKZ 
-
-Character 25 of field PLMK-STEUERKZ 
-
-Character 26 of field PLMK-STEUERKZ, values: 
-
-“ “ means “Print” 
-
-“X” means “Do not print” 
-
-“*” means “Do not print at skip” 
-
-Character 27 of field PLMK-STEUERKZ 
-
-Character 28 of field PLMK-STEUERKZ 
-
+ls_disp-ci1 = gv_steuerkz+0(1).
+ls_disp-ci1_eq = get_ci_equivalent( 1 ls_disp-ci1 ).
