@@ -1,64 +1,231 @@
-FORM apply_column_order.
+ "===================================================================*
+  "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
+  "===================================================================*
+  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
 
-  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  CLEAR lt_filtered.
 
-  IF lo_alv IS INITIAL.
-    RETURN.
-  ENDIF.
+  LOOP AT gt_base INTO gs_base.
 
-  TRY.
-      lo_columns = lo_alv->get_columns( ).
-    CATCH cx_salv_msg.
-      RETURN.
-  ENDTRY.
+    IF gs_base-datuv > so_keydt.
+      CONTINUE.
+    ENDIF.
 
-  "=====================================================
-  " Macro to set column position
-  "=====================================================
-  DEFINE pos.
-    TRY.
-        lo_columns->set_column_position(
-           columnname = &1
-           position   = &2 ).
-      CATCH cx_salv_msg.
-    ENDTRY.
-  END-OF-DEFINITION.
+    IF gs_base-valid_to < so_keydt.
+      CONTINUE.
+    ENDIF.
 
-  "=====================================================
-  " ALWAYS FIRST 4 COLUMNS
-  "=====================================================
-  pos 'PLNNR'      1.   "Group
-  pos 'PLNAL'      2.   "Counter
-  pos 'WERKS'      3.   "Plant
-  pos 'VORNR'      4.   "Operation
+    IF gs_base-datuv_o > so_keydt.
+      CONTINUE.
+    ENDIF.
 
-  "=====================================================
-  " CASE 1: Show Long Text = TRUE AND Show Characteristics = FALSE
-  "=====================================================
-  IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
+    IF gs_base-valid_to_o < so_keydt.
+      CONTINUE.
+    ENDIF.
 
-    pos 'TDFORMAT'     5.   "FK
-    pos 'OP_LTXT'      6.   "Operation Long Text
+    IF gv_show_char = gc_true.
+      IF gs_base-gueltigab > so_keydt.
+        CONTINUE.
+      ENDIF.
 
-    pos 'ARBPL_O'      7.   "Work Center
-    pos 'ARBEI'        8.   "Work
-    pos 'KURZT_CHAR'   9.   "Description
-    pos 'PMETHODE'     10.  "Method
+      IF gs_base-valid_to_c < so_keydt.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
 
-  "=====================================================
-  " CASE 2: Show Long Text = TRUE AND Show Characteristics = TRUE
-  "=====================================================
-  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_true.
 
-    pos 'ARBPL_O'      5.   "Work Center
-    pos 'ARBEI'        6.   "Work
-    pos 'KURZT_CHAR'   7.   "Description
-    pos 'PMETHODE'     8.   "Method
+    "===================================================================*
+    "* TASK LIST TYPE FILTER (FTL / ETL / GTL)
+    "===================================================================*
+    IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
+      CONTINUE.
+    ENDIF.
 
-    pos 'MERKNR'       9.   "Characteristic Number
-    pos 'TDFORMAT'     10.  "Format
-    pos 'CHAR_LTXT'    11.  "Characteristic Long Text
+    IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
+      CONTINUE.
+    ENDIF.
 
-  ENDIF.
+    IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
+      CONTINUE.
+    ENDIF.
 
-ENDFORM.
+    IF so_arbph[] IS NOT INITIAL AND gs_base-arbpl_h NOT IN so_arbph.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
+    "===================================================================*
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* HEADER FILTERS — FDS (SAFE VERSION)
+    "===================================================================*
+    IF so_ktext[] IS NOT INITIAL AND gs_base-ktext NOT IN so_ktext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_werks-low IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
+
+    IF so_verwe-low IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_vagrp-low IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_stath-low IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzh-low IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_strat-low IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istrh-low IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_adpsp-low IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_slwbe-low IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aedat-low IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aenam-low IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION FILTERS
+    "===================================================================*
+
+    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_steus[] IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
+      CONTINUE.
+    ENDIF.
+
+    IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
+      CONTINUE.
+    ENDIF.
+
+    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istru[] IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
+      CONTINUE.
+    ENDIF.
+
+    IF so_larnt[] IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebeln[] IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebelp[] IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_lifnr[] IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION LONG TEXT INDICATOR FILTER
+    "===================================================================*
+    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* CHARACTERISTIC FILTERS (ONLY IF SHOW CHAR IS ON)
+    "===================================================================*
+    IF gv_show_char = gc_true.
+
+      IF so_merkn-low IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+        CONTINUE.
+      ENDIF.
+
+      IF so_mic-low IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+        CONTINUE.
+      ENDIF.
+
+      IF so_cktxt-low IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+        CONTINUE.
+      ENDIF.
+
+      IF so_ltxtk-low IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+        CONTINUE.
+      ENDIF.
+
+      IF so_meth-low IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+        CONTINUE.
+      ENDIF.
+
+      IF so_sproc-low IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+        CONTINUE.
+      ENDIF.
+
+    ENDIF.
+
+
+    "===================================================================*
+    "* TOLERANCE FILTERS
+    "===================================================================*
+    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> so_tolun.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> so_tolob.
+      CONTINUE.
+    ENDIF.
