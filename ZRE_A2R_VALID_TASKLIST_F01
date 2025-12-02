@@ -113,8 +113,8 @@ FORM set_pfstatus_from_state.
   IF gv_show_ltxt = gc_true.
     "Disable Show Characteristics button
     lo_alv->set_screen_status(
-       pfstatus = lv_pf
-       report   = sy-repid
+      pfstatus = lv_pf
+      report   = sy-repid
     ).
     RETURN.
   ENDIF.
@@ -768,6 +768,10 @@ FORM set_ci_headers.
   DATA: lo_columns TYPE REF TO cl_salv_columns_table,
         lo_col     TYPE REF TO cl_salv_column_table.
 
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
   TRY.
       lo_columns = lo_alv->get_columns( ).
     CATCH cx_salv_msg.
@@ -780,10 +784,11 @@ FORM set_ci_headers.
   DEFINE set_hdr.
     TRY.
         lo_col ?= lo_columns->get_column( &1 ).
-
-        lo_col->set_short_text(  CONV #( &2 ) ). "CHAR10/20/40 all accepted
-        lo_col->set_medium_text( CONV #( &2 ) ).
+*
+*        lo_col->set_short_text(  CONV #( &2 ) ). "CHAR10/20/40 all accepted
+*        lo_col->set_medium_text( CONV #( &2 ) ).
         lo_col->set_long_text(   CONV #( &2 ) ).
+        lo_col->set_fixed_header_text(  value = 'L' )  .
 
       CATCH cx_salv_not_found.
     ENDTRY.
@@ -904,19 +909,20 @@ FORM display_alv.
   ENDIF.
 
   IF lo_alv IS INITIAL.
-
-    cl_salv_table=>factory(
-      IMPORTING
-        r_salv_table = lo_alv
-      CHANGING
-        t_table      = gt_display ).
-
-    lo_columns = lo_alv->get_columns( ).
-    lo_columns->set_optimize( abap_true ).
-
     TRY.
+        cl_salv_table=>factory(
+          IMPORTING
+            r_salv_table = lo_alv
+          CHANGING
+            t_table      = gt_display ).
+
+        lo_columns = lo_alv->get_columns( ).
+        lo_columns->set_optimize( abap_true ).
+
+
         lo_columns->set_color_column( 'LINE_COLOR' ).
       CATCH cx_salv_not_found cx_salv_data_error.
+      CATCH cx_salv_msg.
     ENDTRY.
 
     "==================================================
@@ -967,7 +973,7 @@ FORM display_alv.
 
   PERFORM set_column_visibility_by_state.
   PERFORM set_pfstatus_from_state.
-
+  PERFORM set_ci_headers.
   lo_alv->display( ).
 
 ENDFORM.
