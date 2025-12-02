@@ -1,27 +1,25 @@
-set_hdr 'OP_LTXT'   'Operation Long Text'.
-set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
+  "==============================================================
+  " Set Column Order (ECC-compatible)
+  "==============================================================
+  DATA lo_col TYPE REF TO cl_salv_column_table.
 
+  " FORMAT first
+  TRY.
+      lo_col ?= lo_columns->get_column( 'TDFORMAT' ).
+      lo_col->set_sequence( 10 ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
+  " Operation Long Text
+  TRY.
+      lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
+      lo_col->set_sequence( 11 ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
-DATA lo_col TYPE REF TO cl_salv_column_table.
-
-" FORMAT first
-TRY.
-    lo_col ?= lo_columns->get_column( 'TDFORMAT' ).  "Format field
-    lo_col->set_position( 10 ).                      "set as first logical column
-CATCH cx_salv_not_found.
-ENDTRY.
-
-" OP Long Text
-TRY.
-    lo_col ?= lo_columns->get_column( 'OP_LTXT' ).
-    lo_col->set_position( 11 ).
-CATCH cx_salv_not_found.
-ENDTRY.
-
-" Characteristic Long Text
-TRY.
-    lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).
-    lo_col->set_position( 12 ).
-CATCH cx_salv_not_found.
-ENDTRY.
+  " Characteristic Long Text
+  TRY.
+      lo_col ?= lo_columns->get_column( 'CHAR_LTXT' ).
+      lo_col->set_sequence( 12 ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
