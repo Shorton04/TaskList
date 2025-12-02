@@ -1,110 +1,38 @@
-ci1_txt  TYPE char40,
-ci2_txt  TYPE char40,
-ci3_txt  TYPE char40,
-ci4_txt  TYPE char40,
-ci5_txt  TYPE char40,
-ci6_txt  TYPE char40,
-ci7_txt  TYPE char40,
-ci8_txt  TYPE char40,
-ci9_txt  TYPE char40,
-ci10_txt TYPE char40,
-ci11_txt TYPE char40,
-ci12_txt TYPE char40,
-ci13_txt TYPE char40,
-ci14_txt TYPE char40,
-ci15_txt TYPE char40,
-ci16_txt TYPE char40,
-ci17_txt TYPE char40,
-ci18_txt TYPE char40,
-ci19_txt TYPE char40,
-ci20_txt TYPE char40,
-ci21_txt TYPE char40,
-ci22_txt TYPE char40,
-ci23_txt TYPE char40,
-ci24_txt TYPE char40,
-ci25_txt TYPE char40,
-ci26_txt TYPE char40,
-ci27_txt TYPE char40,
-ci28_txt TYPE char40,
-
-
-
-
-
-
-FORM fill_ci_fields
-  USING    pv_steuerkz TYPE plmk-steuerkz
-  CHANGING ps_disp     TYPE ty_task_disp.
-
-  " Raw CI values (still needed for change layout)
-  ps_disp-ci1  = pv_steuerkz+0(1).
-  ps_disp-ci2  = pv_steuerkz+1(1).
-  ps_disp-ci3  = pv_steuerkz+2(1).
-  ps_disp-ci4  = pv_steuerkz+3(1).
-  ps_disp-ci5  = pv_steuerkz+4(1).
-  ps_disp-ci6  = pv_steuerkz+5(1).
-  ps_disp-ci7  = pv_steuerkz+6(1).
-  ps_disp-ci8  = pv_steuerkz+7(1).
-  ps_disp-ci9  = pv_steuerkz+8(1).
-  ps_disp-ci10 = pv_steuerkz+9(1).
-  ps_disp-ci11 = pv_steuerkz+10(1).
-  ps_disp-ci12 = pv_steuerkz+11(1).
-  ps_disp-ci13 = pv_steuerkz+12(1).
-  ps_disp-ci14 = pv_steuerkz+13(1).
-  ps_disp-ci15 = pv_steuerkz+14(1).
-  ps_disp-ci16 = pv_steuerkz+15(1).
-  ps_disp-ci17 = pv_steuerkz+16(1).
-  ps_disp-ci18 = pv_steuerkz+17(1).
-  ps_disp-ci19 = pv_steuerkz+18(1).
-  ps_disp-ci20 = pv_steuerkz+19(1).
-  ps_disp-ci21 = pv_steuerkz+20(1).
-  ps_disp-ci22 = pv_steuerkz+21(1).
-  ps_disp-ci23 = pv_steuerkz+22(1).
-  ps_disp-ci24 = pv_steuerkz+23(1).
-  ps_disp-ci25 = pv_steuerkz+24(1).
-  ps_disp-ci26 = pv_steuerkz+25(1).
-  ps_disp-ci27 = pv_steuerkz+26(1).
-  ps_disp-ci28 = pv_steuerkz+27(1).
-
-  " Equivalent full text (CIx_TXT)
-  ps_disp-ci1_txt  = get_ci_equivalent( 1  ps_disp-ci1  ).
-  ps_disp-ci2_txt  = get_ci_equivalent( 2  ps_disp-ci2  ).
-  ps_disp-ci3_txt  = get_ci_equivalent( 3  ps_disp-ci3  ).
-  ps_disp-ci4_txt  = get_ci_equivalent( 4  ps_disp-ci4  ).
-  ps_disp-ci5_txt  = get_ci_equivalent( 5  ps_disp-ci5  ).
-  ps_disp-ci6_txt  = get_ci_equivalent( 6  ps_disp-ci6  ).
-  ps_disp-ci7_txt  = get_ci_equivalent( 7  ps_disp-ci7  ).
-  ps_disp-ci8_txt  = get_ci_equivalent( 8  ps_disp-ci8  ).
-  ps_disp-ci9_txt  = get_ci_equivalent( 9  ps_disp-ci9  ).
-  ps_disp-ci10_txt = get_ci_equivalent( 10 ps_disp-ci10 ).
-  ps_disp-ci11_txt = get_ci_equivalent( 11 ps_disp-ci11 ).
-  ps_disp-ci12_txt = get_ci_equivalent( 12 ps_disp-ci12 ).
-  ps_disp-ci13_txt = get_ci_equivalent( 13 ps_disp-ci13 ).
-  ps_disp-ci14_txt = get_ci_equivalent( 14 ps_disp-ci14 ).
-  ps_disp-ci15_txt = get_ci_equivalent( 15 ps_disp-ci15 ).
-  ps_disp-ci16_txt = get_ci_equivalent( 16 ps_disp-ci16 ).
-  ps_disp-ci17_txt = get_ci_equivalent( 17 ps_disp-ci17 ).
-  ps_disp-ci18_txt = get_ci_equivalent( 18 ps_disp-ci18 ).
-  ps_disp-ci19_txt = get_ci_equivalent( 19 ps_disp-ci19 ).
-  ps_disp-ci20_txt = get_ci_equivalent( 20 ps_disp-ci20 ).
-  ps_disp-ci21_txt = get_ci_equivalent( 21 ps_disp-ci21 ).
-  ps_disp-ci22_txt = get_ci_equivalent( 22 ps_disp-ci22 ).
-  ps_disp-ci23_txt = get_ci_equivalent( 23 ps_disp-ci23 ).
-  ps_disp-ci24_txt = get_ci_equivalent( 24 ps_disp-ci24 ).
-  ps_disp-ci25_txt = get_ci_equivalent( 25 ps_disp-ci25 ).
-  ps_disp-ci26_txt = get_ci_equivalent( 26 ps_disp-ci26 ).
-  ps_disp-ci27_txt = get_ci_equivalent( 27 ps_disp-ci27 ).
-  ps_disp-ci28_txt = get_ci_equivalent( 28 ps_disp-ci28 ).
-
-ENDFORM.
-
+PERFORM get_ci_equivalent USING  1 ps_disp-ci1  CHANGING ps_disp-ci1_txt.
+PERFORM get_ci_equivalent USING  2 ps_disp-ci2  CHANGING ps_disp-ci2_txt.
+PERFORM get_ci_equivalent USING  3 ps_disp-ci3  CHANGING ps_disp-ci3_txt.
+PERFORM get_ci_equivalent USING  4 ps_disp-ci4  CHANGING ps_disp-ci4_txt.
+PERFORM get_ci_equivalent USING  5 ps_disp-ci5  CHANGING ps_disp-ci5_txt.
+PERFORM get_ci_equivalent USING  6 ps_disp-ci6  CHANGING ps_disp-ci6_txt.
+PERFORM get_ci_equivalent USING  7 ps_disp-ci7  CHANGING ps_disp-ci7_txt.
+PERFORM get_ci_equivalent USING  8 ps_disp-ci8  CHANGING ps_disp-ci8_txt.
+PERFORM get_ci_equivalent USING  9 ps_disp-ci9  CHANGING ps_disp-ci9_txt.
+PERFORM get_ci_equivalent USING 10 ps_disp-ci10 CHANGING ps_disp-ci10_txt.
+PERFORM get_ci_equivalent USING 11 ps_disp-ci11 CHANGING ps_disp-ci11_txt.
+PERFORM get_ci_equivalent USING 12 ps_disp-ci12 CHANGING ps_disp-ci12_txt.
+PERFORM get_ci_equivalent USING 13 ps_disp-ci13 CHANGING ps_disp-ci13_txt.
+PERFORM get_ci_equivalent USING 14 ps_disp-ci14 CHANGING ps_disp-ci14_txt.
+PERFORM get_ci_equivalent USING 15 ps_disp-ci15 CHANGING ps_disp-ci15_txt.
+PERFORM get_ci_equivalent USING 16 ps_disp-ci16 CHANGING ps_disp-ci16_txt.
+PERFORM get_ci_equivalent USING 17 ps_disp-ci17 CHANGING ps_disp-ci17_txt.
+PERFORM get_ci_equivalent USING 18 ps_disp-ci18 CHANGING ps_disp-ci18_txt.
+PERFORM get_ci_equivalent USING 19 ps_disp-ci19 CHANGING ps_disp-ci19_txt.
+PERFORM get_ci_equivalent USING 20 ps_disp-ci20 CHANGING ps_disp-ci20_txt.
+PERFORM get_ci_equivalent USING 21 ps_disp-ci21 CHANGING ps_disp-ci21_txt.
+PERFORM get_ci_equivalent USING 22 ps_disp-ci22 CHANGING ps_disp-ci22_txt.
+PERFORM get_ci_equivalent USING 23 ps_disp-ci23 CHANGING ps_disp-ci23_txt.
+PERFORM get_ci_equivalent USING 24 ps_disp-ci24 CHANGING ps_disp-ci24_txt.
+PERFORM get_ci_equivalent USING 25 ps_disp-ci25 CHANGING ps_disp-ci25_txt.
+PERFORM get_ci_equivalent USING 26 ps_disp-ci26 CHANGING ps_disp-ci26_txt.
+PERFORM get_ci_equivalent USING 27 ps_disp-ci27 CHANGING ps_disp-ci27_txt.
+PERFORM get_ci_equivalent USING 28 ps_disp-ci28 CHANGING ps_disp-ci28_txt.
 
 
 
 
 FORM get_ci_equivalent
-  USING    pv_index TYPE i
-           pv_char  TYPE char1
+  USING    pv_index  TYPE i
+           pv_char   TYPE char1
   CHANGING pv_result TYPE string.
 
   CASE pv_index.
