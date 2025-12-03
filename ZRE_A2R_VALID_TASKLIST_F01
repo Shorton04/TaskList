@@ -23,17 +23,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
       WHEN gc_func_ltxt_h.      " &LTXTH
         gv_show_ltxt = gc_false.
 
-      WHEN 'SELALL'.
-        LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp_selall>).
-          <fs_disp_selall>-sel = '[X]'.
-        ENDLOOP.
-        lo_alv->refresh( ).
-
-      WHEN 'DESEL'.
-        LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_disp_desel>).
-          <fs_disp_desel>-sel = '[ ]'.
-        ENDLOOP.
-
       WHEN OTHERS.
         RETURN.
 
@@ -55,13 +44,6 @@ CLASS lcl_event_handler IMPLEMENTATION.
 
     READ TABLE gt_display ASSIGNING FIELD-SYMBOL(<ls_disp>) INDEX row.
     IF sy-subrc = 0.
-
-      "Toggle checkbox
-      IF <ls_disp>-sel = 'X'.
-        <ls_disp>-sel = ''.
-      ELSE.
-        <ls_disp>-sel = 'X'.
-      ENDIF.
 
       lo_alv->refresh( ).
 
@@ -403,10 +385,6 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_arbph[] IS NOT INITIAL AND gs_base-arbpl_h NOT IN so_arbph.
-      CONTINUE.
-    ENDIF.
-
 
     "===================================================================*
     "* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
@@ -435,47 +413,59 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_werks-low IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
       CONTINUE.
     ENDIF.
 
-    IF so_verwe-low IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+    IF so_verwe[] IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
       CONTINUE.
     ENDIF.
 
-    IF so_vagrp-low IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+    IF so_vagrp[] IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
       CONTINUE.
     ENDIF.
 
-    IF so_stath-low IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
+    IF so_stath[] IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
       CONTINUE.
     ENDIF.
 
-    IF so_anlzh-low IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+    IF so_annam[] IS NOT INITIAL AND gs_base-annam NOT IN so_annam.
       CONTINUE.
     ENDIF.
 
-    IF so_strat-low IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+    IF so_arbph[] IS NOT INITIAL AND gs_base-arbpl_h NOT IN so_arbph.
       CONTINUE.
     ENDIF.
 
-    IF so_istrh-low IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+    IF so_anlzh[] IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
       CONTINUE.
     ENDIF.
 
-    IF so_adpsp-low IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+    IF so_strat[] IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
       CONTINUE.
     ENDIF.
 
-    IF so_slwbe-low IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+    IF so_istrh[] IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
       CONTINUE.
     ENDIF.
 
-    IF so_aedat-low IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+    IF so_adpsp[] IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
       CONTINUE.
     ENDIF.
 
-    IF so_aenam-low IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+    IF so_slwbe[] IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aedat[] IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aenam[] IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+      CONTINUE.
+    ENDIF.
+
+    IF so_andat[] IS NOT INITIAL AND gs_base-andat NOT IN so_andat.
       CONTINUE.
     ENDIF.
 
@@ -546,27 +536,27 @@ FORM get_data.
     "===================================================================*
     IF gv_show_char = gc_true.
 
-      IF so_merkn-low IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
         CONTINUE.
       ENDIF.
 
-      IF so_mic-low IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
         CONTINUE.
       ENDIF.
 
-      IF so_cktxt-low IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
         CONTINUE.
       ENDIF.
 
-      IF so_ltxtk-low IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
         CONTINUE.
       ENDIF.
 
-      IF so_meth-low IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
         CONTINUE.
       ENDIF.
 
-      IF so_sproc-low IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+      IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
         CONTINUE.
       ENDIF.
 
@@ -836,6 +826,31 @@ FORM set_ci_headers.
     CATCH cx_salv_not_found.
   ENDTRY.
 
+  TRY.
+      DATA(lo_col2) = lo_columns->get_column( 'VORNR' ).
+      lo_col2->set_short_text(  'Op.' ).
+      lo_col2->set_medium_text( 'Operation' ).
+      lo_col2->set_long_text(   'Operation' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+    TRY.
+      DATA(lo_col3) = lo_columns->get_column( 'LTXA1' ).
+      lo_col3->set_short_text(  'Op.SText' ).
+      lo_col3->set_medium_text( 'Op.Short Text' ).
+      lo_col3->set_long_text(   'Operation Short Text' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+      TRY.
+      DATA(lo_col4) = lo_columns->get_column( 'KURZTEXT' ).
+      lo_col4->set_short_text(  'Char.SText' ).
+      lo_col4->set_medium_text( 'Char.Short Text' ).
+      lo_col4->set_long_text(   'Characteristic Short Text' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+
   "----------------------------------------------
   " CI01 – CI28 Headers
   "----------------------------------------------
@@ -869,6 +884,71 @@ FORM set_ci_headers.
   set_hdr 'CI28_TXT' 'Process Char'.
   set_hdr 'OP_LTXT'   'Operation Long Text'.
   set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
+
+ENDFORM.
+
+FORM apply_column_order.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      lo_columns = lo_alv->get_columns( ).
+    CATCH cx_salv_msg.
+      RETURN.
+  ENDTRY.
+
+  "=====================================================
+  " Macro to set column position
+  "=====================================================
+  DEFINE pos.
+    TRY.
+        lo_columns->set_column_position(
+           columnname = &1
+           position   = &2 ).
+      CATCH cx_salv_msg.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  "=====================================================
+  " ALWAYS FIRST 4 COLUMNS
+  "=====================================================
+  pos 'PLNNR'      1.   "Group
+  pos 'PLNAL'      2.   "Counter
+  pos 'WERKS'      3.   "Plant
+  pos 'VORNR'      4.   "Operation
+
+  "=====================================================
+  " CASE 1: Show Long Text = TRUE AND Show Characteristics = FALSE
+  "=====================================================
+  IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
+
+    pos 'TDFORMAT'     5.   "FK
+    pos 'OP_LTXT'      6.   "Operation Long Text
+
+    pos 'ARBPL_O'      7.   "Work Center
+    pos 'ARBEI'        8.   "Work
+    pos 'LTXA1'        9.   "Description
+    pos 'PMETHODE'     10.  "Method
+
+    "=====================================================
+    " CASE 2: Show Long Text = TRUE AND Show Characteristics = TRUE
+    "=====================================================
+  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_true.
+
+    pos 'ARBPL_O'      5.   "Work Center
+    pos 'ARBEI'        6.   "Work
+    pos 'KURZT_CHAR'   7.   "Description
+    pos 'PMETHODE'     8.   "Method
+
+    pos 'MERKNR'       9.   "Characteristic Number
+    pos 'TDFORMAT'     10.  "Format
+    pos 'CHAR_LTXT'    11.  "Characteristic Long Text
+
+  ENDIF.
 
 ENDFORM.
 
@@ -1028,59 +1108,40 @@ FORM display_alv.
   ENDIF.
 
   IF lo_alv IS INITIAL.
+
     TRY.
         cl_salv_table=>factory(
-          IMPORTING
-            r_salv_table = lo_alv
-          CHANGING
-            t_table      = gt_display ).
+          IMPORTING r_salv_table = lo_alv
+          CHANGING  t_table      = gt_display ).
 
         lo_columns = lo_alv->get_columns( ).
         lo_columns->set_optimize( abap_true ).
 
-
+        "Enable row color
         lo_columns->set_color_column( 'LINE_COLOR' ).
-      CATCH cx_salv_not_found cx_salv_data_error.
-      CATCH cx_salv_msg.
+
+      CATCH cx_salv_not_found cx_salv_data_error cx_salv_msg.
+        RETURN.
     ENDTRY.
 
-    "==================================================
-    " Enable layout saving
-    "==================================================
+    "=== Layout ===
     lo_layout = lo_alv->get_layout( ).
     DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
     lo_layout->set_key( ls_key ).
     lo_layout->set_default( abap_true ).
     lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
 
-    "==================================================
-    " Enable toolbar buttons
-    "==================================================
+    "=== Toolbar Functions ===
     lo_funcs = lo_alv->get_functions( ).
     lo_funcs->set_all( abap_true ).
 
-    "==================================================
-    " Enable MULTIPLE selection (old SALV)
-    "==================================================
+    "=== Standard SALV Row Selector ===
     DATA(lo_sel) = lo_alv->get_selections( ).
-    lo_sel->set_selection_mode( if_salv_c_selection_mode=>multiple ).
+    lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+    " ^^^ THIS SHOWS THE STANDARD SALV LEFT SELECT COLUMN
 
-    "==================================================
-    " Make SEL a clickable checkbox
-    "==================================================
-    TRY.
-        DATA(lo_col) = lo_columns->get_column( 'SEL' ).
-        lo_col->set_short_text( ' ' ).
-        lo_col->set_medium_text( 'Select' ).
-        lo_col->set_long_text( 'Select' ).
-      CATCH cx_salv_not_found.
-    ENDTRY.
-
-    "==================================================
-    " Register hotspot click + button events
-    "==================================================
+    "=== Register Events ===
     lo_events = lo_alv->get_event( ).
-
     SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
     SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
 
@@ -1088,23 +1149,11 @@ FORM display_alv.
     lo_alv->refresh( ).
   ENDIF.
 
-  PERFORM set_position USING 'SELECT'     1.
-  PERFORM set_position USING 'PLNNR'     2.
-  PERFORM set_position USING 'PLNAL'     3.
-  PERFORM set_position USING 'WERKS'     4.
-  PERFORM set_position USING 'VORNR'     6.
-  PERFORM set_position USING 'ARBPL_O'   7.
-  PERFORM set_position USING 'ARBEI'     8.
-  PERFORM set_position USING 'KURZT_CHAR' 9.
-  PERFORM set_position USING 'PMETHODE'   10.
-  PERFORM set_position USING 'MERKNR'     11.
-  PERFORM set_position USING 'TDFORMAT'   12.   "Format
-  PERFORM set_position USING 'OP_LTXT'    13.   "Operation Long Text
-  PERFORM set_position USING 'CHAR_LTXT'  14.   "Characteristic Long Text
-
   PERFORM set_column_visibility_by_state.
   PERFORM set_pfstatus_from_state.
   PERFORM set_ci_headers.
+  PERFORM apply_column_order.
+
   lo_alv->display( ).
 
 ENDFORM.
@@ -1515,6 +1564,9 @@ FORM set_column_visibility_by_state.
   hide_col 'AUSWMENGE1'.
   hide_col 'STEUERKZ'.
   hide_col 'LOEKZ_C'.
+  hide_col 'DATUV'.
+  hide_col 'DATUV_O'.
+  hide_col 'GUELTIGAB'.
 
   "--- CI1..CI28 ghost columns ---
   hide_col 'CI1'.
@@ -1577,6 +1629,7 @@ FORM set_column_visibility_by_state.
   hide_col 'CI28_TXT'.
 
   "--- Internal / Technical fields ---
+  hide_col_total 'SELECT'.
   hide_col_total 'ROW_KIND'.
   hide_col_total 'LINE_COLOR'.
   hide_col_total 'T_COLOR'.
@@ -1637,6 +1690,7 @@ FORM set_column_visibility_by_state.
   "CASE A – No Char, No LT
   IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
+    show_col 'LTXA1'.
     hide_col 'TDFORMAT'.
     hide_col 'OP_LTXT'.
     hide_col 'CHAR_LTXT'.
@@ -1655,6 +1709,7 @@ FORM set_column_visibility_by_state.
     "CASE C – Hide Char, Show LT
   ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
 
+    show_col 'LTXA1'.
     show_col 'TDFORMAT'.
     show_col 'OP_LTXT'.
     hide_col 'CHAR_LTXT'.
