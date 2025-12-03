@@ -1,7 +1,4 @@
- "===================================================================*
-  "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
-  "===================================================================*
-  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
 
   CLEAR lt_filtered.
 
@@ -81,47 +78,47 @@
       CONTINUE.
     ENDIF.
 
-    IF so_werks-low IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
       CONTINUE.
     ENDIF.
 
-    IF so_verwe-low IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+    IF so_verwe[] IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
       CONTINUE.
     ENDIF.
 
-    IF so_vagrp-low IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+    IF so_vagrp[] IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
       CONTINUE.
     ENDIF.
 
-    IF so_stath-low IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
+    IF so_stath[] IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
       CONTINUE.
     ENDIF.
 
-    IF so_anlzh-low IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+    IF so_anlzh[] IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
       CONTINUE.
     ENDIF.
 
-    IF so_strat-low IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+    IF so_strat[] IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
       CONTINUE.
     ENDIF.
 
-    IF so_istrh-low IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+    IF so_istrh[] IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
       CONTINUE.
     ENDIF.
 
-    IF so_adpsp-low IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+    IF so_adpsp[] IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
       CONTINUE.
     ENDIF.
 
-    IF so_slwbe-low IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+    IF so_slwbe[] IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
       CONTINUE.
     ENDIF.
 
-    IF so_aedat-low IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+    IF so_aedat[] IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
       CONTINUE.
     ENDIF.
 
-    IF so_aenam-low IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+    IF so_aenam[] IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
       CONTINUE.
     ENDIF.
 
@@ -192,27 +189,27 @@
     "===================================================================*
     IF gv_show_char = gc_true.
 
-      IF so_merkn-low IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
         CONTINUE.
       ENDIF.
 
-      IF so_mic-low IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
         CONTINUE.
       ENDIF.
 
-      IF so_cktxt-low IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
         CONTINUE.
       ENDIF.
 
-      IF so_ltxtk-low IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
         CONTINUE.
       ENDIF.
 
-      IF so_meth-low IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
         CONTINUE.
       ENDIF.
 
-      IF so_sproc-low IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+      IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
         CONTINUE.
       ENDIF.
 
@@ -229,3 +226,9 @@
     IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> so_tolob.
       CONTINUE.
     ENDIF.
+
+
+    "===================================================================*
+    "* PASSED ALL FILTERS
+    "===================================================================*
+    APPEND gs_base TO lt_filtered.
