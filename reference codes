@@ -1,234 +1,118 @@
-DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS on_user_command
+      FOR EVENT added_function OF cl_salv_events_table
+      IMPORTING e_salv_function.
 
-  CLEAR lt_filtered.
+    CLASS-METHODS on_link_click
+      FOR EVENT link_click OF cl_salv_events_table
+      IMPORTING row column.
+ENDCLASS.
 
-  LOOP AT gt_base INTO gs_base.
 
-    IF gs_base-datuv > so_keydt.
-      CONTINUE.
+CLASS lcl_event_handler IMPLEMENTATION.
+  METHOD on_user_command.
+
+    CASE e_salv_function.
+
+      WHEN gc_func_clist_s.     " &CLISTS
+        gv_show_char = gc_true.
+        gv_show_ltxt = gc_false.
+
+      WHEN gc_func_clist_h.     " &CLISTH
+        gv_show_char = gc_false.
+        gv_show_ltxt = gc_false.
+
+      WHEN gc_func_ltxt_s.      " &LTXTS
+        gv_show_ltxt = gc_true.
+
+      WHEN gc_func_ltxt_h.      " &LTXTH
+        gv_show_ltxt = gc_false.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    " Rebuild data and refresh ALV / PF-STATUS / title
+    PERFORM build_display.
+    PERFORM set_pfstatus_from_state.
+    PERFORM set_title_from_state.
+    PERFORM set_column_visibility_by_state.
+
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
     ENDIF.
 
-    IF gs_base-valid_to < so_keydt.
-      CONTINUE.
-    ENDIF.
+  ENDMETHOD.
 
-    IF gs_base-datuv_o > so_keydt.
-      CONTINUE.
-    ENDIF.
+  METHOD on_link_click.
 
-    IF gs_base-valid_to_o < so_keydt.
-      CONTINUE.
-    ENDIF.
+    READ TABLE gt_display ASSIGNING FIELD-SYMBOL(<ls_disp>) INDEX row.
+    IF sy-subrc = 0.
 
-    IF gv_show_char = gc_true.
-      IF gs_base-gueltigab > so_keydt.
-        CONTINUE.
-      ENDIF.
-
-      IF gs_base-valid_to_c < so_keydt.
-        CONTINUE.
-      ENDIF.
-    ENDIF.
-
-
-    "===================================================================*
-    "* TASK LIST TYPE FILTER (FTL / ETL / GTL)
-    "===================================================================*
-    IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
-      CONTINUE.
-    ENDIF.
-
-    IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
-      CONTINUE.
-    ENDIF.
-
-    IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
-      CONTINUE.
-    ENDIF.
-
-    IF so_arbph[] IS NOT INITIAL AND gs_base-arbpl_h NOT IN so_arbph.
-      CONTINUE.
-    ENDIF.
-
-
-    "===================================================================*
-    "* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
-    "===================================================================*
-    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
-      CONTINUE.
-    ENDIF.
-
-    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
-      CONTINUE.
-    ENDIF.
-
-    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
-      CONTINUE.
-    ENDIF.
-
-    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
-      CONTINUE.
-    ENDIF.
-
-
-    "===================================================================*
-    "* HEADER FILTERS — FDS (SAFE VERSION)
-    "===================================================================*
-    IF so_ktext[] IS NOT INITIAL AND gs_base-ktext NOT IN so_ktext.
-      CONTINUE.
-    ENDIF.
-
-    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
-      CONTINUE.
-    ENDIF.
-
-    IF so_verwe[] IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
-      CONTINUE.
-    ENDIF.
-
-    IF so_vagrp[] IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
-      CONTINUE.
-    ENDIF.
-
-    IF so_stath[] IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
-      CONTINUE.
-    ENDIF.
-
-    IF so_anlzh[] IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
-      CONTINUE.
-    ENDIF.
-
-    IF so_strat[] IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
-      CONTINUE.
-    ENDIF.
-
-    IF so_istrh[] IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
-      CONTINUE.
-    ENDIF.
-
-    IF so_adpsp[] IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
-      CONTINUE.
-    ENDIF.
-
-    IF so_slwbe[] IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
-      CONTINUE.
-    ENDIF.
-
-    IF so_aedat[] IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
-      CONTINUE.
-    ENDIF.
-
-    IF so_aenam[] IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
-      CONTINUE.
-    ENDIF.
-
-
-    "===================================================================*
-    "* OPERATION FILTERS
-    "===================================================================*
-
-    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
-      CONTINUE.
-    ENDIF.
-
-    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
-      CONTINUE.
-    ENDIF.
-
-    IF so_steus[] IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
-      CONTINUE.
-    ENDIF.
-
-    IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
-      CONTINUE.
-    ENDIF.
-
-    IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
-      CONTINUE.
-    ENDIF.
-
-    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
-      CONTINUE.
-    ENDIF.
-
-    IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
-      CONTINUE.
-    ENDIF.
-
-    IF so_istru[] IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
-      CONTINUE.
-    ENDIF.
-
-    IF so_larnt[] IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
-      CONTINUE.
-    ENDIF.
-
-    IF so_ebeln[] IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
-      CONTINUE.
-    ENDIF.
-
-    IF so_ebelp[] IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
-      CONTINUE.
-    ENDIF.
-
-    IF so_lifnr[] IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
-      CONTINUE.
-    ENDIF.
-
-
-    "===================================================================*
-    "* OPERATION LONG TEXT INDICATOR FILTER
-    "===================================================================*
-    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
-      CONTINUE.
-    ENDIF.
-
-
-    "===================================================================*
-    "* CHARACTERISTIC FILTERS (ONLY IF SHOW CHAR IS ON)
-    "===================================================================*
-    IF gv_show_char = gc_true.
-
-      IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
-        CONTINUE.
-      ENDIF.
-
-      IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
-        CONTINUE.
-      ENDIF.
-
-      IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
-        CONTINUE.
-      ENDIF.
-
-      IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
-        CONTINUE.
-      ENDIF.
-
-      IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
-        CONTINUE.
-      ENDIF.
-
-      IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
-        CONTINUE.
-      ENDIF.
+      lo_alv->refresh( ).
 
     ENDIF.
 
-
-    "===================================================================*
-    "* TOLERANCE FILTERS
-    "===================================================================*
-    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> so_tolun.
-      CONTINUE.
-    ENDIF.
-
-    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> so_tolob.
-      CONTINUE.
-    ENDIF.
+  ENDMETHOD.
+ENDCLASS.
 
 
-    "===================================================================*
-    "* PASSED ALL FILTERS
-    "===================================================================*
-    APPEND gs_base TO lt_filtered.
+FORM display_alv.
+
+  IF gt_display IS INITIAL.
+    MESSAGE s398(00) WITH 'No data to display'.
+    RETURN.
+  ENDIF.
+
+  IF lo_alv IS INITIAL.
+
+    TRY.
+        cl_salv_table=>factory(
+          IMPORTING r_salv_table = lo_alv
+          CHANGING  t_table      = gt_display ).
+
+        lo_columns = lo_alv->get_columns( ).
+        lo_columns->set_optimize( abap_true ).
+
+        "Enable row color
+        lo_columns->set_color_column( 'LINE_COLOR' ).
+
+      CATCH cx_salv_not_found cx_salv_data_error cx_salv_msg.
+        RETURN.
+    ENDTRY.
+
+    "=== Layout ===
+    lo_layout = lo_alv->get_layout( ).
+    DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
+    lo_layout->set_key( ls_key ).
+    lo_layout->set_default( abap_true ).
+    lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+
+    "=== Toolbar Functions ===
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+
+    "=== Standard SALV Row Selector ===
+    DATA(lo_sel) = lo_alv->get_selections( ).
+    lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+    " ^^^ THIS SHOWS THE STANDARD SALV LEFT SELECT COLUMN
+
+    "=== Register Events ===
+    lo_events = lo_alv->get_event( ).
+    SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+    SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
+
+  ELSE.
+    lo_alv->refresh( ).
+  ENDIF.
+
+  PERFORM set_column_visibility_by_state.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_ci_headers.
+  PERFORM apply_column_order.
+
+  lo_alv->display( ).
+
+ENDFORM.
