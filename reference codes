@@ -1,103 +1,21 @@
-"===================================================================*
-"* OPERATION LONG TEXT FILTER (SO_OPLTX)
-"===================================================================*
-IF so_opltx IS NOT INITIAL.
+"--- Convert tolerances for ALV display (FLTP → CHAR)
+DATA: lv_tolun      TYPE p LENGTH 16 DECIMALS 9,
+      lv_tolob      TYPE p LENGTH 16 DECIMALS 9,
+      lv_tolun_txt  TYPE c LENGTH 20,
+      lv_tolob_txt  TYPE c LENGTH 20.
 
-  DATA: lt_lines TYPE STANDARD TABLE OF tline,
-        ls_line  TYPE tline,
-        lv_found TYPE abap_bool,
-        lv_name  TYPE thead-tdname.
+CLEAR: lv_tolun, lv_tolob, lv_tolun_txt, lv_tolob_txt.
 
-  LOOP AT lt_filtered INTO gs_base.
-
-    CLEAR: lt_lines, lv_found, lv_name.
-
-    "Build PLPO long text key
-    lv_name = |{ gs_base-plnty }|
-            && |{ gs_base-plnnr  ALPHA = IN }|
-            && |{ gs_base-plnkn  ALPHA = IN }|
-            && |{ gs_base-zaehl  ALPHA = IN }|.
-
-    CALL FUNCTION 'READ_TEXT'
-      EXPORTING
-        id       = 'PLPO'
-        name     = lv_name
-        language = sy-langu
-        object   = 'ROUTING'
-      TABLES
-        lines    = lt_lines
-      EXCEPTIONS
-        OTHERS   = 1.
-
-    LOOP AT lt_lines INTO ls_line.
-      IF ls_line-tdline CS so_opltx.
-        lv_found = abap_true.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
-
-    IF lv_found = abap_false.
-      DELETE lt_filtered INDEX sy-tabix.
-      CONTINUE.
-    ENDIF.
-
-  ENDLOOP.
-
+IF ls_base-toleranzun IS NOT INITIAL.
+  lv_tolun = ls_base-toleranzun.
+  WRITE lv_tolun TO lv_tolun_txt DECIMALS 9.
+  REPLACE ',' WITH '.' IN lv_tolun_txt.
+  ls_disp-toleranzun = lv_tolun_txt.
 ENDIF.
 
-
-
-
-
-"===================================================================*
-"* CHARACTERISTIC LONG TEXT FILTER (SO_CHLTX)
-"===================================================================*
-IF so_chltx IS NOT INITIAL.
-
-  DATA: lt_lines2 TYPE STANDARD TABLE OF tline,
-        ls_line2  TYPE tline,
-        lv_found2 TYPE abap_bool,
-        lv_name2  TYPE thead-tdname.
-
-  LOOP AT lt_filtered INTO gs_base.
-
-    "Skip rows without characteristic
-    IF gs_base-merknr IS INITIAL.
-      CONTINUE.
-    ENDIF.
-
-    CLEAR: lt_lines2, lv_found2, lv_name2.
-
-    "Build QM/QSS long text key
-    lv_name2 = |{ gs_base-plnty }|
-             && |{ gs_base-plnnr  ALPHA = IN }|
-             && |{ gs_base-plnkn  ALPHA = IN }|
-             && |{ gs_base-merknr ALPHA = IN }|
-             && |{ gs_base-zaehl  ALPHA = IN }|.   "works because long text display is correct
-
-    CALL FUNCTION 'READ_TEXT'
-      EXPORTING
-        id       = 'QM'
-        name     = lv_name2
-        language = sy-langu
-        object   = 'QSS'
-      TABLES
-        lines    = lt_lines2
-      EXCEPTIONS
-        OTHERS   = 1.
-
-    LOOP AT lt_lines2 INTO ls_line2.
-      IF ls_line2-tdline CS so_chltx.
-        lv_found2 = abap_true.
-        EXIT.
-      ENDIF.
-    ENDLOOP.
-
-    IF lv_found2 = abap_false.
-      DELETE lt_filtered INDEX sy-tabix.
-      CONTINUE.
-    ENDIF.
-
-  ENDLOOP.
-
+IF ls_base-toleranzob IS NOT INITIAL.
+  lv_tolob = ls_base-toleranzob.
+  WRITE lv_tolob TO lv_tolob_txt DECIMALS 9.
+  REPLACE ',' WITH '.' IN lv_tolob_txt.
+  ls_disp-toleranzob = lv_tolob_txt.
 ENDIF.
