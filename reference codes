@@ -1,22 +1,407 @@
-LOOP AT gt_base INTO ls_base.
+FORM get_data.
 
-  "All conversion variables must be here at the top:
-  DATA: lv_tolun       TYPE p LENGTH 16 DECIMALS 9,
-        lv_tolob       TYPE p LENGTH 16 DECIMALS 9,
-        lv_tolun_txt   TYPE c LENGTH 20,
-        lv_tolob_txt   TYPE c LENGTH 20.
+  DATA: lv_keydat TYPE plko-datuv,
+        lv_tolun  TYPE plmk-toleranzun,
+        lv_tolob  TYPE plmk-toleranzob.
 
-  "Now your executable logic
-  lv_tolun = ls_base-toleranzun.
-  lv_tolob = ls_base-toleranzob.
+  CLEAR gt_base.
+  CLEAR gs_base.
 
-  WRITE lv_tolun TO lv_tolun_txt DECIMALS 9.
-  WRITE lv_tolob TO lv_tolob_txt DECIMALS 9.
+  lv_keydat = so_keydt.
 
-  REPLACE ',' WITH '.' IN lv_tolun_txt.
-  REPLACE ',' WITH '.' IN lv_tolob_txt.
+  " Convert tolerance CHAR16 → FLTP
+  CLEAR lv_tolun.
+  CLEAR lv_tolob.
+  IF so_tolun IS NOT INITIAL.
+    lv_tolun = so_tolun.
+  ENDIF.
+  IF so_tolob IS NOT INITIAL.
+    lv_tolob = so_tolob.
+  ENDIF.
 
-  ls_disp-toleranzun = lv_tolun_txt.
-  ls_disp-toleranzob = lv_tolob_txt.
+  "===================================================================*
+  "* FDS JOIN WITH ALL FIELDS REQUIRED IN TY_TASK_BASE
+  "===================================================================*
+  SELECT
+    "================ HEADER (PLKO) ==================================
+    plko~plnty,
+    plko~plnnr,
+    plko~plnal,
+    plko~datuv,
+    plko~valid_to           AS valid_to,
+    plko~werks,
+    plko~ktext,
+    plko~verwe,
+    plko~vagrp,
+    plko~statu              AS statu_h,
+    plko~anlzu              AS anlzu_h,
+    plko~strat,
+    plko~istru              AS istru_h,
+    plko~adpsp,
+    plko~slwbez,
+    plko~loekz              AS loekz_h,
+    plko~andat,
+    plko~annam,
+    plko~aedat,
+    plko~aenam,
 
-ENDLOOP.
+    "================ FLOC / EQUIP (TAPL/EAPL) =======================
+    tapl~tplnr,
+    eapl~equnr,
+
+    crhd_h~arbpl AS arbpl_h,
+
+    "================ OPERATION (PLPO) ===============================
+    plpo~plnkn,
+    plpo~zaehl,
+    plpo~datuv              AS datuv_o,
+    plpo~valid_to           AS valid_to_o,
+    plpo~vornr,
+    plpo~ltxa1,
+    plpo~steus,
+    crhd~arbpl              AS arbpl_o,
+    crhd~werks              AS werks_o,
+    plpo~ktsch,
+    plpo~arbei,
+    plpo~arbeh,
+    plpo~dauno,
+    plpo~daune,
+    plpo~kalid,
+    plpo~execution_stage,
+    plpo~anlzu              AS anlzu_o,
+    plpo~istru              AS istru_o,
+    plpo~larnt,
+    plpo~ebeln,
+    plpo~ebelp,
+    plpo~lifnr,
+    plpo~preis,
+    plpo~waers,
+    plpo~sakto,
+    plpo~ekorg,
+    plpo~ekgrp,
+    plpo~txtsp              AS txtsp_op,
+    plpo~loekz              AS loekz_o,
+
+    "================ CHARACTERISTIC (PLMK) ==========================
+    plmk~merknr,
+    plmk~verwmerkm,
+    plmk~kurztext           AS kurzt_char,
+    plmk~ltextkz,
+    plmk~toleranzun,
+    plmk~toleranzob,
+    plmk~pruefeinh,
+    plmk~stichprver,
+    plmk~pmethode,
+    plmk~katalgart1,
+    plmk~auswmenge1,
+    plmk~steuerkz,
+    plmk~loekz              AS loekz_c,
+    plmk~gueltigab          AS gueltigab,
+    plmk~valid_to_on_db     AS valid_to_c
+
+    FROM  plko
+      INNER JOIN plas
+        ON plas~plnty = plko~plnty
+       AND plas~plnnr = plko~plnnr
+       AND plas~plnal = plko~plnal
+       AND plas~loekz = ' '
+       AND plas~datuv <= @lv_keydat
+       AND plas~valid_to >= @lv_keydat
+
+      INNER JOIN plpo
+        ON plpo~plnty = plas~plnty
+       AND plpo~plnnr = plas~plnnr
+       AND plpo~plnkn = plas~plnkn
+       AND plpo~zaehl = plas~zaehl
+       AND plpo~loekz = ' '
+
+      LEFT JOIN plmk
+        ON plmk~plnty = plpo~plnty
+       AND plmk~plnnr = plpo~plnnr
+       AND plmk~plnkn = plpo~plnkn
+       "AND plmk~zaehl = plpo~zaehl
+       AND plmk~loekz = ' '
+
+      LEFT JOIN tapl
+        ON tapl~plnty = plko~plnty
+       AND tapl~plnnr = plko~plnnr
+       AND tapl~plnal = plko~plnal
+       AND tapl~loekz = ' '
+
+      LEFT JOIN eapl
+        ON eapl~plnty = plko~plnty
+       AND eapl~plnnr = plko~plnnr
+       AND eapl~plnal = plko~plnal
+       AND eapl~loekz = ' '
+
+      LEFT JOIN crhd
+        ON crhd~objid = plpo~arbid
+
+      LEFT JOIN crhd AS crhd_h
+      ON crhd_h~objid = plko~arbid
+      AND crhd_h~objty = plko~arbty
+
+    WHERE plko~loekz = ' '
+      AND plko~datuv <= @lv_keydat
+      AND plko~valid_to >= @lv_keydat
+      AND plpo~datuv <= @lv_keydat
+      AND plpo~valid_to >= @lv_keydat
+      AND ( plmk~gueltigab IS INITIAL OR plmk~gueltigab <= @lv_keydat )
+      AND ( plmk~valid_to_on_db IS INITIAL OR plmk~valid_to_on_db >= @lv_keydat )
+          INTO CORRESPONDING FIELDS OF TABLE @gt_base.
+
+
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+  DELETE ADJACENT DUPLICATES FROM gt_base COMPARING plnty plnnr plnal vornr merknr.
+
+  "===================================================================*
+  "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
+  "===================================================================*
+  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+
+  CLEAR lt_filtered.
+
+  LOOP AT gt_base INTO gs_base.
+
+    IF gs_base-datuv > so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-valid_to < so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-datuv_o > so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-valid_to_o < so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gv_show_char = gc_true.
+      IF gs_base-gueltigab > so_keydt.
+        CONTINUE.
+      ENDIF.
+
+      IF gs_base-valid_to_c < so_keydt.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+
+    "===================================================================*
+    "* TASK LIST TYPE FILTER (FTL / ETL / GTL)
+    "===================================================================*
+    IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
+    "===================================================================*
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* HEADER FILTERS — FDS (SAFE VERSION)
+    "===================================================================*
+    IF so_ktext[] IS NOT INITIAL AND gs_base-ktext NOT IN so_ktext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
+
+    IF so_verwe[] IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_vagrp[] IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_stath[] IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
+      CONTINUE.
+    ENDIF.
+
+    IF so_annam[] IS NOT INITIAL AND gs_base-annam NOT IN so_annam.
+      CONTINUE.
+    ENDIF.
+
+    IF so_arbph[] IS NOT INITIAL AND gs_base-arbpl_h NOT IN so_arbph.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzh[] IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_strat[] IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istrh[] IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_adpsp[] IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_slwbe[] IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aedat[] IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aenam[] IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+      CONTINUE.
+    ENDIF.
+
+    IF so_andat[] IS NOT INITIAL AND gs_base-andat NOT IN so_andat.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION FILTERS
+    "===================================================================*
+
+    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_steus[] IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
+      CONTINUE.
+    ENDIF.
+
+    IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
+      CONTINUE.
+    ENDIF.
+
+    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istru[] IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
+      CONTINUE.
+    ENDIF.
+
+    IF so_larnt[] IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebeln[] IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebelp[] IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_lifnr[] IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION LONG TEXT INDICATOR FILTER
+    "===================================================================*
+    IF p_oltin = 'X' AND gs_base-ltextkz IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* CHARACTERISTIC FILTERS (ONLY IF SHOW CHAR IS ON)
+    "===================================================================*
+    IF gv_show_char = gc_true.
+
+      IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+        CONTINUE.
+      ENDIF.
+
+      IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+        CONTINUE.
+      ENDIF.
+
+      IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+        CONTINUE.
+      ENDIF.
+
+      IF so_ltxtk = 'X' AND gs_base-txtsp_op IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+        CONTINUE.
+      ENDIF.
+
+      IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+        CONTINUE.
+      ENDIF.
+
+    ENDIF.
+
+
+    "===================================================================*
+    "* TOLERANCE FILTERS
+    "===================================================================*
+    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> so_tolun.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> so_tolob.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* PASSED ALL FILTERS
+    "===================================================================*
+    APPEND gs_base TO lt_filtered.
+
+  ENDLOOP.
+
+  gt_base = lt_filtered.
+
+ENDFORM.
