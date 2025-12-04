@@ -1,54 +1,85 @@
-DATA: lv_tolun_p TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolob_p TYPE p LENGTH 16 DECIMALS 9.
+"================ OPERATION LONG TEXT FILTER ================
+IF so_opltx IS NOT INITIAL.
 
-IF so_tolun[] IS NOT INITIAL.
-  TRY.
-      lv_tolun_p = so_tolun-low.     "char → packed
-    CATCH cx_sy_conversion_no_number.
-      MESSAGE 'Invalid lower spec value' TYPE 'E'.
-  ENDTRY.
+  DATA: lt_lines TYPE STANDARD TABLE OF tline,
+        ls_line  TYPE tline,
+        lv_name  TYPE thead-tdname,
+        lv_found TYPE abap_bool.
 
-  IF gs_base-toleranzun < lv_tolun_p.
+  CLEAR lv_name.
+
+  "USE EXACT SAME KEY as append_op_longtext
+  CONCATENATE sy-mandt
+              gs_base-plnty
+              gs_base-plnnr
+              gs_base-plnkn
+              gs_base-zaehl
+         INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = 'PLPO'
+      name     = lv_name
+      object   = 'ROUTING'
+      language = sy-langu
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      OTHERS   = 4.
+
+  LOOP AT lt_lines INTO ls_line.
+    IF ls_line-tdline CP so_opltx.
+      lv_found = abap_true.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+
+  IF lv_found = abap_false.
     CONTINUE.
   ENDIF.
+
 ENDIF.
 
 
-IF so_tolob[] IS NOT INITIAL.
-  TRY.
-      lv_tolob_p = so_tolob-low.
-    CATCH cx_sy_conversion_no_number.
-      MESSAGE 'Invalid upper spec value' TYPE 'E'.
-  ENDTRY.
+"================ CHARACTERISTIC LONG TEXT FILTER ================
+IF so_chltx IS NOT INITIAL AND gs_base-merknr IS NOT INITIAL.
 
-  IF gs_base-toleranzob > lv_tolob_p.
+  DATA: lt_lines2 TYPE STANDARD TABLE OF tline,
+        ls_line2  TYPE tline,
+        lv_name2 TYPE thead-tdname,
+        lv_found2 TYPE abap_bool.
+
+  CLEAR lv_name2.
+
+  "USE EXACT SAME KEY as append_char_longtext
+  CONCATENATE sy-mandt
+              gs_base-plnty
+              gs_base-plnnr
+              gs_base-plnkn
+              gs_base-merknr
+              gs_base-zaehl
+         INTO lv_name2.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = 'QM'
+      name     = lv_name2
+      object   = 'QSS'
+      language = sy-langu
+    TABLES
+      lines    = lt_lines2
+    EXCEPTIONS
+      OTHERS   = 8.
+
+  LOOP AT lt_lines2 INTO ls_line2.
+    IF ls_line2-tdline CP so_chltx.
+      lv_found2 = abap_true.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+
+  IF lv_found2 = abap_false.
     CONTINUE.
   ENDIF.
-ENDIF.
 
-
-"--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
-DATA: lv_tolun_p  TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolob_p  TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolun_txt TYPE c LENGTH 20,
-      lv_tolob_txt TYPE c LENGTH 20.
-
-CLEAR: lv_tolun_p, lv_tolob_p, lv_tolun_txt, lv_tolob_txt.
-
-"--- Lower Spec Limit
-IF ls_base-toleranzun IS NOT INITIAL.
-  lv_tolun_p = ls_base-toleranzun.              
-  WRITE lv_tolun_p TO lv_tolun_txt DECIMALS 9.  
-
-  REPLACE ALL OCCURRENCES OF ',' IN lv_tolun_txt WITH '.'.
-  ls_disp-toleranzun = lv_tolun_txt.
-ENDIF.
-
-"--- Upper Spec Limit
-IF ls_base-toleranzob IS NOT INITIAL.
-  lv_tolob_p = ls_base-toleranzob.              
-  WRITE lv_tolob_p TO lv_tolob_txt DECIMALS 9.  
-
-  REPLACE ALL OCCURRENCES OF ',' IN lv_tolob_txt WITH '.'.
-  ls_disp-toleranzob = lv_tolob_txt.
 ENDIF.
