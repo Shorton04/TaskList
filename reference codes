@@ -1,23 +1,131 @@
-DATA: lv_tolun TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolob TYPE p LENGTH 16 DECIMALS 9.
+FORM append_op_longtext USING is_base TYPE ty_task_base.
 
-IF so_tolun IS NOT INITIAL.
-  lv_tolun = so_tolun.
-  IF gs_base-toleranzun < lv_tolun.
-    CONTINUE.
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_indent TYPE string,
+        ls_color  TYPE lvc_s_scol.
+
+  CLEAR: lt_lines, lv_name.
+
+  CONCATENATE sy-mandt
+              is_base-plnty
+              is_base-plnnr
+              is_base-plnkn
+              is_base-zaehl
+         INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      client   = sy-mandt
+      id       = 'PLPO'
+      language = sy-langu
+      name     = lv_name
+      object   = 'ROUTING'
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      OTHERS   = 4.
+
+  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
+    RETURN.
   ENDIF.
-ENDIF.
 
-IF so_tolob IS NOT INITIAL.
-  lv_tolob = so_tolob.
-  IF gs_base-toleranzob > lv_tolob.
-    CONTINUE.
+  LOOP AT lt_lines INTO ls_line.
+
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind = 'L'.
+    gs_display-op_ltxt  = ls_line-tdline.
+    gs_display-tdformat = ls_line-tdformat.
+
+    CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 1.
+    APPEND ls_color TO gs_display-line_color.
+
+    APPEND gs_display TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+*&---------------------------------------------------------------------*
+*& Form APPEND_CHAR_LONGTEXT
+*&---------------------------------------------------------------------*
+*  - Appends characteristic long text lines as separate rows in GT_DISPLAY
+*    with:
+*       ROW_KIND  = 'L'
+*       CHAR_LTXT = text line
+*&---------------------------------------------------------------------*
+FORM append_char_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_tmp    TYPE thead-tdname,
+        lv_indent TYPE string,
+        lv_merknr TYPE char08,
+        ls_color  TYPE lvc_s_scol.
+
+  CLEAR: lt_lines, lv_name, lv_tmp.
+
+  IF is_base-ltextkz IS INITIAL.
+    RETURN.
   ENDIF.
-ENDIF.
 
+  lv_merknr = is_base-merknr.
 
+  CONCATENATE sy-mandt
+              is_base-plnty
+              is_base-plnnr
+              is_base-plnkn
+         INTO lv_tmp.
 
-IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+  CONCATENATE lv_tmp is_base-merknr INTO lv_tmp SEPARATED BY space.
+  CONCATENATE lv_tmp is_base-zaehl INTO lv_name.
 
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      client   = sy-mandt
+      id       = 'QM'
+      language = sy-langu
+      name     = lv_name
+      object   = 'QSS'
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      OTHERS   = 8.
 
+  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
+    RETURN.
+  ENDIF.
 
+  LOOP AT lt_lines INTO ls_line.
+
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind  = 'L'.
+    gs_display-char_ltxt = ls_line-tdline.
+    gs_display-tdformat  = ls_line-tdformat.
+
+    CONCATENATE lv_indent gs_display-char_ltxt INTO gs_display-char_ltxt.
+
+    CLEAR gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 4.
+    APPEND ls_color TO gs_display-line_color.
+
+    APPEND gs_display TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
