@@ -11,3 +11,12 @@ REPLACE ',' WITH '.' IN ls_disp-toleranzun.
 REPLACE ',' WITH '.' IN ls_disp-toleranzob.
 
 
+lo_col = lo_columns->get_column( 'ARBPL_H' ).
+lo_col->set_short_text( 'Work Ctr (Header)' ).
+lo_col->set_medium_text( 'Work Center (Header)' ).
+lo_col->set_long_text( 'Header Work Center' ).
+
+lo_col = lo_columns->get_column( 'ARBPL_O' ).
+lo_col->set_short_text( 'Work Ctr (Oper)' ).
+lo_col->set_medium_text( 'Work Center (Operation)' ).
+lo_col->set_long_text( 'Operation Work Center' ).
