@@ -287,7 +287,7 @@ FORM get_data.
         ON plmk~plnty = plpo~plnty
        AND plmk~plnnr = plpo~plnnr
        AND plmk~plnkn = plpo~plnkn
-       AND plmk~zaehl = plpo~zaehl
+       "AND plmk~zaehl = plpo~zaehl
        AND plmk~loekz = ' '
 
       LEFT JOIN tapl
@@ -339,6 +339,7 @@ FORM get_data.
           lv_tolun_p = so_tolun-low.     "char → packed
         CATCH cx_sy_conversion_no_number.
           MESSAGE 'Invalid lower spec value' TYPE 'S'.
+          EXIT.
       ENDTRY.
 
       IF gs_base-toleranzun < lv_tolun_p.
@@ -352,6 +353,7 @@ FORM get_data.
           lv_tolob_p = so_tolob-low.
         CATCH cx_sy_conversion_no_number.
           MESSAGE 'Invalid upper spec value' TYPE 'S'.
+          EXIT.
       ENDTRY.
 
       IF gs_base-toleranzob > lv_tolob_p.
@@ -580,93 +582,6 @@ FORM get_data.
     ENDIF.
 
 
-    "================ OPERATION LONG TEXT FILTER ================
-    IF so_opltx IS NOT INITIAL.
-
-      DATA: lt_lines TYPE STANDARD TABLE OF tline,
-            ls_line  TYPE tline,
-            lv_name  TYPE thead-tdname,
-            lv_found TYPE abap_bool.
-
-      CLEAR lv_name.
-
-      "USE EXACT SAME KEY as append_op_longtext
-      CONCATENATE sy-mandt
-                  gs_base-plnty
-                  gs_base-plnnr
-                  gs_base-plnkn
-                  gs_base-zaehl
-             INTO lv_name.
-
-      CALL FUNCTION 'READ_TEXT'
-        EXPORTING
-          client   = sy-mandt
-          id       = 'PLPO'
-          name     = lv_name
-          object   = 'ROUTING'
-          language = sy-langu
-        TABLES
-          lines    = lt_lines
-        EXCEPTIONS
-          OTHERS   = 4.
-
-      LOOP AT lt_lines INTO ls_line.
-        IF ls_line-tdline CP so_opltx.
-          lv_found = abap_true.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-
-      IF lv_found = abap_false.
-        CONTINUE.
-      ENDIF.
-
-    ENDIF.
-
-
-    "================ CHARACTERISTIC LONG TEXT FILTER ================
-    IF so_chltx IS NOT INITIAL AND gs_base-merknr IS NOT INITIAL.
-
-      DATA: lt_lines2 TYPE STANDARD TABLE OF tline,
-            ls_line2  TYPE tline,
-            lv_name2  TYPE thead-tdname,
-            lv_found2 TYPE abap_bool.
-
-      CLEAR lv_name2.
-
-      "USE EXACT SAME KEY as append_char_longtext
-      CONCATENATE sy-mandt
-                  gs_base-plnty
-                  gs_base-plnnr
-                  gs_base-plnkn
-                  gs_base-merknr
-                  gs_base-zaehl
-             INTO lv_name2.
-
-      CALL FUNCTION 'READ_TEXT'
-        EXPORTING
-          client   = sy-mandt
-          id       = 'QM'
-          name     = lv_name2
-          object   = 'QSS'
-          language = sy-langu
-        TABLES
-          lines    = lt_lines2
-        EXCEPTIONS
-          OTHERS   = 8.
-
-      LOOP AT lt_lines2 INTO ls_line2.
-        IF ls_line2-tdline CP so_chltx.
-          lv_found2 = abap_true.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-
-      IF lv_found2 = abap_false.
-        CONTINUE.
-      ENDIF.
-
-    ENDIF.
     "===================================================================*
     "* PASSED ALL FILTERS
     "===================================================================*
@@ -751,6 +666,7 @@ FORM build_display.
 
       CLEAR ls_disp.
       MOVE-CORRESPONDING ls_base TO ls_disp.
+
       ls_disp-row_kind = 'O'.
       "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
       DATA: lv_tolun_p   TYPE p LENGTH 16 DECIMALS 9,
@@ -825,7 +741,6 @@ FORM build_display.
   ENDLOOP.
 
 ENDFORM.
-
 
 
 ************************************************************************
@@ -1326,6 +1241,7 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
         lv_indent TYPE string,
         ls_color  TYPE lvc_s_scol.
 
+
   CLEAR: lt_lines, lv_name.
 
   CONCATENATE sy-mandt
@@ -1352,6 +1268,7 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
   ENDIF.
 
   LOOP AT lt_lines INTO ls_line.
+
 
     CLEAR gs_display.
     MOVE-CORRESPONDING is_base TO gs_display.
@@ -1427,6 +1344,7 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
   ENDIF.
 
   LOOP AT lt_lines INTO ls_line.
+
 
     CLEAR gs_display.
     MOVE-CORRESPONDING is_base TO gs_display.
