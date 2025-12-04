@@ -180,24 +180,12 @@ ENDFORM.
 *---------------------------------------------------------------------*
 FORM get_data.
 
-  DATA: lv_keydat TYPE plko-datuv,
-        lv_tolun  TYPE plmk-toleranzun,
-        lv_tolob  TYPE plmk-toleranzob.
+  DATA: lv_keydat TYPE plko-datuv.
 
   CLEAR gt_base.
   CLEAR gs_base.
 
   lv_keydat = so_keydt.
-
-  " Convert tolerance CHAR16 → FLTP
-  CLEAR lv_tolun.
-  CLEAR lv_tolob.
-  IF so_tolun IS NOT INITIAL.
-    lv_tolun = so_tolun.
-  ENDIF.
-  IF so_tolob IS NOT INITIAL.
-    lv_tolob = so_tolob.
-  ENDIF.
 
   "===================================================================*
   "* FDS JOIN WITH ALL FIELDS REQUIRED IN TY_TASK_BASE
@@ -299,7 +287,7 @@ FORM get_data.
         ON plmk~plnty = plpo~plnty
        AND plmk~plnnr = plpo~plnnr
        AND plmk~plnkn = plpo~plnkn
-       "AND plmk~zaehl = plpo~zaehl
+       AND plmk~zaehl = plpo~zaehl
        AND plmk~loekz = ' '
 
       LEFT JOIN tapl
@@ -342,6 +330,35 @@ FORM get_data.
   CLEAR lt_filtered.
 
   LOOP AT gt_base INTO gs_base.
+
+    DATA: lv_tolun_p TYPE p LENGTH 16 DECIMALS 9,
+          lv_tolob_p TYPE p LENGTH 16 DECIMALS 9.
+
+    IF so_tolun[] IS NOT INITIAL.
+      TRY.
+          lv_tolun_p = so_tolun-low.     "char → packed
+        CATCH cx_sy_conversion_no_number.
+          MESSAGE 'Invalid lower spec value' TYPE 'S'.
+      ENDTRY.
+
+      IF gs_base-toleranzun < lv_tolun_p.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+
+    IF so_tolob[] IS NOT INITIAL.
+      TRY.
+          lv_tolob_p = so_tolob-low.
+        CATCH cx_sy_conversion_no_number.
+          MESSAGE 'Invalid upper spec value' TYPE 'S'.
+      ENDTRY.
+
+      IF gs_base-toleranzob > lv_tolob_p.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
 
     IF gs_base-datuv > so_keydt.
       CONTINUE.
@@ -526,7 +543,7 @@ FORM get_data.
     "===================================================================*
     "* OPERATION LONG TEXT INDICATOR FILTER
     "===================================================================*
-    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+    IF p_oltin = 'X' AND gs_base-ltextkz IS INITIAL.
       CONTINUE.
     ENDIF.
 
@@ -548,7 +565,7 @@ FORM get_data.
         CONTINUE.
       ENDIF.
 
-      IF so_ltxtk[] IS NOT INITIAL AND gs_base-ltextkz NOT IN so_ltxtk.
+      IF so_ltxtk = 'X' AND gs_base-txtsp_op IS INITIAL.
         CONTINUE.
       ENDIF.
 
@@ -563,18 +580,93 @@ FORM get_data.
     ENDIF.
 
 
-    "===================================================================*
-    "* TOLERANCE FILTERS
-    "===================================================================*
-    IF so_tolun IS NOT INITIAL AND gs_base-toleranzun <> so_tolun.
-      CONTINUE.
+    "================ OPERATION LONG TEXT FILTER ================
+    IF so_opltx IS NOT INITIAL.
+
+      DATA: lt_lines TYPE STANDARD TABLE OF tline,
+            ls_line  TYPE tline,
+            lv_name  TYPE thead-tdname,
+            lv_found TYPE abap_bool.
+
+      CLEAR lv_name.
+
+      "USE EXACT SAME KEY as append_op_longtext
+      CONCATENATE sy-mandt
+                  gs_base-plnty
+                  gs_base-plnnr
+                  gs_base-plnkn
+                  gs_base-zaehl
+             INTO lv_name.
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          client   = sy-mandt
+          id       = 'PLPO'
+          name     = lv_name
+          object   = 'ROUTING'
+          language = sy-langu
+        TABLES
+          lines    = lt_lines
+        EXCEPTIONS
+          OTHERS   = 4.
+
+      LOOP AT lt_lines INTO ls_line.
+        IF ls_line-tdline CP so_opltx.
+          lv_found = abap_true.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+
+      IF lv_found = abap_false.
+        CONTINUE.
+      ENDIF.
+
     ENDIF.
 
-    IF so_tolob IS NOT INITIAL AND gs_base-toleranzob <> so_tolob.
-      CONTINUE.
+
+    "================ CHARACTERISTIC LONG TEXT FILTER ================
+    IF so_chltx IS NOT INITIAL AND gs_base-merknr IS NOT INITIAL.
+
+      DATA: lt_lines2 TYPE STANDARD TABLE OF tline,
+            ls_line2  TYPE tline,
+            lv_name2  TYPE thead-tdname,
+            lv_found2 TYPE abap_bool.
+
+      CLEAR lv_name2.
+
+      "USE EXACT SAME KEY as append_char_longtext
+      CONCATENATE sy-mandt
+                  gs_base-plnty
+                  gs_base-plnnr
+                  gs_base-plnkn
+                  gs_base-merknr
+                  gs_base-zaehl
+             INTO lv_name2.
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          client   = sy-mandt
+          id       = 'QM'
+          name     = lv_name2
+          object   = 'QSS'
+          language = sy-langu
+        TABLES
+          lines    = lt_lines2
+        EXCEPTIONS
+          OTHERS   = 8.
+
+      LOOP AT lt_lines2 INTO ls_line2.
+        IF ls_line2-tdline CP so_chltx.
+          lv_found2 = abap_true.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+
+      IF lv_found2 = abap_false.
+        CONTINUE.
+      ENDIF.
+
     ENDIF.
-
-
     "===================================================================*
     "* PASSED ALL FILTERS
     "===================================================================*
@@ -660,6 +752,27 @@ FORM build_display.
       CLEAR ls_disp.
       MOVE-CORRESPONDING ls_base TO ls_disp.
       ls_disp-row_kind = 'O'.
+      "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
+      DATA: lv_tolun_p   TYPE p LENGTH 16 DECIMALS 9,
+            lv_tolob_p   TYPE p LENGTH 16 DECIMALS 9,
+            lv_tolun_txt TYPE c LENGTH 20,
+            lv_tolob_txt TYPE c LENGTH 20.
+
+      CLEAR: lv_tolun_p, lv_tolob_p, lv_tolun_txt, lv_tolob_txt.
+
+      "--- Lower Spec Limit
+      IF ls_base-toleranzun IS NOT INITIAL.
+        lv_tolun_p = ls_base-toleranzun.
+        WRITE lv_tolun_p TO lv_tolun_txt DECIMALS 9.
+        ls_disp-toleranzun = lv_tolun_txt.
+      ENDIF.
+
+      "--- Upper Spec Limit
+      IF ls_base-toleranzob IS NOT INITIAL.
+        lv_tolob_p = ls_base-toleranzob.
+        WRITE lv_tolob_p TO lv_tolob_txt DECIMALS 9.
+        ls_disp-toleranzob = lv_tolob_txt.
+      ENDIF.
 
       " Fill CI fields here
       PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
@@ -834,7 +947,7 @@ FORM set_ci_headers.
     CATCH cx_salv_not_found.
   ENDTRY.
 
-    TRY.
+  TRY.
       DATA(lo_col3) = lo_columns->get_column( 'LTXA1' ).
       lo_col3->set_short_text(  'Op.SText' ).
       lo_col3->set_medium_text( 'Op.Short Text' ).
@@ -842,7 +955,7 @@ FORM set_ci_headers.
     CATCH cx_salv_not_found.
   ENDTRY.
 
-      TRY.
+  TRY.
       DATA(lo_col4) = lo_columns->get_column( 'KURZTEXT' ).
       lo_col4->set_short_text(  'Char.SText' ).
       lo_col4->set_medium_text( 'Char.Short Text' ).
@@ -850,7 +963,45 @@ FORM set_ci_headers.
     CATCH cx_salv_not_found.
   ENDTRY.
 
+  TRY.
+      lo_col ?= lo_columns->get_column( 'KURZTEXT' ).
+      lo_col->set_long_text( 'Characteristic Long Text' ).
+      lo_col->set_medium_text( 'Char.Short Text' ).
+      lo_col->set_short_text( 'Char.SText' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
+  TRY.
+      lo_col ?= lo_columns->get_column( 'ARBPL_O' ).
+      lo_col->set_long_text( 'Worc Center Operation' ).
+      lo_col->set_medium_text( 'WC Operation' ).
+      lo_col->set_short_text( 'WC Op.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'ARBPL_H' ).
+      lo_col->set_long_text( 'Worc Center Header' ).
+      lo_col->set_medium_text( 'WC Header' ).
+      lo_col->set_short_text( 'WC HDR.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'TOLERANZUN' ).
+      lo_col->set_long_text( 'Lower Specification Limit' ).
+      lo_col->set_medium_text( 'Lower Spec limit' ).
+      lo_col->set_short_text( 'L Spec.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'TOLERANZOB' ).
+      lo_col->set_long_text( 'Upper Specification Limit' ).
+      lo_col->set_medium_text( 'Upper Spec limit' ).
+      lo_col->set_short_text( 'U Spec.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
   "----------------------------------------------
   " CI01 – CI28 Headers
   "----------------------------------------------
@@ -1630,6 +1781,8 @@ FORM set_column_visibility_by_state.
 
   "--- Internal / Technical fields ---
   hide_col_total 'SELECT'.
+  hide_col_total 'TOLOBNI'.
+  hide_col_total 'TOLUNNI'.
   hide_col_total 'ROW_KIND'.
   hide_col_total 'LINE_COLOR'.
   hide_col_total 'T_COLOR'.
