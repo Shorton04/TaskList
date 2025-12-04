@@ -1,3 +1,7 @@
+CLEAR ls_disp.
+MOVE-CORRESPONDING ls_base TO ls_disp.
+
+" Convert tolerances (FLTP → CHAR)
 DATA lv_tolun TYPE p LENGTH 16 DECIMALS 9.
 DATA lv_tolob TYPE p LENGTH 16 DECIMALS 9.
 
@@ -10,13 +14,7 @@ WRITE lv_tolob TO ls_disp-toleranzob DECIMALS 9.
 REPLACE ',' WITH '.' IN ls_disp-toleranzun.
 REPLACE ',' WITH '.' IN ls_disp-toleranzob.
 
-
-lo_col = lo_columns->get_column( 'ARBPL_H' ).
-lo_col->set_short_text( 'Work Ctr (Header)' ).
-lo_col->set_medium_text( 'Work Center (Header)' ).
-lo_col->set_long_text( 'Header Work Center' ).
-
-lo_col = lo_columns->get_column( 'ARBPL_O' ).
-lo_col->set_short_text( 'Work Ctr (Oper)' ).
-lo_col->set_medium_text( 'Work Center (Operation)' ).
-lo_col->set_long_text( 'Operation Work Center' ).
+" Continue building row
+ls_disp-row_kind = 'O'.
+PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+APPEND ls_disp TO gt_display.
