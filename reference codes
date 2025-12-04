@@ -1,134 +1,72 @@
-FORM append_op_longtext USING is_base TYPE ty_task_base.
+DATA lt_op_text TYPE STANDARD TABLE OF tline.
 
-  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
-        ls_line   TYPE tline,
-        lv_name   TYPE thead-tdname,
-        lv_indent TYPE string,
-        ls_color  TYPE lvc_s_scol.
+CLEAR lt_op_text.
+CALL FUNCTION 'READ_TEXT'
+  EXPORTING
+    id       = 'PLPO'
+    language = sy-langu
+    name     = |{ sy-mandt }{ gs_base-plnty }{ gs_base-plnnr }{ gs_base-plnkn }{ gs_base-zaehl }|
+    object   = 'ROUTING'
+  TABLES
+    lines    = lt_op_text
+  EXCEPTIONS
+    OTHERS   = 1.
+
+gs_base-op_ltxt_raw = ||.
+LOOP AT lt_op_text ASSIGNING FIELD-SYMBOL(<l>).
+  gs_base-op_ltxt_raw = gs_base-op_ltxt_raw && <l>-tdline && space.
+ENDLOOP.
 
 
-  CLEAR: lt_lines, lv_name.
+DATA lt_ch_text TYPE STANDARD TABLE OF tline.
 
-  CONCATENATE sy-mandt
-              is_base-plnty
-              is_base-plnnr
-              is_base-plnkn
-              is_base-zaehl
-         INTO lv_name.
-
+IF gs_base-ltextkz = 'X'.
+  CLEAR lt_ch_text.
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      client   = sy-mandt
-      id       = 'PLPO'
-      language = sy-langu
-      name     = lv_name
-      object   = 'ROUTING'
-    TABLES
-      lines    = lt_lines
-    EXCEPTIONS
-      OTHERS   = 4.
-
-  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  LOOP AT lt_lines INTO ls_line.
-
-
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind = 'L'.
-    gs_display-op_ltxt  = ls_line-tdline.
-    gs_display-tdformat = ls_line-tdformat.
-
-    CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
-
-    "GREEN color
-    CLEAR ls_color.
-    ls_color-color-col = 1.
-    APPEND ls_color TO gs_display-line_color.
-
-    APPEND gs_display TO gt_display.
-
-  ENDLOOP.
-
-ENDFORM.
-
-
-
-*&---------------------------------------------------------------------*
-*& Form APPEND_CHAR_LONGTEXT
-*&---------------------------------------------------------------------*
-*  - Appends characteristic long text lines as separate rows in GT_DISPLAY
-*    with:
-*       ROW_KIND  = 'L'
-*       CHAR_LTXT = text line
-*&---------------------------------------------------------------------*
-FORM append_char_longtext USING is_base TYPE ty_task_base.
-
-  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
-        ls_line   TYPE tline,
-        lv_name   TYPE thead-tdname,
-        lv_tmp    TYPE thead-tdname,
-        lv_indent TYPE string,
-        lv_merknr TYPE char08,
-        ls_color  TYPE lvc_s_scol.
-
-  CLEAR: lt_lines, lv_name, lv_tmp.
-
-  IF is_base-ltextkz IS INITIAL.
-    RETURN.
-  ENDIF.
-
-  lv_merknr = is_base-merknr.
-
-  CONCATENATE sy-mandt
-              is_base-plnty
-              is_base-plnnr
-              is_base-plnkn
-         INTO lv_tmp.
-
-  CONCATENATE lv_tmp is_base-merknr INTO lv_tmp SEPARATED BY space.
-  CONCATENATE lv_tmp is_base-zaehl INTO lv_name.
-
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      client   = sy-mandt
       id       = 'QM'
       language = sy-langu
-      name     = lv_name
+      name     = |{ sy-mandt }{ gs_base-plnty }{ gs_base-plnnr }{ gs_base-plnkn } { gs_base-merknr } { gs_base-zaehl }|
       object   = 'QSS'
     TABLES
-      lines    = lt_lines
+      lines    = lt_ch_text
     EXCEPTIONS
-      OTHERS   = 8.
+      OTHERS   = 1.
 
-  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-    RETURN.
-  ENDIF.
+  gs_base-char_ltxt_raw = ||.
+  LOOP AT lt_ch_text ASSIGNING FIELD-SYMBOL(<c>).
+    gs_base-char_ltxt_raw = gs_base-char_ltxt_raw && <c>-tdline && space.
+  ENDLOOP.
+ENDIF.
 
-  LOOP AT lt_lines INTO ls_line.
 
+IF so_opltx[] IS NOT INITIAL.
+  DATA matched TYPE abap_bool VALUE abap_false.
 
-    CLEAR gs_display.
-    MOVE-CORRESPONDING is_base TO gs_display.
-
-    gs_display-row_kind  = 'L'.
-    gs_display-char_ltxt = ls_line-tdline.
-    gs_display-tdformat  = ls_line-tdformat.
-
-    CONCATENATE lv_indent gs_display-char_ltxt INTO gs_display-char_ltxt.
-
-    CLEAR gs_display-op_ltxt.
-
-    "GREEN color
-    CLEAR ls_color.
-    ls_color-color-col = 4.
-    APPEND ls_color TO gs_display-line_color.
-
-    APPEND gs_display TO gt_display.
-
+  LOOP AT so_opltx ASSIGNING FIELD-SYMBOL(<s>).
+    IF gs_base-op_ltxt_raw CS <s>-low.
+      matched = abap_true.
+      EXIT.
+    ENDIF.
   ENDLOOP.
 
-ENDFORM.
+  IF matched = abap_false.
+    CONTINUE.
+  ENDIF.
+ENDIF.
+
+
+IF so_chltx[] IS NOT INITIAL.
+  DATA matched2 TYPE abap_bool VALUE abap_false.
+
+  LOOP AT so_chltx ASSIGNING FIELD-SYMBOL(<t>).
+    IF gs_base-char_ltxt_raw CS <t>-low.
+      matched2 = abap_true.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+
+  IF matched2 = abap_false.
+    CONTINUE.
+  ENDIF.
+ENDIF.
