@@ -1,21 +1,50 @@
-"--- Convert tolerances for ALV display (FLTP → CHAR)
-DATA: lv_tolun      TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolob      TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolun_txt  TYPE c LENGTH 20,
-      lv_tolob_txt  TYPE c LENGTH 20.
+"===================================================================*
+"* TOLERANCE FILTERS (NUMERIC)
+"===================================================================*
+DATA: lv_tolun TYPE ty_tol,
+      lv_tolob TYPE ty_tol.
 
-CLEAR: lv_tolun, lv_tolob, lv_tolun_txt, lv_tolob_txt.
+"--- LOWER SPEC LIMIT (so_tolun)
+IF so_tolun[] IS NOT INITIAL.
+  lv_tolun = so_tolun-low.     "already packed, no conversion dump
 
+  "Skip records whose lower spec < user input
+  IF gs_base-toleranzun < lv_tolun.
+    CONTINUE.
+  ENDIF.
+ENDIF.
+
+"--- UPPER SPEC LIMIT (so_tolob)
+IF so_tolob[] IS NOT INITIAL.
+  lv_tolob = so_tolob-low.
+
+  "Skip records whose upper spec > user input
+  IF gs_base-toleranzob > lv_tolob.
+    CONTINUE.
+  ENDIF.
+ENDIF.
+
+
+"--- Format tolerances for ALV display (FLTP → CHAR)
+DATA: lv_tolun_num TYPE ty_tol,
+      lv_tolob_num TYPE ty_tol,
+      lv_tolun_txt TYPE c LENGTH 20,
+      lv_tolob_txt TYPE c LENGTH 20.
+
+CLEAR: lv_tolun_num, lv_tolob_num, lv_tolun_txt, lv_tolob_txt.
+
+"Lower Spec Limit
 IF ls_base-toleranzun IS NOT INITIAL.
-  lv_tolun = ls_base-toleranzun.
-  WRITE lv_tolun TO lv_tolun_txt DECIMALS 9.
+  lv_tolun_num = ls_base-toleranzun.
+  WRITE lv_tolun_num TO lv_tolun_txt DECIMALS 9.
   REPLACE ',' WITH '.' IN lv_tolun_txt.
   ls_disp-toleranzun = lv_tolun_txt.
 ENDIF.
 
+"Upper Spec Limit
 IF ls_base-toleranzob IS NOT INITIAL.
-  lv_tolob = ls_base-toleranzob.
-  WRITE lv_tolob TO lv_tolob_txt DECIMALS 9.
+  lv_tolob_num = ls_base-toleranzob.
+  WRITE lv_tolob_num TO lv_tolob_txt DECIMALS 9.
   REPLACE ',' WITH '.' IN lv_tolob_txt.
   ls_disp-toleranzob = lv_tolob_txt.
 ENDIF.
