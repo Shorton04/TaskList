@@ -1,72 +1,21 @@
-DATA lt_op_text TYPE STANDARD TABLE OF tline.
+IF so_opltx IS NOT INITIAL.
+  DATA(lv_search) = so_opltx.
+  REPLACE ALL OCCURRENCES OF '*' IN lv_search WITH ''.
 
-CLEAR lt_op_text.
-CALL FUNCTION 'READ_TEXT'
-  EXPORTING
-    id       = 'PLPO'
-    language = sy-langu
-    name     = |{ sy-mandt }{ gs_base-plnty }{ gs_base-plnnr }{ gs_base-plnkn }{ gs_base-zaehl }|
-    object   = 'ROUTING'
-  TABLES
-    lines    = lt_op_text
-  EXCEPTIONS
-    OTHERS   = 1.
-
-gs_base-op_ltxt_raw = ||.
-LOOP AT lt_op_text ASSIGNING FIELD-SYMBOL(<l>).
-  gs_base-op_ltxt_raw = gs_base-op_ltxt_raw && <l>-tdline && space.
-ENDLOOP.
-
-
-DATA lt_ch_text TYPE STANDARD TABLE OF tline.
-
-IF gs_base-ltextkz = 'X'.
-  CLEAR lt_ch_text.
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      id       = 'QM'
-      language = sy-langu
-      name     = |{ sy-mandt }{ gs_base-plnty }{ gs_base-plnnr }{ gs_base-plnkn } { gs_base-merknr } { gs_base-zaehl }|
-      object   = 'QSS'
-    TABLES
-      lines    = lt_ch_text
-    EXCEPTIONS
-      OTHERS   = 1.
-
-  gs_base-char_ltxt_raw = ||.
-  LOOP AT lt_ch_text ASSIGNING FIELD-SYMBOL(<c>).
-    gs_base-char_ltxt_raw = gs_base-char_ltxt_raw && <c>-tdline && space.
-  ENDLOOP.
-ENDIF.
-
-
-IF so_opltx[] IS NOT INITIAL.
-  DATA matched TYPE abap_bool VALUE abap_false.
-
-  LOOP AT so_opltx ASSIGNING FIELD-SYMBOL(<s>).
-    IF gs_base-op_ltxt_raw CS <s>-low.
-      matched = abap_true.
-      EXIT.
-    ENDIF.
-  ENDLOOP.
-
-  IF matched = abap_false.
-    CONTINUE.
+  IF lv_search IS NOT INITIAL AND gs_base-op_ltxt_raw CS lv_search.
+    " valid, do nothing
+  ELSE.
+    CONTINUE.   "does NOT match long text → skip row
   ENDIF.
 ENDIF.
 
+IF so_chltx IS NOT INITIAL.
+  DATA(lv_search2) = so_chltx.
+  REPLACE ALL OCCURRENCES OF '*' IN lv_search2 WITH ''.
 
-IF so_chltx[] IS NOT INITIAL.
-  DATA matched2 TYPE abap_bool VALUE abap_false.
-
-  LOOP AT so_chltx ASSIGNING FIELD-SYMBOL(<t>).
-    IF gs_base-char_ltxt_raw CS <t>-low.
-      matched2 = abap_true.
-      EXIT.
-    ENDIF.
-  ENDLOOP.
-
-  IF matched2 = abap_false.
+  IF lv_search2 IS NOT INITIAL AND gs_base-char_ltxt_raw CS lv_search2.
+    " valid, do nothing
+  ELSE.
     CONTINUE.
   ENDIF.
 ENDIF.
