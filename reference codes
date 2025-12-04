@@ -1,20 +1,22 @@
 CLEAR ls_disp.
 MOVE-CORRESPONDING ls_base TO ls_disp.
 
-" Convert tolerances (FLTP → CHAR)
-DATA lv_tolun TYPE p LENGTH 16 DECIMALS 9.
-DATA lv_tolob TYPE p LENGTH 16 DECIMALS 9.
+"--- Convert FLTP tolerances to nice CHAR output
+DATA: lv_tolun     TYPE p LENGTH 16 DECIMALS 9,
+      lv_tolob     TYPE p LENGTH 16 DECIMALS 9,
+      lv_tolun_txt TYPE char20,
+      lv_tolob_txt TYPE char20.
 
-lv_tolun = ls_base-toleranzun.
-lv_tolob = ls_base-toleranzob.
+IF ls_base-toleranzun IS NOT INITIAL.
+  lv_tolun = ls_base-toleranzun.
+  WRITE lv_tolun TO lv_tolun_txt DECIMALS 9.
+  REPLACE ',' WITH '.' IN lv_tolun_txt.
+  ls_disp-toleranzun = lv_tolun_txt.
+ENDIF.
 
-WRITE lv_tolun TO ls_disp-toleranzun DECIMALS 9.
-WRITE lv_tolob TO ls_disp-toleranzob DECIMALS 9.
-
-REPLACE ',' WITH '.' IN ls_disp-toleranzun.
-REPLACE ',' WITH '.' IN ls_disp-toleranzob.
-
-" Continue building row
-ls_disp-row_kind = 'O'.
-PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
-APPEND ls_disp TO gt_display.
+IF ls_base-toleranzob IS NOT INITIAL.
+  lv_tolob = ls_base-toleranzob.
+  WRITE lv_tolob TO lv_tolob_txt DECIMALS 9.
+  REPLACE ',' WITH '.' IN lv_tolob_txt.
+  ls_disp-toleranzob = lv_tolob_txt.
+ENDIF.
