@@ -1,7 +1,13 @@
-lv_name = |{ sy-mandt }{ is_base-plnty }{ is_base-plnnr ALPHA=IN }{ is_base-plnkn ALPHA=IN }{ is_base-merknr ALPHA=IN }{ is_base-zaehl ALPHA=IN }|.
+" === Determine long-text display flags ===
+DATA show_op_ltxt  TYPE abap_bool.
+DATA show_char_ltxt TYPE abap_bool.
 
-lv_name = |{ sy-mandt }{ is_base-plnty }{ is_base-plnnr ALPHA=IN }{ is_base-plnkn ALPHA=IN }{ is_base-zaehl ALPHA=IN }|.
+CLEAR: show_op_ltxt, show_char_ltxt.
 
+IF so_opltx IS NOT INITIAL OR gv_show_ltxt = gc_true.
+  show_op_ltxt = abap_true.
+ENDIF.
 
-DATA show_op_ltxt  TYPE abap_bool VALUE ( so_opltx IS NOT INITIAL OR gv_show_ltxt = gc_true ).
-DATA show_char_ltxt TYPE abap_bool VALUE ( so_chltx IS NOT INITIAL OR gv_show_ltxt = gc_true ).
+IF so_chltx IS NOT INITIAL OR gv_show_ltxt = gc_true.
+  show_char_ltxt = abap_true.
+ENDIF.
