@@ -1,22 +1,22 @@
-CLEAR ls_disp.
-MOVE-CORRESPONDING ls_base TO ls_disp.
+LOOP AT gt_base INTO ls_base.
 
-"--- Convert FLTP tolerances to nice CHAR output
-DATA: lv_tolun     TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolob     TYPE p LENGTH 16 DECIMALS 9,
-      lv_tolun_txt TYPE char20,
-      lv_tolob_txt TYPE char20.
+  "All conversion variables must be here at the top:
+  DATA: lv_tolun       TYPE p LENGTH 16 DECIMALS 9,
+        lv_tolob       TYPE p LENGTH 16 DECIMALS 9,
+        lv_tolun_txt   TYPE c LENGTH 20,
+        lv_tolob_txt   TYPE c LENGTH 20.
 
-IF ls_base-toleranzun IS NOT INITIAL.
+  "Now your executable logic
   lv_tolun = ls_base-toleranzun.
-  WRITE lv_tolun TO lv_tolun_txt DECIMALS 9.
-  REPLACE ',' WITH '.' IN lv_tolun_txt.
-  ls_disp-toleranzun = lv_tolun_txt.
-ENDIF.
-
-IF ls_base-toleranzob IS NOT INITIAL.
   lv_tolob = ls_base-toleranzob.
+
+  WRITE lv_tolun TO lv_tolun_txt DECIMALS 9.
   WRITE lv_tolob TO lv_tolob_txt DECIMALS 9.
+
+  REPLACE ',' WITH '.' IN lv_tolun_txt.
   REPLACE ',' WITH '.' IN lv_tolob_txt.
+
+  ls_disp-toleranzun = lv_tolun_txt.
   ls_disp-toleranzob = lv_tolob_txt.
-ENDIF.
+
+ENDLOOP.
