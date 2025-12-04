@@ -1,11 +1,9 @@
-"=== Assign Search Help to Planner Group Column ===
-TRY.
-    DATA(lo_col_plg) = lo_columns->get_column( 'VAGRP' ).  "Planner Group fieldname in your GT_DISPLAY
-    lo_col_plg->set_ddic_reference( value = 'PLKO-VAGRP' ).
-  CATCH cx_salv_not_found.
-    " Column not found - ignore
-ENDTRY.
+IF so_tolun[] IS NOT INITIAL.
+  DATA lv_tolun TYPE plmk-toleranzun.
+  lv_tolun = so_tolun-low.   "Automatic conversion works now
+ENDIF.
 
-
-
-a
+IF so_tolob[] IS NOT INITIAL.
+  DATA lv_tolob TYPE plmk-toleranzob.
+  lv_tolob = so_tolob-low.
+ENDIF.
