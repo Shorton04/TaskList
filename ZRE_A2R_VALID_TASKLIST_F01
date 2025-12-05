@@ -332,31 +332,92 @@ FORM get_data.
   LOOP AT gt_base INTO gs_base.
 
     DATA: lv_tolun_p TYPE p LENGTH 16 DECIMALS 9,
-          lv_tolob_p TYPE p LENGTH 16 DECIMALS 9.
+          lv_tolob_p TYPE p LENGTH 16 DECIMALS 9,
+          lt_op_text TYPE STANDARD TABLE OF tline,
+          lt_ch_text TYPE STANDARD TABLE OF tline,
+          ls_line    TYPE tline,
+          lv_name    TYPE thead-tdname,
+          lv_tmp    TYPE thead-tdname,
+          lv_merknr TYPE char08.
 
-    IF so_tolun[] IS NOT INITIAL.
-      TRY.
-          lv_tolun_p = so_tolun-low.     "char → packed
-        CATCH cx_sy_conversion_no_number.
-          MESSAGE 'Invalid lower spec value' TYPE 'S'.
-          EXIT.
-      ENDTRY.
+    CLEAR: lt_op_text, lv_name.
+    CONCATENATE sy-mandt
+                 gs_base-plnty
+                 gs_base-plnnr
+                 gs_base-plnkn
+                 gs_base-zaehl
+            INTO lv_name.
 
-      IF gs_base-toleranzun < lv_tolun_p.
-        CONTINUE.
+    CALL FUNCTION 'READ_TEXT'
+      EXPORTING
+        client   = sy-mandt
+        id       = 'PLPO'
+        language = sy-langu
+        name     = lv_name
+        object   = 'ROUTING'
+      TABLES
+        lines    = lt_op_text
+      EXCEPTIONS
+        OTHERS   = 4.
+
+    gs_base-op_ltxt_raw = ||.
+    LOOP AT lt_op_text ASSIGNING FIELD-SYMBOL(<l>).
+      gs_base-op_ltxt_raw = gs_base-op_ltxt_raw && <l>-tdline && space.
+    ENDLOOP.
+
+    IF gs_base-ltextkz = 'X'.
+      CLEAR lt_ch_text.
+      IF gs_base-ltextkz IS INITIAL.
+        RETURN.
+      ENDIF.
+
+      lv_merknr = gs_base-merknr.
+
+      CONCATENATE sy-mandt
+                  gs_base-plnty
+                  gs_base-plnnr
+                  gs_base-plnkn
+             INTO lv_tmp.
+
+      CONCATENATE lv_tmp gs_base-merknr INTO lv_tmp SEPARATED BY space.
+      CONCATENATE lv_tmp gs_base-zaehl INTO lv_name.
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          client   = sy-mandt
+          id       = 'QM'
+          language = sy-langu
+          name     = lv_name
+          object   = 'QSS'
+        TABLES
+          lines    = lt_ch_text
+        EXCEPTIONS
+          OTHERS   = 8.
+
+      gs_base-char_ltxt_raw = ||.
+      LOOP AT lt_ch_text ASSIGNING FIELD-SYMBOL(<c>).
+        gs_base-char_ltxt_raw = gs_base-char_ltxt_raw && <c>-tdline && space.
+      ENDLOOP.
+    ENDIF.
+
+    IF so_opltx IS NOT INITIAL.
+      DATA(lv_search) = so_opltx.
+      REPLACE ALL OCCURRENCES OF '*' IN lv_search WITH ''.
+
+      IF lv_search IS NOT INITIAL AND gs_base-op_ltxt_raw CS lv_search.
+        " valid, do nothing
+      ELSE.
+        CONTINUE.   "does NOT match long text → skip row
       ENDIF.
     ENDIF.
 
+    IF so_chltx IS NOT INITIAL.
+      DATA(lv_search2) = so_chltx.
+      REPLACE ALL OCCURRENCES OF '*' IN lv_search2 WITH ''.
 
-    IF so_tolob[] IS NOT INITIAL.
-      TRY.
-          lv_tolob_p = so_tolob-low.
-        CATCH cx_sy_conversion_no_number.
-          MESSAGE 'Invalid upper spec value' TYPE 'S'.
-          EXIT.
-      ENDTRY.
-
-      IF gs_base-toleranzob > lv_tolob_p.
+      IF lv_search2 IS NOT INITIAL AND gs_base-char_ltxt_raw CS lv_search2.
+        " valid, do nothing
+      ELSE.
         CONTINUE.
       ENDIF.
     ENDIF.
@@ -920,34 +981,34 @@ FORM set_ci_headers.
   "----------------------------------------------
   " CI01 – CI28 Headers
   "----------------------------------------------
-  set_hdr 'CI1_TXT'  'Quantitative Char'.
-  set_hdr 'CI2_TXT'  'Record Values'.
-  set_hdr 'CI3_TXT'  'Ref Char Required'.
-  set_hdr 'CI4_TXT'  'Upper Spec Limit'.
-  set_hdr 'CI5_TXT'  'Lower Spec Limit'.
-  set_hdr 'CI6_TXT'  'Check Target'.
-  set_hdr 'CI7_TXT'  'Inspection Scope'.
-  set_hdr 'CI8_TXT'  'Long Term Insp'.
-  set_hdr 'CI9_TXT'  'Recording Type'.
-  set_hdr 'CI10_TXT' 'Document Required'.
-  set_hdr 'CI11_TXT' 'Characteristic Cat'.
-  set_hdr 'CI12_TXT' 'Sync Active'.
-  set_hdr 'CI13_TXT' 'Sample Qty Add'.
-  set_hdr 'CI14_TXT' 'Destructive Insp'.
-  set_hdr 'CI15_TXT' 'Calculated Char'.
-  set_hdr 'CI16_TXT' 'Sampling Proc Req'.
-  set_hdr 'CI17_TXT' 'Quality Score Rel'.
-  set_hdr 'CI18_TXT' 'No Changes Allowed'.
-  set_hdr 'CI19_TXT' 'Defects Count'.
-  set_hdr 'CI20_TXT' 'QM Subsystem Char'.
-  set_hdr 'CI21_TXT' 'Specs Changeable'.
-  set_hdr 'CI22_TXT' 'Test Equip Req'.
-  set_hdr 'CI23_TXT' 'Auto Defect Rec'.
-  set_hdr 'CI24_TXT' 'Change Docs Req'.
-  set_hdr 'CI25_TXT' 'SPC Characteristic'.
-  set_hdr 'CI26_TXT' 'Print Indicator'.
-  set_hdr 'CI27_TXT' 'Parameter Char'.
-  set_hdr 'CI28_TXT' 'Process Char'.
+  set_hdr 'CI1_TXT'  'CI:Quantitative Char'.
+  set_hdr 'CI2_TXT'  'CI:Record Values'.
+  set_hdr 'CI3_TXT'  'CI:Ref Char Required'.
+  set_hdr 'CI4_TXT'  'CI:Upper Spec Limit'.
+  set_hdr 'CI5_TXT'  'CI:Lower Spec Limit'.
+  set_hdr 'CI6_TXT'  'CI:Check Target'.
+  set_hdr 'CI7_TXT'  'CI:Inspection Scope'.
+  set_hdr 'CI8_TXT'  'CI:Long Term Insp'.
+  set_hdr 'CI9_TXT'  'CI:Recording Type'.
+  set_hdr 'CI10_TXT' 'CI:Document Required'.
+  set_hdr 'CI11_TXT' 'CI:Characteristic Cat'.
+  set_hdr 'CI12_TXT' 'CI:Sync Active'.
+  set_hdr 'CI13_TXT' 'CI:Sample Qty Add'.
+  set_hdr 'CI14_TXT' 'CI:Destructive Insp'.
+  set_hdr 'CI15_TXT' 'CI:Calculated Char'.
+  set_hdr 'CI16_TXT' 'CI:Sampling Proc Req'.
+  set_hdr 'CI17_TXT' 'CI:Quality Score Rel'.
+  set_hdr 'CI18_TXT' 'CI:No Changes Allowed'.
+  set_hdr 'CI19_TXT' 'CI:Defects Count'.
+  set_hdr 'CI20_TXT' 'CI:QM Subsystem Char'.
+  set_hdr 'CI21_TXT' 'CI:Specs Changeable'.
+  set_hdr 'CI22_TXT' 'CI:Test Equip Req'.
+  set_hdr 'CI23_TXT' 'CI:Auto Defect Rec'.
+  set_hdr 'CI24_TXT' 'CI:Change Docs Req'.
+  set_hdr 'CI25_TXT' 'CI:SPC Characteristic'.
+  set_hdr 'CI26_TXT' 'CI:Print Indicator'.
+  set_hdr 'CI27_TXT' 'CI:Parameter Char'.
+  set_hdr 'CI28_TXT' 'CI:Process Char'.
   set_hdr 'OP_LTXT'   'Operation Long Text'.
   set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
 
@@ -1110,10 +1171,13 @@ FORM adjust_display_fields_by_state.
     "-------------------------------------------------------------*
     IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
 
-      "Clear any long-text leftovers (even if columns are hidden)
-      CLEAR: <ls_disp>-tdformat,
-             <ls_disp>-op_ltxt,
-             <ls_disp>-char_ltxt.
+      IF gv_show_char = abap_false.
+        CLEAR <ls_disp>-char_ltxt.
+      ENDIF.
+
+      IF gv_show_ltxt = abap_false.
+        CLEAR <ls_disp>-op_ltxt.
+      ENDIF.
 
       IF <ls_disp>-row_kind = 'O'.
         CLEAR: <ls_disp>-merknr,      "Inspection number
@@ -1289,7 +1353,6 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
   ENDLOOP.
 
 ENDFORM.
-
 
 
 *&---------------------------------------------------------------------*
