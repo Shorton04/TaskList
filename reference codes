@@ -1,12 +1,42 @@
-ELSE.
+MODULE status_0100 OUTPUT.
 
-  "Reassign data AFTER internal table was rebuilt in PAI or event
-  DATA(lo_model) = lo_alv->get_model( ).
-  lo_model->set_data( REF #( gt_display ) ).
+  "1 — First time ALV creation
+  IF go_container IS INITIAL.
 
-  "Apply column visibility AFTER assigning data
-  PERFORM set_column_visibility_by_state.
+    CREATE OBJECT go_container
+      EXPORTING container_name = 'CC_ALV'.
 
-  lo_alv->refresh( ).
+    cl_salv_table=>factory(
+      EXPORTING
+        r_container  = go_container
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
 
-ENDIF.
+    PERFORM set_column_visibility_by_state.
+    PERFORM set_pfstatus_from_state.
+    PERFORM set_title_from_state.
+
+    PERFORM display_alv.
+
+  ELSE.
+
+    "2 — Recreate SALV each time with updated data
+    cl_salv_table=>factory(
+      EXPORTING
+        r_container  = go_container
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
+
+    PERFORM set_column_visibility_by_state.
+    PERFORM set_pfstatus_from_state.
+    PERFORM set_title_from_state.
+
+    lo_alv->display( ).
+
+  ENDIF.
+
+ENDMODULE.
