@@ -1,84 +1,11 @@
-FORM set_pfstatus_from_state.
+" Selection overrides PF-status toggles
+gv_show_ltxt = abap_false.
+gv_show_char = abap_false.
 
-  " *** IMPORTANT ***
-  " DO NOT call lo_alv->set_screen_status here.
-  " SALV in container mode does not support it.
+IF p_showl = 'X'.
+  gv_show_ltxt = abap_true.
+ENDIF.
 
-  DATA lv_pf TYPE sypfkey.
-
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
-    lv_pf = 'ZSALV_BOTH_HIDE'.
-  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-    lv_pf = 'ZSALV_LTXT_SHOW'.
-  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-    lv_pf = 'ZSALV_CLIST_ONLY'.
-  ELSE.
-    lv_pf = 'ZSALV_CLIST_LTXT'.
-  ENDIF.
-
-  "Set PF-STATUS using the screen, NOT SALV
-  SET PF-STATUS lv_pf OF PROGRAM sy-repid.
-
-ENDFORM.
-
-
-
-
-MODULE user_command_0100 INPUT.
-
-  CASE sy-ucomm.
-
-    "-------------------------------------------------------
-    " Toggle Characteristics ON
-    "-------------------------------------------------------
-    WHEN 'SHOW_CHAR'.
-      gv_show_char = abap_true.
-      "If showing characteristics, long text is allowed independently
-      PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      lo_alv->refresh( ).
-
-    "-------------------------------------------------------
-    " Toggle Characteristics OFF
-    "-------------------------------------------------------
-    WHEN 'HIDE_CHAR'.
-      gv_show_char = abap_false.
-      PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      lo_alv->refresh( ).
-
-    "-------------------------------------------------------
-    " Toggle Long Text ON
-    "-------------------------------------------------------
-    WHEN 'SHOW_LTXT'.
-      gv_show_ltxt = abap_true.
-      PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      lo_alv->refresh( ).
-
-    "-------------------------------------------------------
-    " Toggle Long Text OFF
-    "-------------------------------------------------------
-    WHEN 'HIDE_LTXT'.
-      gv_show_ltxt = abap_false.
-      PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      lo_alv->refresh( ).
-
-    "-------------------------------------------------------
-    " Manual REFRESH Button (if exists)
-    "-------------------------------------------------------
-    WHEN 'REFRESH'.
-      PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      lo_alv->refresh( ).
-
-    "-------------------------------------------------------
-    " Navigation (F3, F12, F15)
-    "-------------------------------------------------------
-    WHEN '&F03' OR '&F12' OR '&F15'.
-      LEAVE TO SCREEN 0.
-
-  ENDCASE.
-
-ENDMODULE.
+IF p_showc = 'X'.
+  gv_show_char = abap_true.
+ENDIF.
