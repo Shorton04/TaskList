@@ -1,38 +1,12 @@
-MODULE status_0100 OUTPUT.
+ELSE.
 
-  "1 — Create ALV container & SALV only once
-  IF go_container IS INITIAL.
+  "Reassign data AFTER internal table was rebuilt in PAI or event
+  DATA(lo_model) = lo_alv->get_model( ).
+  lo_model->set_data( REF #( gt_display ) ).
 
-    CREATE OBJECT go_container
-      EXPORTING container_name = 'CC_ALV'.
+  "Apply column visibility AFTER assigning data
+  PERFORM set_column_visibility_by_state.
 
-    cl_salv_table=>factory(
-      EXPORTING
-        r_container  = go_container
-      IMPORTING
-        r_salv_table = lo_alv
-      CHANGING
-        t_table      = gt_display ).   " <-- display table already built
+  lo_alv->refresh( ).
 
-    "2 — Apply column visibility AFTER ALV exists
-    PERFORM set_column_visibility_by_state.
-
-    "3 — Build toolbar, title
-    PERFORM set_pfstatus_from_state.
-    PERFORM set_title_from_state.
-
-    "4 — Display ALV first time
-    PERFORM display_alv.
-
-  ELSE.
-
-    "Reassign data AFTER internal table was rebuilt in PAI or event
-    lo_alv->set_data( gt_display ).
-
-    "Apply column visibility AFTER assigning data
-    PERFORM set_column_visibility_by_state.
-
-    lo_alv->refresh( ).
-  ENDIF.
-
-ENDMODULE.
+ENDIF.
