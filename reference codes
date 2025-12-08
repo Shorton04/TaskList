@@ -1,7 +1,83 @@
-IF p_showc = 'X'.
-  gv_show_char = abap_true.
-ENDIF.
+MODULE status_0100 OUTPUT.
 
-IF p_showl = 'X'.
-  gv_show_ltxt = abap_true.
-ENDIF.
+  "Apply selection screen values BEFORE ALV creation
+  IF p_showl = 'X'.
+    gv_show_ltxt = abap_true.
+  ENDIF.
+
+  IF p_showc = 'X'.
+    gv_show_char = abap_true.
+  ENDIF.
+
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+
+ENDMODULE.
+
+
+
+
+FORM display_alv.
+
+  DATA: lo_display TYPE REF TO cl_salv_display_settings.
+
+  " Create ALV only once
+  IF lo_alv IS INITIAL.
+
+    cl_salv_table=>factory(
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = gt_display ).
+
+    " Register events
+    lo_events = lo_alv->get_event( ).
+    SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+
+    " Display settings
+    lo_display = lo_alv->get_display_settings( ).
+    lo_display->set_striped_pattern( abap_false ).
+
+  ENDIF.
+
+  " Rebuild display table every time
+  PERFORM build_display.
+
+  " Apply column visibility after table is built
+  PERFORM set_column_visibility_by_state.
+
+  " PF-STATUS & title now are safe to apply
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+
+  lo_alv->refresh( ).
+
+  lo_alv->display( ).
+
+ENDFORM.
+
+
+
+METHOD on_user_command.
+
+  CASE e_salv_function.
+
+    WHEN '&LTXT'.      "Show Long Text
+      gv_show_ltxt = abap_true.
+      gv_show_char = abap_false.
+
+    WHEN '&LTXTH'.     "Hide Long Text
+      gv_show_ltxt = abap_false.
+
+    WHEN '&CHAR'.      "Show Characteristics
+      gv_show_char = abap_true.
+      gv_show_ltxt = abap_false.
+
+    WHEN '&CHARH'.     "Hide Characteristics
+      gv_show_char = abap_false.
+
+  ENDCASE.
+
+  PERFORM build_display.
+  PERFORM set_column_visibility_by_state.
+  lo_alv->refresh( ).
+
+ENDMETHOD.
