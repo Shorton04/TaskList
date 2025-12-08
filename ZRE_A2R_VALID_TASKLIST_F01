@@ -660,8 +660,7 @@ MODULE status_0100 OUTPUT.
   PERFORM set_pfstatus_from_state.
   PERFORM set_title_from_state.
 
-  "Always rebuild display table
-  PERFORM build_display.
+  PERFORM build_display.     "always rebuild internal table
 
   IF go_container IS INITIAL.
 
@@ -677,12 +676,17 @@ MODULE status_0100 OUTPUT.
       CHANGING
         t_table      = gt_display ).
 
+    "<<< IMPORTANT
+    PERFORM set_column_visibility_by_state.
+
     PERFORM display_alv.
 
   ELSE.
     lo_alv->refresh( ).
-  ENDIF.
 
+  ENDIF.
+    "<<< ALSO IMPORTANT HERE
+    PERFORM set_column_visibility_by_state.
 ENDMODULE.
 
 *&---------------------------------------------------------------------*
@@ -1815,50 +1819,30 @@ FORM set_column_visibility_by_state.
   show_col 'OP_LTXT'.      "Operation Long Text
   show_col 'CHAR_LTXT'.    "Characteristic Long Text
 
-
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
+  ENDIF.
 
   "==============================================================
   " CASE A/B/C/D – Your Original Logic
   "==============================================================
-
-  "CASE A – No Char, No LT
-  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
-
-    show_col 'LTXA1'.
-    show_col 'ARBPL_H'.
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-    hide_col 'MERKNR'.
-    hide_col 'KURZT_CHAR'.
-
-
-    "CASE B – Show Char, No LT
-  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
-
-    hide_col 'TDFORMAT'.
-    hide_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-
-
-    "CASE C – Hide Char, Show LT
-  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
-
-    show_col 'LTXA1'.
+  IF gv_show_ltxt = gc_true.
     show_col 'TDFORMAT'.
-    show_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-    hide_col 'MERKNR'.
-    hide_col 'KURZT_CHAR'.
-
-
-    "CASE D – Char + LT
   ELSE.
+    hide_col 'TDFORMAT'.
+  ENDIF.
 
-    show_col 'TDFORMAT'.
+  IF gv_show_ltxt = gc_true.
+    show_col 'OP_LTXT'.
+  ELSE.
     hide_col 'OP_LTXT'.
-    show_col 'CHAR_LTXT'.
+  ENDIF.
 
+  IF gv_show_char = gc_true AND gv_show_ltxt = gc_true.
+    show_col 'CHAR_LTXT'.
+  ELSE.
+    hide_col 'CHAR_LTXT'.
   ENDIF.
 
 ENDFORM.
