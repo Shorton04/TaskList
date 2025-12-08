@@ -1072,16 +1072,35 @@ FORM apply_column_order.
   pos 'PLNAL'      2.   "Counter
   pos 'WERKS'      3.   "Plant
   pos 'VORNR'      4.   "Operation
-  pos 'TDFORMAT'     5.   "FK
-  pos 'OP_LTXT'      6.   "Operation Long Text
-  pos 'ARBPL_O'      7.   "Work Center
-  pos 'ARBEI'        8.   "Work
-  pos 'LTXA1'        9.   "Description
-  pos 'PMETHODE'     10.  "Method
-  pos 'KURZT_CHAR'   11.   "Description
-  pos 'MERKNR'       12.   "Characteristic Number
-  pos 'TDFORMAT'     13.  "Format
-  pos 'CHAR_LTXT'    14.  "Characteristic Long Text
+
+  "=====================================================
+  " CASE 1: Show Long Text = TRUE AND Show Characteristics = FALSE
+  "=====================================================
+  IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
+
+    pos 'TDFORMAT'     5.   "FK
+    pos 'OP_LTXT'      6.   "Operation Long Text
+
+    pos 'ARBPL_O'      7.   "Work Center
+    pos 'ARBEI'        8.   "Work
+    pos 'LTXA1'        9.   "Description
+    pos 'PMETHODE'     10.  "Method
+
+    "=====================================================
+    " CASE 2: Show Long Text = TRUE AND Show Characteristics = TRUE
+    "=====================================================
+  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_true.
+
+    pos 'ARBPL_O'      5.   "Work Center
+    pos 'ARBEI'        6.   "Work
+    pos 'KURZT_CHAR'   7.   "Description
+    pos 'PMETHODE'     8.   "Method
+
+    pos 'MERKNR'       9.   "Characteristic Number
+    pos 'TDFORMAT'     10.  "Format
+    pos 'CHAR_LTXT'    11.  "Characteristic Long Text
+
+  ENDIF.
 
 ENDFORM.
 
@@ -1822,93 +1841,49 @@ FORM set_column_visibility_by_state.
   show_col 'OP_LTXT'.      "Operation Long Text
   show_col 'CHAR_LTXT'.    "Characteristic Long Text
 
-  IF p_showl = abap_true AND p_showc = abap_false.
+
+
+  "==============================================================
+  " CASE A/B/C/D – Your Original Logic
+  "==============================================================
+
+  "CASE A – No Char, No LT
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+
+    show_col 'LTXA1'.
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
+
+
+    "CASE B – Show Char, No LT
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+    "CASE C – Hide Char, Show LT
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
     show_col 'LTXA1'.
     show_col 'TDFORMAT'.
     show_col 'OP_LTXT'.
-  ELSE.
-    hide_col 'TDFORMAT'.
-  ENDIF.
-
-  IF p_showl = abap_true AND p_showc = abap_true.
-    show_col 'TDFORMAT'.
-    show_col 'CHAR_LTXT'.
-    hide_col 'OP_LTXT'.
-  ENDIF.
-
-  IF gv_show_char = abap_false.
-    hide_col 'MERKNR'.
-    hide_col 'KURZT_CHAR'.
-  ENDIF.
-
-  "==============================================================
-  " AUTO-DETECT: Show TDFORMAT if there's long text data
-  "==============================================================
-  READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-  IF sy-subrc = 0.
-    " We have long text rows, show TDFORMAT
-    show_col 'TDFORMAT'.
-  ELSE.
-    hide_col 'TDFORMAT'.
-  ENDIF.
-
-  "==============================================================
-  " AUTO-DETECT: Show OP_LTXT if selection screen has operation long text filter OR data exists
-  "==============================================================
-  IF so_opltx IS NOT INITIAL.
-    show_col 'OP_LTXT'.
     hide_col 'CHAR_LTXT'.
-  ELSE.
-    " Check if we have operation long text data
-    READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      " Check if any row has OP_LTXT filled
-      READ TABLE gt_display WITH KEY row_kind = 'L'
-        TRANSPORTING NO FIELDS
-        BINARY SEARCH.
-      IF sy-subrc = 0.
-        LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check>) WHERE row_kind = 'L'.
-          IF <fs_check>-op_ltxt IS NOT INITIAL.
-            show_col 'OP_LTXT'.
-            hide_col 'CHAR_LTXT'.
-            EXIT.
-          ENDIF.
-        ENDLOOP.
-      ENDIF.
-    ELSE.
-      hide_col 'OP_LTXT'.
-    ENDIF.
-  ENDIF.
-
-  "==============================================================
-  " AUTO-DETECT: Show CHAR_LTXT if selection screen has char long text filter OR data exists
-  "==============================================================
-  IF so_chltx IS NOT INITIAL.
-    show_col 'CHAR_LTXT'.
-    hide_col 'OP_LTXT'.
-  ELSE.
-    " Check if we have characteristic long text data
-    READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check2>) WHERE row_kind = 'L'.
-        IF <fs_check2>-char_ltxt IS NOT INITIAL.
-          show_col 'CHAR_LTXT'.
-          hide_col 'OP_LTXT'.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-    ELSE.
-      hide_col 'CHAR_LTXT'.
-      hide_col 'OP_LTXT'.
-    ENDIF.
-  ENDIF.
-
-  "==============================================================
-  " HANDLE MERKNR and KURZT_CHAR based on gv_show_char flag
-  "==============================================================
-  IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
     hide_col 'MERKNR'.
     hide_col 'KURZT_CHAR'.
+
+
+    "CASE D – Char + LT
+  ELSE.
+
+    show_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
+
   ENDIF.
 
 ENDFORM.
