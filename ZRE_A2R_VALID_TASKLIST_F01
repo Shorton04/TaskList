@@ -1,3 +1,660 @@
+*&---------------------------------------------------------------------*
+*& Include ZRE_A2R_VALID_TASKLIST_F01
+*&---------------------------------------------------------------------*
+*---------------------------------------------------------------------*
+* EVENT HANDLER IMPLEMENTATION
+*---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+  METHOD on_user_command.
+
+    CASE e_salv_function.
+
+      WHEN gc_func_clist_s.     " &CLISTS
+        gv_show_char = gc_true.
+        gv_show_ltxt = gc_false.
+
+      WHEN gc_func_clist_h.     " &CLISTH
+        gv_show_char = gc_false.
+        gv_show_ltxt = gc_false.
+
+      WHEN gc_func_ltxt_s.      " &LTXTS
+        gv_show_ltxt = gc_true.
+
+      WHEN gc_func_ltxt_h.      " &LTXTH
+        gv_show_ltxt = gc_false.
+
+      WHEN OTHERS.
+        RETURN.
+
+    ENDCASE.
+
+    " Rebuild data and refresh ALV / PF-STATUS / title
+    PERFORM build_display.
+    PERFORM set_pfstatus_from_state.
+    PERFORM set_title_from_state.
+    PERFORM set_column_visibility_by_state.
+
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD on_link_click.
+
+    READ TABLE gt_display ASSIGNING FIELD-SYMBOL(<ls_disp>) INDEX row.
+    IF sy-subrc = 0.
+
+      lo_alv->refresh( ).
+
+    ENDIF.
+
+  ENDMETHOD.
+ENDCLASS.
+
+*---------------------------------------------------------------------*
+* Validate Selection
+*---------------------------------------------------------------------*
+FORM validate_selection.
+
+  "At least one TL type
+  IF p_ftl IS INITIAL AND p_etl IS INITIAL AND p_gtl IS INITIAL.
+    MESSAGE e398(00) WITH 'Select at least one Task List Type'.
+  ENDIF.
+
+  "Key date required
+  IF so_keydt IS INITIAL.
+    MESSAGE e398(00) WITH 'Enter a key date'.
+  ENDIF.
+
+ENDFORM.
+
+
+*---------------------------------------------------------------------*
+* PF-STATUS DETERMINATION
+*---------------------------------------------------------------------*
+FORM set_pfstatus_from_state.
+
+  DATA lv_pf TYPE sypfkey.
+
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+    lv_pf = 'ZSALV_BOTH_HIDE'.
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+    lv_pf = 'ZSALV_LTXT_SHOW'.
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+    lv_pf = 'ZSALV_CLIST_ONLY'.
+  ELSE.
+    lv_pf = 'ZSALV_CLIST_LTXT'.
+  ENDIF.
+
+  IF lo_alv IS BOUND.
+    lo_alv->set_screen_status(
+      pfstatus = lv_pf
+      report   = sy-repid ).
+  ENDIF.
+  IF gv_show_ltxt = gc_true.
+    "Disable Show Characteristics button
+    lo_alv->set_screen_status(
+      pfstatus = lv_pf
+      report   = sy-repid
+    ).
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* Title update
+*---------------------------------------------------------------------*
+FORM set_title_from_state.
+
+  DATA lv_title TYPE string.
+  lv_title = 'Maintenance Task List Report'.
+
+  IF gv_show_char = gc_true.
+    lv_title = lv_title && ' - Characteristics Active'.
+  ENDIF.
+
+  IF gv_show_ltxt = gc_true.
+    lv_title = lv_title && ' - Long Text Active'.
+  ENDIF.
+
+  SET TITLEBAR 'TITLE_100' WITH lv_title.
+
+ENDFORM.
+
+
+*---------------------------------------------------------------------*
+* Derive CI flags from PLMK-STEUERKZ
+*---------------------------------------------------------------------*
+FORM derive_ci_fields
+  USING    iv_steuerkz TYPE plmk-steuerkz
+  CHANGING cs_disp      TYPE ty_task_disp.
+
+  DATA lv_steuer TYPE string.
+
+  "Move STEUERKZ into local string
+  lv_steuer = iv_steuerkz.
+
+  "Pad right side to exactly 28 characters
+  IF strlen( lv_steuer ) < 28.
+    lv_steuer = lv_steuer && repeat( val = ' ' occ = 28 - strlen( lv_steuer ) ).
+  ELSEIF strlen( lv_steuer ) > 28.
+    lv_steuer = lv_steuer(28).
+  ENDIF.
+
+  "Assign each character into CI fields
+  cs_disp-ci1  = lv_steuer+0(1).
+  cs_disp-ci2  = lv_steuer+1(1).
+  cs_disp-ci3  = lv_steuer+2(1).
+  cs_disp-ci4  = lv_steuer+3(1).
+  cs_disp-ci5  = lv_steuer+4(1).
+  cs_disp-ci6  = lv_steuer+5(1).
+  cs_disp-ci7  = lv_steuer+6(1).
+  cs_disp-ci8  = lv_steuer+7(1).
+  cs_disp-ci9  = lv_steuer+8(1).
+  cs_disp-ci10 = lv_steuer+9(1).
+  cs_disp-ci11 = lv_steuer+10(1).
+  cs_disp-ci12 = lv_steuer+11(1).
+  cs_disp-ci13 = lv_steuer+12(1).
+  cs_disp-ci14 = lv_steuer+13(1).
+  cs_disp-ci15 = lv_steuer+14(1).
+  cs_disp-ci16 = lv_steuer+15(1).
+  cs_disp-ci17 = lv_steuer+16(1).
+  cs_disp-ci18 = lv_steuer+17(1).
+  cs_disp-ci19 = lv_steuer+18(1).
+  cs_disp-ci20 = lv_steuer+19(1).
+  cs_disp-ci21 = lv_steuer+20(1).
+  cs_disp-ci22 = lv_steuer+21(1).
+  cs_disp-ci23 = lv_steuer+22(1).
+  cs_disp-ci24 = lv_steuer+23(1).
+  cs_disp-ci25 = lv_steuer+24(1).
+  cs_disp-ci26 = lv_steuer+25(1).
+  cs_disp-ci27 = lv_steuer+26(1).
+  cs_disp-ci28 = lv_steuer+27(1).
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* GET_DATA
+*---------------------------------------------------------------------*
+FORM get_data.
+
+  DATA: lv_keydat TYPE plko-datuv.
+
+  CLEAR gt_base.
+  CLEAR gs_base.
+
+  lv_keydat = so_keydt.
+
+  "===================================================================*
+  "* FDS JOIN WITH ALL FIELDS REQUIRED IN TY_TASK_BASE
+  "===================================================================*
+  SELECT
+    "================ HEADER (PLKO) ==================================
+    plko~plnty,
+    plko~plnnr,
+    plko~plnal,
+    plko~datuv,
+    plko~valid_to           AS valid_to,
+    plko~werks,
+    plko~ktext,
+    plko~verwe,
+    plko~vagrp,
+    plko~statu              AS statu_h,
+    plko~anlzu              AS anlzu_h,
+    plko~strat,
+    plko~istru              AS istru_h,
+    plko~adpsp,
+    plko~slwbez,
+    plko~loekz              AS loekz_h,
+    plko~andat,
+    plko~annam,
+    plko~aedat,
+    plko~aenam,
+
+    "================ FLOC / EQUIP (TAPL/EAPL) =======================
+    tapl~tplnr,
+    eapl~equnr,
+
+    crhd_h~arbpl AS arbpl_h,
+
+    "================ OPERATION (PLPO) ===============================
+    plpo~plnkn,
+    plpo~zaehl,
+    plpo~datuv              AS datuv_o,
+    plpo~valid_to           AS valid_to_o,
+    plpo~vornr,
+    plpo~ltxa1,
+    plpo~steus,
+    crhd~arbpl              AS arbpl_o,
+    crhd~werks              AS werks_o,
+    plpo~ktsch,
+    plpo~arbei,
+    plpo~arbeh,
+    plpo~dauno,
+    plpo~daune,
+    plpo~kalid,
+    plpo~execution_stage,
+    plpo~anlzu              AS anlzu_o,
+    plpo~istru              AS istru_o,
+    plpo~larnt,
+    plpo~ebeln,
+    plpo~ebelp,
+    plpo~lifnr,
+    plpo~preis,
+    plpo~waers,
+    plpo~sakto,
+    plpo~ekorg,
+    plpo~ekgrp,
+    plpo~txtsp              AS txtsp_op,
+    plpo~loekz              AS loekz_o,
+
+    "================ CHARACTERISTIC (PLMK) ==========================
+    plmk~merknr,
+    plmk~verwmerkm,
+    plmk~kurztext           AS kurzt_char,
+    plmk~ltextkz,
+    plmk~toleranzun,
+    plmk~toleranzob,
+    plmk~pruefeinh,
+    plmk~stichprver,
+    plmk~pmethode,
+    plmk~katalgart1,
+    plmk~auswmenge1,
+    plmk~steuerkz,
+    plmk~loekz              AS loekz_c,
+    plmk~gueltigab          AS gueltigab,
+    plmk~valid_to_on_db     AS valid_to_c
+
+    FROM  plko
+      INNER JOIN plas
+        ON plas~plnty = plko~plnty
+       AND plas~plnnr = plko~plnnr
+       AND plas~plnal = plko~plnal
+       AND plas~loekz = ' '
+       AND plas~datuv <= @lv_keydat
+       AND plas~valid_to >= @lv_keydat
+
+      INNER JOIN plpo
+        ON plpo~plnty = plas~plnty
+       AND plpo~plnnr = plas~plnnr
+       AND plpo~plnkn = plas~plnkn
+       AND plpo~zaehl = plas~zaehl
+       AND plpo~loekz = ' '
+
+      LEFT JOIN plmk
+        ON plmk~plnty = plpo~plnty
+       AND plmk~plnnr = plpo~plnnr
+       AND plmk~plnkn = plpo~plnkn
+       "AND plmk~zaehl = plpo~zaehl
+       AND plmk~loekz = ' '
+
+      LEFT JOIN tapl
+        ON tapl~plnty = plko~plnty
+       AND tapl~plnnr = plko~plnnr
+       AND tapl~plnal = plko~plnal
+       AND tapl~loekz = ' '
+
+      LEFT JOIN eapl
+        ON eapl~plnty = plko~plnty
+       AND eapl~plnnr = plko~plnnr
+       AND eapl~plnal = plko~plnal
+       AND eapl~loekz = ' '
+
+      LEFT JOIN crhd
+        ON crhd~objid = plpo~arbid
+
+      LEFT JOIN crhd AS crhd_h
+      ON crhd_h~objid = plko~arbid
+      AND crhd_h~objty = plko~arbty
+
+    WHERE plko~loekz = ' '
+      AND plko~datuv <= @lv_keydat
+      AND plko~valid_to >= @lv_keydat
+      AND plpo~datuv <= @lv_keydat
+      AND plpo~valid_to >= @lv_keydat
+      AND ( plmk~gueltigab IS INITIAL OR plmk~gueltigab <= @lv_keydat )
+      AND ( plmk~valid_to_on_db IS INITIAL OR plmk~valid_to_on_db >= @lv_keydat )
+          INTO CORRESPONDING FIELDS OF TABLE @gt_base.
+
+
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+  DELETE ADJACENT DUPLICATES FROM gt_base COMPARING plnty plnnr plnal vornr merknr.
+
+  "===================================================================*
+  "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
+  "===================================================================*
+  DATA: lt_filtered TYPE STANDARD TABLE OF ty_task_base.
+
+  CLEAR lt_filtered.
+
+  LOOP AT gt_base INTO gs_base.
+
+    DATA: lv_tolun_p TYPE p LENGTH 16 DECIMALS 9,
+          lv_tolob_p TYPE p LENGTH 16 DECIMALS 9,
+          lt_op_text TYPE STANDARD TABLE OF tline,
+          lt_ch_text TYPE STANDARD TABLE OF tline,
+          ls_line    TYPE tline,
+          lv_name    TYPE thead-tdname,
+          lv_tmp     TYPE thead-tdname,
+          lv_merknr  TYPE char08.
+
+    CLEAR: lt_op_text, lv_name.
+    CONCATENATE sy-mandt
+                 gs_base-plnty
+                 gs_base-plnnr
+                 gs_base-plnkn
+                 gs_base-zaehl
+            INTO lv_name.
+
+    CALL FUNCTION 'READ_TEXT'
+      EXPORTING
+        client   = sy-mandt
+        id       = 'PLPO'
+        language = sy-langu
+        name     = lv_name
+        object   = 'ROUTING'
+      TABLES
+        lines    = lt_op_text
+      EXCEPTIONS
+        OTHERS   = 4.
+
+    gs_base-op_ltxt_raw = ||.
+    LOOP AT lt_op_text ASSIGNING FIELD-SYMBOL(<l>).
+      gs_base-op_ltxt_raw = gs_base-op_ltxt_raw && <l>-tdline && space.
+    ENDLOOP.
+
+    IF gs_base-ltextkz = 'X'.
+      CLEAR lt_ch_text.
+      IF gs_base-ltextkz IS INITIAL.
+        RETURN.
+      ENDIF.
+
+      lv_merknr = gs_base-merknr.
+
+      CONCATENATE sy-mandt
+                  gs_base-plnty
+                  gs_base-plnnr
+                  gs_base-plnkn
+             INTO lv_tmp.
+
+      CONCATENATE lv_tmp gs_base-merknr INTO lv_tmp SEPARATED BY space.
+      CONCATENATE lv_tmp gs_base-zaehl INTO lv_name.
+
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+          client   = sy-mandt
+          id       = 'QM'
+          language = sy-langu
+          name     = lv_name
+          object   = 'QSS'
+        TABLES
+          lines    = lt_ch_text
+        EXCEPTIONS
+          OTHERS   = 8.
+
+      gs_base-char_ltxt_raw = ||.
+      LOOP AT lt_ch_text ASSIGNING FIELD-SYMBOL(<c>).
+        gs_base-char_ltxt_raw = gs_base-char_ltxt_raw && <c>-tdline && space.
+      ENDLOOP.
+    ENDIF.
+
+    IF so_opltx IS NOT INITIAL.
+      DATA(lv_search) = so_opltx.
+      REPLACE ALL OCCURRENCES OF '*' IN lv_search WITH ''.
+
+      IF lv_search IS NOT INITIAL AND gs_base-op_ltxt_raw CS lv_search.
+        " valid, do nothing
+      ELSE.
+        CONTINUE.   "does NOT match long text → skip row
+      ENDIF.
+    ENDIF.
+
+    IF so_chltx IS NOT INITIAL.
+      DATA(lv_search2) = so_chltx.
+      REPLACE ALL OCCURRENCES OF '*' IN lv_search2 WITH ''.
+
+      IF lv_search2 IS NOT INITIAL AND gs_base-char_ltxt_raw CS lv_search2.
+        " valid, do nothing
+      ELSE.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+
+    IF gs_base-datuv > so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-valid_to < so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-datuv_o > so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-valid_to_o < so_keydt.
+      CONTINUE.
+    ENDIF.
+
+    IF gv_show_char = gc_true.
+      IF gs_base-gueltigab > so_keydt.
+        CONTINUE.
+      ENDIF.
+
+      IF gs_base-valid_to_c < so_keydt.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+
+    "===================================================================*
+    "* TASK LIST TYPE FILTER (FTL / ETL / GTL)
+    "===================================================================*
+    IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* TASK LIST SELECTION FILTERS (PLNNR, PLNAL, FLOC, EQUIP)
+    "===================================================================*
+    IF so_plnnr[] IS NOT INITIAL AND gs_base-plnnr NOT IN so_plnnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_plnal[] IS NOT INITIAL AND gs_base-plnal NOT IN so_plnal.
+      CONTINUE.
+    ENDIF.
+
+    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* HEADER FILTERS — FDS (SAFE VERSION)
+    "===================================================================*
+    IF so_ktext[] IS NOT INITIAL AND gs_base-ktext NOT IN so_ktext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_werks[] IS NOT INITIAL AND gs_base-werks NOT IN so_werks.
+      CONTINUE.
+    ENDIF.
+
+    IF so_verwe[] IS NOT INITIAL AND gs_base-verwe NOT IN so_verwe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_vagrp[] IS NOT INITIAL AND gs_base-vagrp NOT IN so_vagrp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_stath[] IS NOT INITIAL AND gs_base-statu_h NOT IN so_stath.
+      CONTINUE.
+    ENDIF.
+
+    IF so_annam[] IS NOT INITIAL AND gs_base-annam NOT IN so_annam.
+      CONTINUE.
+    ENDIF.
+
+    IF so_arbph[] IS NOT INITIAL AND gs_base-arbpl_h NOT IN so_arbph.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzh[] IS NOT INITIAL AND gs_base-anlzu_h NOT IN so_anlzh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_strat[] IS NOT INITIAL AND gs_base-strat NOT IN so_strat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istrh[] IS NOT INITIAL AND gs_base-istru_h NOT IN so_istrh.
+      CONTINUE.
+    ENDIF.
+
+    IF so_adpsp[] IS NOT INITIAL AND gs_base-adpsp NOT IN so_adpsp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_slwbe[] IS NOT INITIAL AND gs_base-slwbez NOT IN so_slwbe.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aedat[] IS NOT INITIAL AND gs_base-aedat NOT IN so_aedat.
+      CONTINUE.
+    ENDIF.
+
+    IF so_aenam[] IS NOT INITIAL AND gs_base-aenam NOT IN so_aenam.
+      CONTINUE.
+    ENDIF.
+
+    IF so_andat[] IS NOT INITIAL AND gs_base-andat NOT IN so_andat.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION FILTERS
+    "===================================================================*
+
+    IF so_vornr[] IS NOT INITIAL AND gs_base-vornr NOT IN so_vornr.
+      CONTINUE.
+    ENDIF.
+
+    IF so_otext[] IS NOT INITIAL AND gs_base-ltxa1 NOT IN so_otext.
+      CONTINUE.
+    ENDIF.
+
+    IF so_steus[] IS NOT INITIAL AND gs_base-steus NOT IN so_steus.
+      CONTINUE.
+    ENDIF.
+
+    IF so_arbpo[] IS NOT INITIAL AND gs_base-arbpl_o NOT IN so_arbpo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ktsch[] IS NOT INITIAL AND gs_base-ktsch NOT IN so_ktsch.
+      CONTINUE.
+    ENDIF.
+
+    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
+      CONTINUE.
+    ENDIF.
+
+    IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
+      CONTINUE.
+    ENDIF.
+
+    IF so_istru[] IS NOT INITIAL AND gs_base-istru_o NOT IN so_istru.
+      CONTINUE.
+    ENDIF.
+
+    IF so_larnt[] IS NOT INITIAL AND gs_base-larnt NOT IN so_larnt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebeln[] IS NOT INITIAL AND gs_base-ebeln NOT IN so_ebeln.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ebelp[] IS NOT INITIAL AND gs_base-ebelp NOT IN so_ebelp.
+      CONTINUE.
+    ENDIF.
+
+    IF so_lifnr[] IS NOT INITIAL AND gs_base-lifnr NOT IN so_lifnr.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* OPERATION LONG TEXT INDICATOR FILTER
+    "===================================================================*
+    IF p_oltin = 'X' AND gs_base-txtsp_op IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+
+    "===================================================================*
+    "* CHARACTERISTIC FILTERS (ONLY IF SHOW CHAR IS ON)
+    "===================================================================*
+
+    IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+      CONTINUE.
+    ENDIF.
+
+    IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+      CONTINUE.
+    ENDIF.
+
+    IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+      CONTINUE.
+    ENDIF.
+
+    IF so_ltxtk = 'X' AND gs_base-txtsp_op IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+      CONTINUE.
+    ENDIF.
+
+    IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+      CONTINUE.
+    ENDIF.
+
+
+
+    "===================================================================*
+    "* PASSED ALL FILTERS
+    "===================================================================*
+    APPEND gs_base TO lt_filtered.
+
+  ENDLOOP.
+
+  gt_base = lt_filtered.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
 MODULE status_0100 OUTPUT.
 
   PERFORM set_pfstatus_from_state.
@@ -27,3 +684,1181 @@ MODULE status_0100 OUTPUT.
   ENDIF.
 
 ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Form build_display
+*&---------------------------------------------------------------------*
+FORM build_display.
+
+  DATA: ls_base        TYPE ty_task_base,
+        ls_disp        TYPE ty_task_disp,
+        lv_last_plnty  TYPE plnty,
+        lv_last_plnnr  TYPE plnnr,
+        lv_last_plnal  TYPE plnal,
+        lv_last_vornr  TYPE plnkn,
+        lv_last_merknr TYPE merknr,
+        ls_color       TYPE lvc_s_scol.
+
+  CLEAR: gt_display,
+         lv_last_plnty,
+         lv_last_plnnr,
+         lv_last_plnal,
+         lv_last_vornr,
+         lv_last_merknr.
+
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+
+  LOOP AT gt_base INTO ls_base.
+
+    " NEW OPERATION GROUP
+    IF ls_base-vornr <> lv_last_vornr
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
+
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
+
+      ls_disp-row_kind = 'O'.
+      "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
+      DATA: lv_tolun_p   TYPE p LENGTH 16 DECIMALS 9,
+            lv_tolob_p   TYPE p LENGTH 16 DECIMALS 9,
+            lv_tolun_txt TYPE c LENGTH 20,
+            lv_tolob_txt TYPE c LENGTH 20.
+
+      CLEAR: lv_tolun_p, lv_tolob_p, lv_tolun_txt, lv_tolob_txt.
+
+      "--- Lower Spec Limit
+      IF ls_base-toleranzun IS NOT INITIAL.
+        lv_tolun_p = ls_base-toleranzun.
+        WRITE lv_tolun_p TO lv_tolun_txt DECIMALS 9.
+        ls_disp-toleranzun = lv_tolun_txt.
+      ENDIF.
+
+      "--- Upper Spec Limit
+      IF ls_base-toleranzob IS NOT INITIAL.
+        lv_tolob_p = ls_base-toleranzob.
+        WRITE lv_tolob_p TO lv_tolob_txt DECIMALS 9.
+        ls_disp-toleranzob = lv_tolob_txt.
+      ENDIF.
+
+      " Fill CI fields here
+      PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+
+      APPEND ls_disp TO gt_display.
+
+      lv_last_plnty = ls_base-plnty.
+      lv_last_plnnr = ls_base-plnnr.
+      lv_last_plnal = ls_base-plnal.
+      lv_last_vornr = ls_base-vornr.
+
+      CLEAR lv_last_merknr.
+      "Operation long text (if char OFF and longtext ON)
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING ls_base.
+      ENDIF.
+
+
+    ENDIF.
+
+    " CHARACTERISTIC ROW
+    IF gv_show_char = abap_true
+    AND ls_base-merknr IS NOT INITIAL.
+
+      IF ls_base-merknr <> lv_last_merknr.
+
+        CLEAR ls_disp.
+        MOVE-CORRESPONDING ls_base TO ls_disp.
+        ls_disp-row_kind = 'C'.
+
+        " fill CI
+        PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+
+        ls_color-color-col = 6.
+        ls_color-color-int = 1.
+        APPEND ls_color TO ls_disp-line_color.
+
+        APPEND ls_disp TO gt_display.
+
+        lv_last_merknr = ls_base-merknr.
+
+      ENDIF.
+      IF gv_show_ltxt = gc_true.
+        PERFORM append_char_longtext USING ls_base.
+      ENDIF.
+
+    ENDIF.
+
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+************************************************************************
+* FORM fill_ci_fields – fills CI01..CI28 from steuerkz
+************************************************************************
+FORM fill_ci_fields
+  USING    pv_steuerkz TYPE plmk-steuerkz
+  CHANGING ps_disp     TYPE ty_task_disp.
+
+  " Raw CI values (still needed for change layout)
+  ps_disp-ci1  = pv_steuerkz+0(1).
+  ps_disp-ci2  = pv_steuerkz+1(1).
+  ps_disp-ci3  = pv_steuerkz+2(1).
+  ps_disp-ci4  = pv_steuerkz+3(1).
+  ps_disp-ci5  = pv_steuerkz+4(1).
+  ps_disp-ci6  = pv_steuerkz+5(1).
+  ps_disp-ci7  = pv_steuerkz+6(1).
+  ps_disp-ci8  = pv_steuerkz+7(1).
+  ps_disp-ci9  = pv_steuerkz+8(1).
+  ps_disp-ci10 = pv_steuerkz+9(1).
+  ps_disp-ci11 = pv_steuerkz+10(1).
+  ps_disp-ci12 = pv_steuerkz+11(1).
+  ps_disp-ci13 = pv_steuerkz+12(1).
+  ps_disp-ci14 = pv_steuerkz+13(1).
+  ps_disp-ci15 = pv_steuerkz+14(1).
+  ps_disp-ci16 = pv_steuerkz+15(1).
+  ps_disp-ci17 = pv_steuerkz+16(1).
+  ps_disp-ci18 = pv_steuerkz+17(1).
+  ps_disp-ci19 = pv_steuerkz+18(1).
+  ps_disp-ci20 = pv_steuerkz+19(1).
+  ps_disp-ci21 = pv_steuerkz+20(1).
+  ps_disp-ci22 = pv_steuerkz+21(1).
+  ps_disp-ci23 = pv_steuerkz+22(1).
+  ps_disp-ci24 = pv_steuerkz+23(1).
+  ps_disp-ci25 = pv_steuerkz+24(1).
+  ps_disp-ci26 = pv_steuerkz+25(1).
+  ps_disp-ci27 = pv_steuerkz+26(1).
+  ps_disp-ci28 = pv_steuerkz+27(1).
+
+  " Equivalent full text (CIx_TXT)
+  PERFORM get_ci_equivalent USING  1 ps_disp-ci1  CHANGING ps_disp-ci1_txt.
+  PERFORM get_ci_equivalent USING  2 ps_disp-ci2  CHANGING ps_disp-ci2_txt.
+  PERFORM get_ci_equivalent USING  3 ps_disp-ci3  CHANGING ps_disp-ci3_txt.
+  PERFORM get_ci_equivalent USING  4 ps_disp-ci4  CHANGING ps_disp-ci4_txt.
+  PERFORM get_ci_equivalent USING  5 ps_disp-ci5  CHANGING ps_disp-ci5_txt.
+  PERFORM get_ci_equivalent USING  6 ps_disp-ci6  CHANGING ps_disp-ci6_txt.
+  PERFORM get_ci_equivalent USING  7 ps_disp-ci7  CHANGING ps_disp-ci7_txt.
+  PERFORM get_ci_equivalent USING  8 ps_disp-ci8  CHANGING ps_disp-ci8_txt.
+  PERFORM get_ci_equivalent USING  9 ps_disp-ci9  CHANGING ps_disp-ci9_txt.
+  PERFORM get_ci_equivalent USING 10 ps_disp-ci10 CHANGING ps_disp-ci10_txt.
+  PERFORM get_ci_equivalent USING 11 ps_disp-ci11 CHANGING ps_disp-ci11_txt.
+  PERFORM get_ci_equivalent USING 12 ps_disp-ci12 CHANGING ps_disp-ci12_txt.
+  PERFORM get_ci_equivalent USING 13 ps_disp-ci13 CHANGING ps_disp-ci13_txt.
+  PERFORM get_ci_equivalent USING 14 ps_disp-ci14 CHANGING ps_disp-ci14_txt.
+  PERFORM get_ci_equivalent USING 15 ps_disp-ci15 CHANGING ps_disp-ci15_txt.
+  PERFORM get_ci_equivalent USING 16 ps_disp-ci16 CHANGING ps_disp-ci16_txt.
+  PERFORM get_ci_equivalent USING 17 ps_disp-ci17 CHANGING ps_disp-ci17_txt.
+  PERFORM get_ci_equivalent USING 18 ps_disp-ci18 CHANGING ps_disp-ci18_txt.
+  PERFORM get_ci_equivalent USING 19 ps_disp-ci19 CHANGING ps_disp-ci19_txt.
+  PERFORM get_ci_equivalent USING 20 ps_disp-ci20 CHANGING ps_disp-ci20_txt.
+  PERFORM get_ci_equivalent USING 21 ps_disp-ci21 CHANGING ps_disp-ci21_txt.
+  PERFORM get_ci_equivalent USING 22 ps_disp-ci22 CHANGING ps_disp-ci22_txt.
+  PERFORM get_ci_equivalent USING 23 ps_disp-ci23 CHANGING ps_disp-ci23_txt.
+  PERFORM get_ci_equivalent USING 24 ps_disp-ci24 CHANGING ps_disp-ci24_txt.
+  PERFORM get_ci_equivalent USING 25 ps_disp-ci25 CHANGING ps_disp-ci25_txt.
+  PERFORM get_ci_equivalent USING 26 ps_disp-ci26 CHANGING ps_disp-ci26_txt.
+  PERFORM get_ci_equivalent USING 27 ps_disp-ci27 CHANGING ps_disp-ci27_txt.
+  PERFORM get_ci_equivalent USING 28 ps_disp-ci28 CHANGING ps_disp-ci28_txt.
+
+ENDFORM.
+
+
+
+FORM set_ci_headers.
+
+  DATA: lo_columns TYPE REF TO cl_salv_columns_table,
+        lo_col     TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      lo_columns = lo_alv->get_columns( ).
+    CATCH cx_salv_msg.
+      RETURN.
+  ENDTRY.
+
+  "----------------------------------------------
+  " Helper: convert literal text safely (CHAR40)
+  "----------------------------------------------
+  DEFINE set_hdr.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+*
+*        lo_col->set_short_text(  CONV #( &2 ) ). "CHAR10/20/40 all accepted
+*        lo_col->set_medium_text( CONV #( &2 ) ).
+        lo_col->set_long_text(   CONV #( &2 ) ).
+        lo_col->set_fixed_header_text(  value = 'L' )  .
+
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'KTEXT' ).
+      lo_col->set_long_text( 'Header Text' ).
+      lo_col->set_medium_text( 'Header Text' ).
+      lo_col->set_short_text( 'Hdr Text' ).
+      lo_col->set_fixed_header_text( value = 'L' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      DATA(lo_col2) = lo_columns->get_column( 'VORNR' ).
+      lo_col2->set_short_text(  'Op.' ).
+      lo_col2->set_medium_text( 'Operation' ).
+      lo_col2->set_long_text(   'Operation' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      DATA(lo_col3) = lo_columns->get_column( 'LTXA1' ).
+      lo_col3->set_short_text(  'Op.SText' ).
+      lo_col3->set_medium_text( 'Op.Short Text' ).
+      lo_col3->set_long_text(   'Operation Short Text' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      DATA(lo_col4) = lo_columns->get_column( 'KURZTEXT' ).
+      lo_col4->set_short_text(  'Char.SText' ).
+      lo_col4->set_medium_text( 'Char.Short Text' ).
+      lo_col4->set_long_text(   'Characteristic Short Text' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'KURZTEXT' ).
+      lo_col->set_long_text( 'Characteristic Long Text' ).
+      lo_col->set_medium_text( 'Char.Short Text' ).
+      lo_col->set_short_text( 'Char.SText' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'ARBPL_O' ).
+      lo_col->set_long_text( 'Work Center Operation' ).
+      lo_col->set_medium_text( 'WC Operation' ).
+      lo_col->set_short_text( 'WC Op.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'ARBPL_H' ).
+      lo_col->set_long_text( 'Work Center Header' ).
+      lo_col->set_medium_text( 'WC Header' ).
+      lo_col->set_short_text( 'WC HDR.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'SLWBEZ' ).
+      lo_col->set_long_text( 'Inspection Points' ).
+      lo_col->set_medium_text( 'Insp.Point' ).
+      lo_col->set_short_text( 'Insp.Pt.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'TOLERANZUN' ).
+      lo_col->set_long_text( 'Lower Specification Limit' ).
+      lo_col->set_medium_text( 'Lower Spec limit' ).
+      lo_col->set_short_text( 'L Spec.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_col ?= lo_columns->get_column( 'TOLERANZOB' ).
+      lo_col->set_long_text( 'Upper Specification Limit' ).
+      lo_col->set_medium_text( 'Upper Spec limit' ).
+      lo_col->set_short_text( 'U Spec.' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+  "----------------------------------------------
+  " CI01 – CI28 Header
+  "----------------------------------------------
+  set_hdr 'CI1_TXT'  'CI:Quantitative Char'.
+  set_hdr 'CI2_TXT'  'CI:Record Values'.
+  set_hdr 'CI3_TXT'  'CI:Ref Char Required'.
+  set_hdr 'CI4_TXT'  'CI:Upper Spec Limit'.
+  set_hdr 'CI5_TXT'  'CI:Lower Spec Limit'.
+  set_hdr 'CI6_TXT'  'CI:Check Target'.
+  set_hdr 'CI7_TXT'  'CI:Inspection Scope'.
+  set_hdr 'CI8_TXT'  'CI:Long Term Insp'.
+  set_hdr 'CI9_TXT'  'CI:Recording Type'.
+  set_hdr 'CI10_TXT' 'CI:Document Required'.
+  set_hdr 'CI11_TXT' 'CI:Characteristic Cat'.
+  set_hdr 'CI12_TXT' 'CI:Sync Active'.
+  set_hdr 'CI13_TXT' 'CI:Sample Qty Add'.
+  set_hdr 'CI14_TXT' 'CI:Destructive Insp'.
+  set_hdr 'CI15_TXT' 'CI:Calculated Char'.
+  set_hdr 'CI16_TXT' 'CI:Sampling Proc Req'.
+  set_hdr 'CI17_TXT' 'CI:Quality Score Rel'.
+  set_hdr 'CI18_TXT' 'CI:No Changes Allowed'.
+  set_hdr 'CI19_TXT' 'CI:Defects Count'.
+  set_hdr 'CI20_TXT' 'CI:QM Subsystem Char'.
+  set_hdr 'CI21_TXT' 'CI:Specs Changeable'.
+  set_hdr 'CI22_TXT' 'CI:Test Equip Req'.
+  set_hdr 'CI23_TXT' 'CI:Auto Defect Rec'.
+  set_hdr 'CI24_TXT' 'CI:Change Docs Req'.
+  set_hdr 'CI25_TXT' 'CI:SPC Characteristic'.
+  set_hdr 'CI26_TXT' 'CI:Print Indicator'.
+  set_hdr 'CI27_TXT' 'CI:Parameter Char'.
+  set_hdr 'CI28_TXT' 'CI:Process Char'.
+  set_hdr 'OP_LTXT'   'Operation Long Text'.
+  set_hdr 'CHAR_LTXT' 'Characteristic Long Text'.
+
+ENDFORM.
+
+FORM apply_column_order.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  TRY.
+      lo_columns = lo_alv->get_columns( ).
+    CATCH cx_salv_msg.
+      RETURN.
+  ENDTRY.
+
+  "=====================================================
+  " Macro to set column position
+  "=====================================================
+  DEFINE pos.
+    TRY.
+        lo_columns->set_column_position(
+           columnname = &1
+           position   = &2 ).
+      CATCH cx_salv_msg.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  "=====================================================
+  " ALWAYS FIRST 4 COLUMNS
+  "=====================================================
+  pos 'PLNNR'      1.   "Group
+  pos 'PLNAL'      2.   "Counter
+  pos 'WERKS'      3.   "Plant
+  pos 'VORNR'      4.   "Operation
+
+  "=====================================================
+  " CASE 1: Show Long Text = TRUE AND Show Characteristics = FALSE
+  "=====================================================
+  IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
+
+    pos 'TDFORMAT'     5.   "FK
+    pos 'OP_LTXT'      6.   "Operation Long Text
+
+    pos 'ARBPL_O'      7.   "Work Center
+    pos 'ARBEI'        8.   "Work
+    pos 'LTXA1'        9.   "Description
+    pos 'PMETHODE'     10.  "Method
+
+    "=====================================================
+    " CASE 2: Show Long Text = TRUE AND Show Characteristics = TRUE
+    "=====================================================
+  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_true.
+
+    pos 'ARBPL_O'      5.   "Work Center
+    pos 'ARBEI'        6.   "Work
+    pos 'KURZT_CHAR'   7.   "Description
+    pos 'PMETHODE'     8.   "Method
+
+    pos 'MERKNR'       9.   "Characteristic Number
+    pos 'TDFORMAT'     10.  "Format
+    pos 'CHAR_LTXT'    11.  "Characteristic Long Text
+
+  ENDIF.
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* CI Equivalent Text Resolver
+*---------------------------------------------------------------------*
+FORM get_ci_equivalent
+  USING    pv_index  TYPE i
+           pv_char   TYPE char1
+  CHANGING pv_result TYPE string.
+
+  CASE pv_index.
+
+    WHEN 1.
+      CASE pv_char.
+        WHEN 'X'. pv_result = 'Quantitative'.
+        WHEN ' '. pv_result = 'Qualitative'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 7.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'Scope not fixed'.
+        WHEN '='. pv_result = 'Fixed scope'.
+        WHEN '<'. pv_result = 'Smaller scope'.
+        WHEN '>'. pv_result = 'Larger scope'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 9.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'Summarized recording'.
+        WHEN '+'. pv_result = 'Single result'.
+        WHEN '-'. pv_result = 'No recording'.
+        WHEN '*'. pv_result = 'Classed recording'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 10.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'No documentation'.
+        WHEN '.'. pv_result = 'Doc if rejected'.
+        WHEN '+'. pv_result = 'Documentation required'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 11.
+      CASE pv_char.
+        WHEN 'X'. pv_result = 'Required'.
+        WHEN ' '. pv_result = 'Optional'.
+        WHEN '+'. pv_result = 'After acceptance'.
+        WHEN '-'. pv_result = 'After rejection'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 15.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'No formula'.
+        WHEN 'X'. pv_result = 'Calculated characteristic'.
+        WHEN '1'. pv_result = 'Input processing'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 26.
+      CASE pv_char.
+        WHEN ' '. pv_result = 'Print'.
+        WHEN 'X'. pv_result = 'Do not print'.
+        WHEN '*'. pv_result = 'Do not print (skip)'.
+        WHEN OTHERS. pv_result = pv_char.
+      ENDCASE.
+
+    WHEN OTHERS.
+      pv_result = pv_char.
+
+  ENDCASE.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form ADJUST_DISPLAY_FIELDS_BY_STATE
+*&---------------------------------------------------------------------*
+FORM adjust_display_fields_by_state.
+
+  FIELD-SYMBOLS: <ls_disp> TYPE ty_task_disp.
+
+  LOOP AT gt_display ASSIGNING <ls_disp>.
+
+    "-------------------------------------------------------------*
+    " A) Show Char = No, Show Long Text = No
+    "    → Operations only
+    "    → Insp# + Description cleared on op rows
+    "    → No long text fields used
+    "-------------------------------------------------------------*
+    IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+
+      IF gv_show_char = abap_false.
+        CLEAR <ls_disp>-char_ltxt.
+      ENDIF.
+
+      IF gv_show_ltxt = abap_false.
+        CLEAR <ls_disp>-op_ltxt.
+      ENDIF.
+
+      IF <ls_disp>-row_kind = 'O'.
+        CLEAR: <ls_disp>-merknr,      "Inspection number
+               <ls_disp>-kurzt_char.  "Inspection description
+        "PMETHODE stays, per FDS
+      ENDIF.
+
+      "-------------------------------------------------------------*
+      " B) Show Char = Yes, Show Long Text = No
+      "    → Operation + characteristic rows, no long text
+      "    → Keep Insp#, Description, Method
+      "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+      "No long text in this mode
+      CLEAR: <ls_disp>-tdformat,
+             <ls_disp>-op_ltxt,
+             <ls_disp>-char_ltxt.
+
+      "-------------------------------------------------------------*
+      " C) Show Char = No, Show Long Text = Yes
+      "    → Operation rows + operation long-text rows
+      "    → FK + OP_LTXT visible
+      "    → No characteristic info at all
+      "-------------------------------------------------------------*
+    ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+      CLEAR: <ls_disp>-merknr,       "Insp#
+             <ls_disp>-kurzt_char,   "Description
+             <ls_disp>-pmethode,     "Method
+             <ls_disp>-char_ltxt.    "Char long text
+
+      "TDFORMAT + OP_LTXT stay filled for op long-text rows
+
+      "-------------------------------------------------------------*
+      " D) Show Char = Yes, Show Long Text = Yes
+      "    → Operation + characteristic rows + characteristic long text
+      "    → OP long text is not generated in this mode
+      "-------------------------------------------------------------*
+    ELSE.
+      "No additional clearing needed.
+      "APPEND_CHAR_LONGTEXT already clears OP_LTXT for char rows.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+*---------------------------------------------------------------------*
+* Display ALV
+*---------------------------------------------------------------------*
+FORM display_alv.
+
+  IF gt_display IS INITIAL.
+    MESSAGE s398(00) WITH 'No data to display'.
+    RETURN.
+  ENDIF.
+
+  IF lo_alv IS INITIAL.
+
+    TRY.
+        cl_salv_table=>factory(
+          IMPORTING r_salv_table = lo_alv
+          CHANGING  t_table      = gt_display ).
+
+        lo_columns = lo_alv->get_columns( ).
+        lo_columns->set_optimize( abap_true ).
+
+        "Enable row color
+        lo_columns->set_color_column( 'LINE_COLOR' ).
+
+      CATCH cx_salv_not_found cx_salv_data_error cx_salv_msg.
+        RETURN.
+    ENDTRY.
+
+    "=== Layout ===
+    lo_layout = lo_alv->get_layout( ).
+    DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
+    lo_layout->set_key( ls_key ).
+    lo_layout->set_default( abap_true ).
+    lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+
+    "=== Toolbar Functions ===
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+
+    "=== Standard SALV Row Selector ===
+    DATA(lo_sel) = lo_alv->get_selections( ).
+    lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+    " ^^^ THIS SHOWS THE STANDARD SALV LEFT SELECT COLUMN
+
+    "=== Register Events ===
+    lo_events = lo_alv->get_event( ).
+    SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+    SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
+
+  ELSE.
+    lo_alv->refresh( ).
+  ENDIF.
+
+  PERFORM set_column_visibility_by_state.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_ci_headers.
+  PERFORM apply_column_order.
+
+  lo_alv->display( ).
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form APPEND_OP_LONGTEXT
+*&---------------------------------------------------------------------*
+*  - Appends operation long text lines as separate rows in GT_DISPLAY
+*    with:
+*       ROW_KIND = 'L'
+*       OP_LTXT  = text line
+*    (other key fields copied from IS_BASE)
+*&---------------------------------------------------------------------*
+FORM append_op_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_indent TYPE string,
+        ls_color  TYPE lvc_s_scol.
+
+
+  CLEAR: lt_lines, lv_name.
+
+  CONCATENATE sy-mandt
+              is_base-plnty
+              is_base-plnnr
+              is_base-plnkn
+              is_base-zaehl
+         INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      client   = sy-mandt
+      id       = 'PLPO'
+      language = sy-langu
+      name     = lv_name
+      object   = 'ROUTING'
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      OTHERS   = 4.
+
+  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_lines INTO ls_line.
+
+
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind = 'L'.
+    gs_display-op_ltxt  = ls_line-tdline.
+    gs_display-tdformat = ls_line-tdformat.
+
+    CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 1.
+    APPEND ls_color TO gs_display-line_color.
+
+    APPEND gs_display TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form APPEND_CHAR_LONGTEXT
+*&---------------------------------------------------------------------*
+*  - Appends characteristic long text lines as separate rows in GT_DISPLAY
+*    with:
+*       ROW_KIND  = 'L'
+*       CHAR_LTXT = text line
+*&---------------------------------------------------------------------*
+FORM append_char_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_tmp    TYPE thead-tdname,
+        lv_indent TYPE string,
+        lv_merknr TYPE char08,
+        ls_color  TYPE lvc_s_scol.
+
+  CLEAR: lt_lines, lv_name, lv_tmp.
+
+  IF is_base-ltextkz IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_merknr = is_base-merknr.
+
+  CONCATENATE sy-mandt
+              is_base-plnty
+              is_base-plnnr
+              is_base-plnkn
+         INTO lv_tmp.
+
+  CONCATENATE lv_tmp is_base-merknr INTO lv_tmp SEPARATED BY space.
+  CONCATENATE lv_tmp is_base-zaehl INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      client   = sy-mandt
+      id       = 'QM'
+      language = sy-langu
+      name     = lv_name
+      object   = 'QSS'
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      OTHERS   = 8.
+
+  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_lines INTO ls_line.
+
+
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind  = 'L'.
+    gs_display-char_ltxt = ls_line-tdline.
+    gs_display-tdformat  = ls_line-tdformat.
+
+    CONCATENATE lv_indent gs_display-char_ltxt INTO gs_display-char_ltxt.
+
+    CLEAR gs_display-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 4.
+    APPEND ls_color TO gs_display-line_color.
+
+    APPEND gs_display TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+*======================================================================*
+*   Toggle helpers for PF-STATUS buttons
+*======================================================================*
+
+*&---------------------------------------------------------------------*
+*& Form toggle_char
+*&---------------------------------------------------------------------*
+FORM toggle_char.
+
+  IF gv_show_char = gc_true.
+    gv_show_char = gc_false.
+  ELSE.
+    gv_show_char = gc_true.
+  ENDIF.
+
+  PERFORM build_display.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+  PERFORM set_column_visibility_by_state.
+
+  IF lo_alv IS BOUND.
+    lo_alv->refresh( ).
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form toggle_ltxt
+*&---------------------------------------------------------------------*
+FORM toggle_ltxt.
+
+  IF gv_show_ltxt = gc_true.
+    gv_show_ltxt = gc_false.
+  ELSE.
+    gv_show_ltxt = gc_true.
+  ENDIF.
+
+  PERFORM build_display.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+  PERFORM set_column_visibility_by_state.
+
+  IF lo_alv IS BOUND.
+    lo_alv->refresh( ).
+  ENDIF.
+
+ENDFORM.
+
+
+*---------------------------------------------------------------------*
+* USER COMMAND (ONLY FOR BACK / EXIT / REFRESH)
+*---------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE sy-ucomm.
+
+    WHEN 'REFRESH'.
+      PERFORM build_display.
+      PERFORM set_column_visibility_by_state.
+      IF lo_alv IS BOUND.
+        lo_alv->refresh( ).
+      ENDIF.
+
+    WHEN '&F03' OR '&F12' OR '&F15'.
+      LEAVE TO SCREEN 0.
+
+  ENDCASE.
+
+ENDMODULE.
+
+*---------------------------------------------------------------------*
+* Helper: hide a column (technical)
+*---------------------------------------------------------------------*
+FORM hide_column USING pv_col TYPE lvc_fname.
+  TRY.
+      lo_column ?= lo_columns->get_column( pv_col ).
+
+      "Hide from initial display but still available in Change Layout
+      lo_column->set_visible( abap_false ).
+      lo_column->set_technical( abap_false ).  "IMPORTANT
+
+    CATCH cx_salv_not_found.
+  ENDTRY.
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* Helper: set column position (uses columns->set_column_position)
+*---------------------------------------------------------------------*
+FORM set_position USING pv_field pv_pos.
+
+  TRY.
+      DATA(lo_col) = lo_columns->get_column( pv_field ).
+      lo_columns->set_column_position(
+        columnname = pv_field
+        position   = pv_pos ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+ENDFORM.
+
+*---------------------------------------------------------------------*
+* Helper: set column technical flag (visible / hidden)
+*---------------------------------------------------------------------*
+FORM set_column_technical USING pv_col  TYPE lvc_fname
+                                pv_tech TYPE abap_bool.
+
+  DATA: lo_col TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  " Ensure we have the latest columns handle
+  lo_columns = lo_alv->get_columns( ).
+
+  TRY.
+      lo_col ?= lo_columns->get_column( pv_col ).
+      lo_col->set_technical( pv_tech ).
+    CATCH cx_salv_not_found.
+      " Ignore if column not in structure
+  ENDTRY.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form SET_COLUMN_VISIBILITY_BY_STATE
+*&---------------------------------------------------------------------*
+FORM set_column_visibility_by_state.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_columns = lo_alv->get_columns( ).
+
+  " ===== Hide CI1–CI28 but NOT technical =====
+  DO 28 TIMES.
+    DATA lv_ci TYPE lvc_fname.
+    lv_ci = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+
+    TRY.
+        lo_col ?= lo_columns->get_column( lv_ci ).
+        lo_col->set_visible( abap_false ).   "Hidden in ALV
+        lo_col->set_technical( abap_false ). "Visible in Change Layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  ENDDO.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_columns = lo_alv->get_columns( ).
+
+  "--------------------------------------------------------------
+  " MACROS
+  "--------------------------------------------------------------
+  DEFINE hide_col_total.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_false ).   "Not visible
+        lo_col->set_technical( abap_true ).  "Also hidden in layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+
+  DEFINE hide_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_false ).   "Hidden initially
+        lo_col->set_technical( abap_false ). "Still available in Change Layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  DEFINE show_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_true ).
+        lo_col->set_technical( abap_false ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  DATA: col     TYPE lvc_fname,
+        col_txt TYPE lvc_fname.
+
+  "=====================================================
+  " 1️ Hide CI1–CI28 COMPLETELY (ALV + layout)
+  "=====================================================
+  DO 28 TIMES.
+    col = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+    hide_col_total col.
+  ENDDO.
+
+  "=====================================================
+  " 2️ Hide CI1_TXT–CI28_TXT ONLY IN ALV (but allow layout)
+  "=====================================================
+  DO 28 TIMES.
+    col_txt = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
+    hide_col col_txt.      "Hidden in ALV, visible in Change Layout
+  ENDDO.
+
+
+  "--- Header fields not required in FDS ---
+  hide_col 'PLNTY'.
+  hide_col 'KTEXT'.
+  hide_col 'TPLNR'.
+  hide_col 'EQUNR'.
+  hide_col 'VERWE'.
+  hide_col 'VAGRP'.
+  hide_col 'STATU_H'.
+  hide_col 'ANLZU_H'.
+  hide_col 'STRAT'.
+  hide_col 'ISTRU_H'.
+  hide_col 'ADPSP'.
+  hide_col 'SLWBEZ'.
+  hide_col 'ANDAT'.
+  hide_col 'ANNAM'.
+  hide_col 'AEDAT'.
+  hide_col 'AENAM'.
+  hide_col 'ARBPL_H'.
+
+  "--- Operation fields not required in FDS ---
+  hide_col 'LTXA1'.
+  hide_col 'STEUS'.
+  hide_col 'WERKS_O'.
+  hide_col 'KTSCH'.
+  hide_col 'ARBEH'.
+  hide_col 'DAUNO'.
+  hide_col 'DAUNE'.
+  hide_col 'KALID'.
+  hide_col 'EXECUTION_STAGE'.
+  hide_col 'ANLZU_O'.
+  hide_col 'ISTRU_O'.
+  hide_col 'LARNT'.
+  hide_col 'EBELN'.
+  hide_col 'EBELP'.
+  hide_col 'LIFNR'.
+  hide_col 'PREIS'.
+  hide_col 'WAERS'.
+  hide_col 'SAKTO'.
+  hide_col 'EKORG'.
+  hide_col 'EKGRP'.
+  hide_col 'TXTSP_OP'.
+
+  "--- Characteristic fields not in FDS ---
+  hide_col 'VERWMERKM'.
+  hide_col 'LTEXTKZ'.
+  hide_col 'TOLERANZUN'.
+  hide_col 'TOLERANZOB'.
+  hide_col 'PRUEFEINH'.
+  hide_col 'STICHPRVER'.
+  hide_col 'KATALGART1'.
+  hide_col 'AUSWMENGE1'.
+  hide_col 'STEUERKZ'.
+  hide_col 'DATUV'.
+  hide_col 'DATUV_O'.
+  hide_col 'GUELTIGAB'.
+
+  "--- CI1..CI28 ghost columns ---
+  hide_col 'CI1'.
+  hide_col 'CI2'.
+  hide_col 'CI3'.
+  hide_col 'CI4'.
+  hide_col 'CI5'.
+  hide_col 'CI6'.
+  hide_col 'CI7'.
+  hide_col 'CI8'.
+  hide_col 'CI9'.
+  hide_col 'CI10'.
+  hide_col 'CI11'.
+  hide_col 'CI12'.
+  hide_col 'CI13'.
+  hide_col 'CI14'.
+  hide_col 'CI15'.
+  hide_col 'CI16'.
+  hide_col 'CI17'.
+  hide_col 'CI18'.
+  hide_col 'CI19'.
+  hide_col 'CI20'.
+  hide_col 'CI21'.
+  hide_col 'CI22'.
+  hide_col 'CI23'.
+  hide_col 'CI24'.
+  hide_col 'CI25'.
+  hide_col 'CI26'.
+  hide_col 'CI27'.
+  hide_col 'CI28'.
+
+  "--- hide ---
+  hide_col 'CI1_TXT'.
+  hide_col 'CI2_TXT'.
+  hide_col 'CI3_TXT'.
+  hide_col 'CI4_TXT'.
+  hide_col 'CI5_TXT'.
+  hide_col 'CI6_TXT'.
+  hide_col 'CI7_TXT'.
+  hide_col 'CI8_TXT'.
+  hide_col 'CI9_TXT'.
+  hide_col 'CI10_TXT'.
+  hide_col 'CI11_TXT'.
+  hide_col 'CI12_TXT'.
+  hide_col 'CI13_TXT'.
+  hide_col 'CI14_TXT'.
+  hide_col 'CI15_TXT'.
+  hide_col 'CI16_TXT'.
+  hide_col 'CI17_TXT'.
+  hide_col 'CI18_TXT'.
+  hide_col 'CI19_TXT'.
+  hide_col 'CI20_TXT'.
+  hide_col 'CI21_TXT'.
+  hide_col 'CI22_TXT'.
+  hide_col 'CI23_TXT'.
+  hide_col 'CI24_TXT'.
+  hide_col 'CI25_TXT'.
+  hide_col 'CI26_TXT'.
+  hide_col 'CI27_TXT'.
+  hide_col 'CI28_TXT'.
+
+  "--- Internal / Technical fields ---
+  hide_col_total 'LOEKZ_H'.
+  hide_col_total 'LOEKZ_O'.
+  hide_col_total 'LOEKZ_C'.
+  hide_col_total 'SELECT'.
+  hide_col_total 'TOLOBNI'.
+  hide_col_total 'TOLUNNI'.
+  hide_col_total 'ROW_KIND'.
+  hide_col_total 'LINE_COLOR'.
+  hide_col_total 'T_COLOR'.
+  hide_col_total 'CELLSTYLE'.
+  hide_col_total 'ROWSTYLE'.
+  hide_col_total 'CI1'.
+  hide_col_total 'CI2'.
+  hide_col_total 'CI3'.
+  hide_col_total 'CI4'.
+  hide_col_total 'CI5'.
+  hide_col_total 'CI6'.
+  hide_col_total 'CI7'.
+  hide_col_total 'CI8'.
+  hide_col_total 'CI9'.
+  hide_col_total 'CI10'.
+  hide_col_total 'CI11'.
+  hide_col_total 'CI12'.
+  hide_col_total 'CI13'.
+  hide_col_total 'CI14'.
+  hide_col_total 'CI15'.
+  hide_col_total 'CI16'.
+  hide_col_total 'CI17'.
+  hide_col_total 'CI18'.
+  hide_col_total 'CI19'.
+  hide_col_total 'CI20'.
+  hide_col_total 'CI21'.
+  hide_col_total 'CI22'.
+  hide_col_total 'CI23'.
+  hide_col_total 'CI24'.
+  hide_col_total 'CI25'.
+  hide_col_total 'CI26'.
+  hide_col_total 'CI27'.
+  hide_col_total 'CI28'.
+
+
+  "==============================================================
+  " ALWAYS SHOW CORE FDS COLUMNS
+  "==============================================================
+  show_col 'PLNNR'.        "Group
+  show_col 'PLNAL'.        "Counter
+  show_col 'WERKS'.        "Plant
+  show_col 'VORNR'.        "Operation
+  show_col 'ARBPL_O'.      "Work Center
+  show_col 'ARBEI'.        "Work
+  show_col 'KURZT_CHAR'.   "Description
+  show_col 'PMETHODE'.     "Insp Method
+  show_col 'MERKNR'.       "Insp Number
+  show_col 'TDFORMAT'.     "FK
+  show_col 'OP_LTXT'.      "Operation Long Text
+  show_col 'CHAR_LTXT'.    "Characteristic Long Text
+
+
+
+  "==============================================================
+  " CASE A/B/C/D – Your Original Logic
+  "==============================================================
+
+  "CASE A – No Char, No LT
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+
+    show_col 'LTXA1'.
+    show_col 'ARBPL_H'.
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
+
+
+    "CASE B – Show Char, No LT
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+    "CASE C – Hide Char, Show LT
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    show_col 'LTXA1'.
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
+
+
+    "CASE D – Char + LT
+  ELSE.
+
+    show_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
+
+  ENDIF.
+
+ENDFORM.
