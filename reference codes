@@ -1,41 +1,40 @@
 MODULE status_0100 OUTPUT.
 
-  "1 — First time ALV creation
   IF go_container IS INITIAL.
 
+    " 1 — Create the control
     CREATE OBJECT go_container
       EXPORTING container_name = 'CC_ALV'.
 
+    " 2 — Build SALV once
     cl_salv_table=>factory(
-      EXPORTING
-        r_container  = go_container
-      IMPORTING
-        r_salv_table = lo_alv
-      CHANGING
-        t_table      = gt_display ).
+      EXPORTING r_container  = go_container
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = gt_display ).
 
+    " 3 — Apply behavior
     PERFORM set_column_visibility_by_state.
     PERFORM set_pfstatus_from_state.
     PERFORM set_title_from_state.
 
-    PERFORM display_alv.
+    " 4 — Initial rendering (NO display(), NO dump)
+    lo_alv->display( ).  " ALLOWED ONLY ON FIRST RUN
 
   ELSE.
 
-    "2 — Recreate SALV each time with updated data
+    " 5 — Reassign latest data by recreating SALV
     cl_salv_table=>factory(
-      EXPORTING
-        r_container  = go_container
-      IMPORTING
-        r_salv_table = lo_alv
-      CHANGING
-        t_table      = gt_display ).
+      EXPORTING r_container  = go_container
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = gt_display ).
 
+    " 6 — Apply logic AGAIN
     PERFORM set_column_visibility_by_state.
     PERFORM set_pfstatus_from_state.
     PERFORM set_title_from_state.
 
-    lo_alv->display( ).
+    " 7 — Refresh (not display)
+    lo_alv->refresh( ).
 
   ENDIF.
 
