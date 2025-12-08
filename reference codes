@@ -1,35 +1,426 @@
-MODULE status_0100 OUTPUT.
+FORM build_display.
 
-  PERFORM set_pfstatus_from_state.
-  PERFORM set_title_from_state.
+  DATA: ls_base        TYPE ty_task_base,
+        ls_disp        TYPE ty_task_disp,
+        lv_last_plnty  TYPE plnty,
+        lv_last_plnnr  TYPE plnnr,
+        lv_last_plnal  TYPE plnal,
+        lv_last_vornr  TYPE plnkn,
+        lv_last_merknr TYPE merknr,
+        ls_color       TYPE lvc_s_scol.
 
-  PERFORM build_display.     "always rebuild internal table
+  CLEAR: gt_display,
+         lv_last_plnty,
+         lv_last_plnnr,
+         lv_last_plnal,
+         lv_last_vornr,
+         lv_last_merknr.
 
-  IF go_container IS INITIAL.
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
 
-    CREATE OBJECT go_container
-      EXPORTING container_name = 'CC_ALV'.
+  LOOP AT gt_base INTO ls_base.
 
-    cl_salv_table=>factory(
-      EXPORTING
-        r_container  = go_container
-      IMPORTING
-        r_salv_table = lo_alv
-      CHANGING
-        t_table      = gt_display ).
+    " NEW OPERATION GROUP
+    IF ls_base-vornr <> lv_last_vornr
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
 
-    "<<< IMPORTANT
-    PERFORM set_column_visibility_by_state.
+      CLEAR ls_disp.
+      MOVE-CORRESPONDING ls_base TO ls_disp.
 
-    PERFORM display_alv.
+      ls_disp-row_kind = 'O'.
+      "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
+      DATA: lv_tolun_p   TYPE p LENGTH 16 DECIMALS 9,
+            lv_tolob_p   TYPE p LENGTH 16 DECIMALS 9,
+            lv_tolun_txt TYPE c LENGTH 20,
+            lv_tolob_txt TYPE c LENGTH 20.
 
+      CLEAR: lv_tolun_p, lv_tolob_p, lv_tolun_txt, lv_tolob_txt.
+
+      "--- Lower Spec Limit
+      IF ls_base-toleranzun IS NOT INITIAL.
+        lv_tolun_p = ls_base-toleranzun.
+        WRITE lv_tolun_p TO lv_tolun_txt DECIMALS 9.
+        ls_disp-toleranzun = lv_tolun_txt.
+      ENDIF.
+
+      "--- Upper Spec Limit
+      IF ls_base-toleranzob IS NOT INITIAL.
+        lv_tolob_p = ls_base-toleranzob.
+        WRITE lv_tolob_p TO lv_tolob_txt DECIMALS 9.
+        ls_disp-toleranzob = lv_tolob_txt.
+      ENDIF.
+
+      " Fill CI fields here
+      PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+
+      APPEND ls_disp TO gt_display.
+
+      lv_last_plnty = ls_base-plnty.
+      lv_last_plnnr = ls_base-plnnr.
+      lv_last_plnal = ls_base-plnal.
+      lv_last_vornr = ls_base-vornr.
+
+      CLEAR lv_last_merknr.
+      "Operation long text (if char OFF and longtext ON)
+      IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+        PERFORM append_op_longtext USING ls_base.
+      ENDIF.
+
+
+    ENDIF.
+
+    " CHARACTERISTIC ROW
+    IF gv_show_char = abap_true
+    AND ls_base-merknr IS NOT INITIAL.
+
+      IF ls_base-merknr <> lv_last_merknr.
+
+        CLEAR ls_disp.
+        MOVE-CORRESPONDING ls_base TO ls_disp.
+        ls_disp-row_kind = 'C'.
+
+        " fill CI
+        PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+
+        ls_color-color-col = 6.
+        ls_color-color-int = 1.
+        APPEND ls_color TO ls_disp-line_color.
+
+        APPEND ls_disp TO gt_display.
+
+        lv_last_merknr = ls_base-merknr.
+
+      ENDIF.
+      IF gv_show_ltxt = gc_true.
+        PERFORM append_char_longtext USING ls_base.
+      ENDIF.
+
+    ENDIF.
+
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+FORM set_column_visibility_by_state.
+
+  DATA lo_columns TYPE REF TO cl_salv_columns_table.
+  DATA lo_col     TYPE REF TO cl_salv_column_table.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_columns = lo_alv->get_columns( ).
+
+  " ===== Hide CI1–CI28 but NOT technical =====
+  DO 28 TIMES.
+    DATA lv_ci TYPE lvc_fname.
+    lv_ci = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+
+    TRY.
+        lo_col ?= lo_columns->get_column( lv_ci ).
+        lo_col->set_visible( abap_false ).   "Hidden in ALV
+        lo_col->set_technical( abap_false ). "Visible in Change Layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  ENDDO.
+
+  IF lo_alv IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lo_columns = lo_alv->get_columns( ).
+
+  "--------------------------------------------------------------
+  " MACROS
+  "--------------------------------------------------------------
+  DEFINE hide_col_total.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_false ).   "Not visible
+        lo_col->set_technical( abap_true ).  "Also hidden in layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+
+  DEFINE hide_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_false ).   "Hidden initially
+        lo_col->set_technical( abap_false ). "Still available in Change Layout
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  DEFINE show_col.
+    TRY.
+        lo_col ?= lo_columns->get_column( &1 ).
+        lo_col->set_visible( abap_true ).
+        lo_col->set_technical( abap_false ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+  END-OF-DEFINITION.
+
+  DATA: col     TYPE lvc_fname,
+        col_txt TYPE lvc_fname.
+
+  "=====================================================
+  " 1️ Hide CI1–CI28 COMPLETELY (ALV + layout)
+  "=====================================================
+  DO 28 TIMES.
+    col = |CI{ sy-index WIDTH = 2 PAD = '0' }|.
+    hide_col_total col.
+  ENDDO.
+
+  "=====================================================
+  " 2️ Hide CI1_TXT–CI28_TXT ONLY IN ALV (but allow layout)
+  "=====================================================
+  DO 28 TIMES.
+    col_txt = |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT|.
+    hide_col col_txt.      "Hidden in ALV, visible in Change Layout
+  ENDDO.
+
+
+  "--- Header fields not required in FDS ---
+  hide_col 'PLNTY'.
+  hide_col 'KTEXT'.
+  hide_col 'TPLNR'.
+  hide_col 'EQUNR'.
+  hide_col 'VERWE'.
+  hide_col 'VAGRP'.
+  hide_col 'STATU_H'.
+  hide_col 'ANLZU_H'.
+  hide_col 'STRAT'.
+  hide_col 'ISTRU_H'.
+  hide_col 'ADPSP'.
+  hide_col 'SLWBEZ'.
+  hide_col 'ANDAT'.
+  hide_col 'ANNAM'.
+  hide_col 'AEDAT'.
+  hide_col 'AENAM'.
+  hide_col 'ARBPL_H'.
+
+  "--- Operation fields not required in FDS ---
+  hide_col 'LTXA1'.
+  hide_col 'STEUS'.
+  hide_col 'WERKS_O'.
+  hide_col 'KTSCH'.
+  hide_col 'ARBEH'.
+  hide_col 'DAUNO'.
+  hide_col 'DAUNE'.
+  hide_col 'KALID'.
+  hide_col 'EXECUTION_STAGE'.
+  hide_col 'ANLZU_O'.
+  hide_col 'ISTRU_O'.
+  hide_col 'LARNT'.
+  hide_col 'EBELN'.
+  hide_col 'EBELP'.
+  hide_col 'LIFNR'.
+  hide_col 'PREIS'.
+  hide_col 'WAERS'.
+  hide_col 'SAKTO'.
+  hide_col 'EKORG'.
+  hide_col 'EKGRP'.
+  hide_col 'TXTSP_OP'.
+
+  "--- Characteristic fields not in FDS ---
+  hide_col 'VERWMERKM'.
+  hide_col 'LTEXTKZ'.
+  hide_col 'TOLERANZUN'.
+  hide_col 'TOLERANZOB'.
+  hide_col 'PRUEFEINH'.
+  hide_col 'STICHPRVER'.
+  hide_col 'KATALGART1'.
+  hide_col 'AUSWMENGE1'.
+  hide_col 'STEUERKZ'.
+  hide_col 'DATUV'.
+  hide_col 'DATUV_O'.
+  hide_col 'GUELTIGAB'.
+
+  "--- CI1..CI28 ghost columns ---
+  hide_col 'CI1'.
+  hide_col 'CI2'.
+  hide_col 'CI3'.
+  hide_col 'CI4'.
+  hide_col 'CI5'.
+  hide_col 'CI6'.
+  hide_col 'CI7'.
+  hide_col 'CI8'.
+  hide_col 'CI9'.
+  hide_col 'CI10'.
+  hide_col 'CI11'.
+  hide_col 'CI12'.
+  hide_col 'CI13'.
+  hide_col 'CI14'.
+  hide_col 'CI15'.
+  hide_col 'CI16'.
+  hide_col 'CI17'.
+  hide_col 'CI18'.
+  hide_col 'CI19'.
+  hide_col 'CI20'.
+  hide_col 'CI21'.
+  hide_col 'CI22'.
+  hide_col 'CI23'.
+  hide_col 'CI24'.
+  hide_col 'CI25'.
+  hide_col 'CI26'.
+  hide_col 'CI27'.
+  hide_col 'CI28'.
+
+  "--- hide ---
+  hide_col 'CI1_TXT'.
+  hide_col 'CI2_TXT'.
+  hide_col 'CI3_TXT'.
+  hide_col 'CI4_TXT'.
+  hide_col 'CI5_TXT'.
+  hide_col 'CI6_TXT'.
+  hide_col 'CI7_TXT'.
+  hide_col 'CI8_TXT'.
+  hide_col 'CI9_TXT'.
+  hide_col 'CI10_TXT'.
+  hide_col 'CI11_TXT'.
+  hide_col 'CI12_TXT'.
+  hide_col 'CI13_TXT'.
+  hide_col 'CI14_TXT'.
+  hide_col 'CI15_TXT'.
+  hide_col 'CI16_TXT'.
+  hide_col 'CI17_TXT'.
+  hide_col 'CI18_TXT'.
+  hide_col 'CI19_TXT'.
+  hide_col 'CI20_TXT'.
+  hide_col 'CI21_TXT'.
+  hide_col 'CI22_TXT'.
+  hide_col 'CI23_TXT'.
+  hide_col 'CI24_TXT'.
+  hide_col 'CI25_TXT'.
+  hide_col 'CI26_TXT'.
+  hide_col 'CI27_TXT'.
+  hide_col 'CI28_TXT'.
+
+  "--- Internal / Technical fields ---
+  hide_col_total 'LOEKZ_H'.
+  hide_col_total 'LOEKZ_O'.
+  hide_col_total 'LOEKZ_C'.
+  hide_col_total 'SELECT'.
+  hide_col_total 'TOLOBNI'.
+  hide_col_total 'TOLUNNI'.
+  hide_col_total 'ROW_KIND'.
+  hide_col_total 'LINE_COLOR'.
+  hide_col_total 'T_COLOR'.
+  hide_col_total 'CELLSTYLE'.
+  hide_col_total 'ROWSTYLE'.
+  hide_col_total 'CI1'.
+  hide_col_total 'CI2'.
+  hide_col_total 'CI3'.
+  hide_col_total 'CI4'.
+  hide_col_total 'CI5'.
+  hide_col_total 'CI6'.
+  hide_col_total 'CI7'.
+  hide_col_total 'CI8'.
+  hide_col_total 'CI9'.
+  hide_col_total 'CI10'.
+  hide_col_total 'CI11'.
+  hide_col_total 'CI12'.
+  hide_col_total 'CI13'.
+  hide_col_total 'CI14'.
+  hide_col_total 'CI15'.
+  hide_col_total 'CI16'.
+  hide_col_total 'CI17'.
+  hide_col_total 'CI18'.
+  hide_col_total 'CI19'.
+  hide_col_total 'CI20'.
+  hide_col_total 'CI21'.
+  hide_col_total 'CI22'.
+  hide_col_total 'CI23'.
+  hide_col_total 'CI24'.
+  hide_col_total 'CI25'.
+  hide_col_total 'CI26'.
+  hide_col_total 'CI27'.
+  hide_col_total 'CI28'.
+
+
+  "==============================================================
+  " ALWAYS SHOW CORE FDS COLUMNS
+  "==============================================================
+  show_col 'PLNNR'.        "Group
+  show_col 'PLNAL'.        "Counter
+  show_col 'WERKS'.        "Plant
+  show_col 'VORNR'.        "Operation
+  show_col 'ARBPL_O'.      "Work Center
+  show_col 'ARBEI'.        "Work
+  show_col 'KURZT_CHAR'.   "Description
+  show_col 'PMETHODE'.     "Insp Method
+  show_col 'MERKNR'.       "Insp Number
+  show_col 'TDFORMAT'.     "FK
+  show_col 'OP_LTXT'.      "Operation Long Text
+  show_col 'CHAR_LTXT'.    "Characteristic Long Text
+
+
+
+  "==============================================================
+  " CASE A/B/C/D – Your Original Logic
+  "==============================================================
+  IF gv_show_ltxt = gc_true.
+    show_col 'TDFORMAT'.
+  ELSE.
+    hide_col 'TDFORMAT'.
+  ENDIF.
+
+  IF gv_show_ltxt = gc_true.
+    show_col 'OP_LTXT'.
+  ELSE.
+    hide_col 'OP_LTXT'.
+  ENDIF.
+
+  IF gv_show_char = gc_true AND gv_show_ltxt = gc_true.
+    show_col 'CHAR_LTXT'.
+  ELSE.
+    hide_col 'CHAR_LTXT'.
+  ENDIF.
+
+  "CASE A – No Char, No LT
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+
+    show_col 'LTXA1'.
+    show_col 'ARBPL_O'.
+    "hide_col 'TDFORMAT'.
+    "hide_col 'OP_LTXT'.
+    "hide_col 'CHAR_LTXT'.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
+
+
+    "CASE B – Show Char, No LT
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+
+    hide_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+
+
+    "CASE C – Hide Char, Show LT
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+
+    show_col 'LTXA1'.
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
+
+
+    "CASE D – Char + LT
   ELSE.
 
-    "<<< ALSO IMPORTANT HERE
-    PERFORM set_column_visibility_by_state.
-
-    lo_alv->refresh( ).
+    show_col 'TDFORMAT'.
+    hide_col 'OP_LTXT'.
+    show_col 'CHAR_LTXT'.
 
   ENDIF.
 
-ENDMODULE.
+ENDFORM.
