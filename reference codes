@@ -1,8 +1,11 @@
 AT SELECTION-SCREEN OUTPUT.
+
   LOOP AT SCREEN.
-    IF screen-name = 'SO_EXSTA-LOW' OR
-       screen-name = 'SO_EXSTA-HIGH'.
-      screen-value = ''.
+    IF screen-name = 'SO_EXSTA-LOW'.
+      screen-low = ''.
+      MODIFY SCREEN.
+    ELSEIF screen-name = 'SO_EXSTA-HIGH'.
+      screen-high = ''.
       MODIFY SCREEN.
     ENDIF.
   ENDLOOP.
