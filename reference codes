@@ -1,61 +1,35 @@
 MODULE status_0100 OUTPUT.
 
-  "------------------------------------------------------------
-  " 1. Set PF-STATUS and Title
-  "------------------------------------------------------------
-  gv_show_ltxt = p_showl.
-gv_show_char = p_showc.
-PERFORM set_pfstatus_from_state.
-  PERFORM set_title_from_state.
+  DATA: lv_pfstatus TYPE sy-pfkey,
+        lv_title    TYPE string.
 
-  "------------------------------------------------------------
-  " 2. ALWAYS rebuild GT_DISPLAY first
-  "    This ensures OP_LTXT / CHAR_LTXT rows exist BEFORE SALV
-  "------------------------------------------------------------
-  PERFORM build_display.
-
-  "------------------------------------------------------------
-  " 3. Create SALV only once
-  "------------------------------------------------------------
-  IF go_container IS INITIAL.
-
-    CREATE OBJECT go_container
-      EXPORTING container_name = 'CC_ALV'.
-
-    cl_salv_table=>factory(
-      EXPORTING
-        r_container  = go_container
-      IMPORTING
-        r_salv_table = lo_alv
-      CHANGING
-        t_table      = gt_display ).
-
+  "Set proper PF-STATUS based on current toggles
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
+    lv_pfstatus = 'ZSALV_CHAR_SHOW'.
+  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
+    lv_pfstatus = 'ZSALV_LTXT_SHOW'.
+  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_true.
+    lv_pfstatus = 'ZSALV_BOTH_SHOW'.
   ELSE.
-
-    "------------------------------------------------------------
-    " 4. Update SALV internal table reference when toggles change
-    "    This REBUILDS SALV's field catalog (CRITICAL!)
-    "------------------------------------------------------------
-    DATA lr_data TYPE REF TO data.
-    GET REFERENCE OF gt_display INTO lr_data.
-    lo_alv->set_table( lr_data ).
-
+    lv_pfstatus = 'ZSALV_NONE_SHOW'.
   ENDIF.
 
-  "------------------------------------------------------------
-  " 5. Apply column visibility AFTER SALV is built or updated
-  "------------------------------------------------------------
+  SET PF-STATUS lv_pfstatus.
+
+  "Set titlebar
+  lv_title = 'Maintenance Task List Report'.
+
+  IF gv_show_char = abap_true.
+    lv_title = lv_title && ' - Characteristics Active'.
+  ENDIF.
+
+  IF gv_show_ltxt = abap_true.
+    lv_title = lv_title && ' - Long Text Active'.
+  ENDIF.
+
+  SET TITLEBAR 'TITLE_100' WITH lv_title.
+
+  "Build ALV visibility rules
   PERFORM set_column_visibility_by_state.
-
-  "------------------------------------------------------------
-  " 6. Now refresh ALV (AFTER visibility rules are applied)
-  "------------------------------------------------------------
-  lo_alv->refresh( ).
-
-  "------------------------------------------------------------
-  " 7. Apply column order & header labels (optional)
-  "------------------------------------------------------------
-  PERFORM apply_column_order.
-  PERFORM set_ci_headers.
 
 ENDMODULE.
