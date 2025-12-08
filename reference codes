@@ -1,3 +1,5 @@
-gs_base-plnty <> 'T'
-AND gs_base-plnty <> 'E'
-AND gs_base-plnty <> 'A'
+IF gs_base-plnty <> 'T'
+ AND gs_base-plnty <> 'E'
+ AND gs_base-plnty <> 'A'.
+  CONTINUE.
+ENDIF.
