@@ -1,17 +1,34 @@
-AT SELECTION-SCREEN OUTPUT.
+MODULE status_0100 OUTPUT.
 
-  LOOP AT SCREEN.
-    IF screen-name = 'SO_EXSTA-LOW'.
-      ASSIGN (screen-name) TO FIELD-SYMBOL(<fs>).
-      IF <fs> IS ASSIGNED.
-        <fs> = ''.   " <-- Clears the displayed value
-      ENDIF.
-    ENDIF.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
 
-    IF screen-name = 'SO_EXSTA-HIGH'.
-      ASSIGN (screen-name) TO FIELD-SYMBOL(<fs2>).
-      IF <fs2> IS ASSIGNED.
-        <fs2> = ''.  " <-- Clears the displayed value
-      ENDIF.
+  "Always rebuild display table when long text or char toggle is active
+  IF gv_show_ltxt = abap_true OR gv_show_char = abap_true.
+    PERFORM build_display.
+  ENDIF.
+
+  IF go_container IS INITIAL.
+
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'CC_ALV'.
+
+    "Create SALV inside container
+    cl_salv_table=>factory(
+      EXPORTING
+        r_container  = go_container
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
+
+    PERFORM display_alv.
+
+  ELSE.
+    IF lo_alv IS BOUND.
+      lo_alv->refresh( ).
     ENDIF.
-  ENDLOOP.
+  ENDIF.
+
+ENDMODULE.
