@@ -1,50 +1,21 @@
-*&---------------------------------------------------------------------*
-*& Module STATUS_0100 OUTPUT
-*&---------------------------------------------------------------------*
-MODULE status_0100 OUTPUT.
+"======================
+" PM TASK LIST TYPE FILTERING
+"======================
 
-  "-------------------------------------------------------------
-  " IMPORTANT:
-  " Do NOT reassign gv_show_ltxt / gv_show_char here.
-  " They must ONLY come from:
-  "  - Selection screen (AT SELECTION-SCREEN / START-OF-SELECTION)
-  "  - Toolbar buttons (toggle_char / toggle_ltxt)
-  "-------------------------------------------------------------
+"Exclude QM, PP, and any other types
+IF gs_base-plnty NOT IN ('T','E','A').
+  CONTINUE.
+ENDIF.
 
-  " Always set PF-STATUS and TITLE based on current toggles
-  PERFORM set_pfstatus_from_state.
-  PERFORM set_title_from_state.
+"Then apply user selections
+IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
+  CONTINUE.
+ENDIF.
 
-  " Rebuild display + column setup on every PBO
-  PERFORM build_display.
-  PERFORM set_column_visibility_by_state.
-  PERFORM apply_column_order.
+IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
+  CONTINUE.
+ENDIF.
 
-  " Create ALV container only once
-  IF go_container IS INITIAL.
-
-    CREATE OBJECT go_container
-      EXPORTING container_name = 'CC_ALV'.
-
-    cl_salv_table=>factory(
-      EXPORTING r_container  = go_container
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
-
-    " Initial display settings
-    PERFORM set_column_visibility_by_state.
-    PERFORM set_ci_headers.
-    PERFORM apply_column_order.
-
-    lo_alv->display( ).
-
-  ELSE.
-
-    " Refresh ALV on next PBO
-    PERFORM set_column_visibility_by_state.
-    PERFORM apply_column_order.
-
-    lo_alv->refresh( ).
-  ENDIF.
-
-ENDMODULE.
+IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
+  CONTINUE.
+ENDIF.
