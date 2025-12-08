@@ -1,8 +1,7 @@
-*--- Make selection screen behave like toolbar buttons
 IF p_showc = 'X'.
-  PERFORM toggle_char.    "Call same routine used by toolbar
+  gv_show_char = abap_true.
 ENDIF.
 
 IF p_showl = 'X'.
-  PERFORM toggle_ltxt.    "Call same routine used by toolbar
+  gv_show_ltxt = abap_true.
 ENDIF.
