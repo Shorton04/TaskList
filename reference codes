@@ -1,66 +1,54 @@
-"==============================================================
-  " AUTO-DETECT: Show TDFORMAT if there's long text data
-  "==============================================================
-  READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-  IF sy-subrc = 0.
-    " We have long text rows, show TDFORMAT
-    show_col 'TDFORMAT'.
-  ELSE.
-    hide_col 'TDFORMAT'.
-  ENDIF.
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
 
-  "==============================================================
-  " AUTO-DETECT: Show OP_LTXT if selection screen has operation long text filter OR data exists
-  "==============================================================
+  " Initialize display flags based on selection screen parameters
   IF so_opltx IS NOT INITIAL.
-    show_col 'OP_LTXT'.
-  ELSE.
-    " Check if we have operation long text data
-    READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      " Check if any row has OP_LTXT filled
-      READ TABLE gt_display WITH KEY row_kind = 'L' 
-        TRANSPORTING NO FIELDS 
-        BINARY SEARCH.
-      IF sy-subrc = 0.
-        LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check>) WHERE row_kind = 'L'.
-          IF <fs_check>-op_ltxt IS NOT INITIAL.
-            show_col 'OP_LTXT'.
-            EXIT.
-          ENDIF.
-        ENDLOOP.
-      ENDIF.
-    ELSE.
-      hide_col 'OP_LTXT'.
-    ENDIF.
+    gv_show_ltxt = gc_true.
   ENDIF.
-
-  "==============================================================
-  " AUTO-DETECT: Show CHAR_LTXT if selection screen has char long text filter OR data exists
-  "==============================================================
+  
   IF so_chltx IS NOT INITIAL.
-    show_col 'CHAR_LTXT'.
+    gv_show_char = gc_true.
+    gv_show_ltxt = gc_true.
+  ENDIF.
+  
+  IF so_merkn IS NOT INITIAL OR
+     so_mic IS NOT INITIAL OR
+     so_cktxt IS NOT INITIAL OR
+     so_meth IS NOT INITIAL OR
+     so_sproc IS NOT INITIAL.
+    gv_show_char = gc_true.
+  ENDIF.
+
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+
+  PERFORM build_display.     "always rebuild internal table
+
+  IF go_container IS INITIAL.
+
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'CC_ALV'.
+
+    cl_salv_table=>factory(
+      EXPORTING
+        r_container  = go_container
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
+
+    "<<< IMPORTANT
+    PERFORM set_column_visibility_by_state.
+
+    PERFORM display_alv.
+
   ELSE.
-    " Check if we have characteristic long text data
-    READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check2>) WHERE row_kind = 'L'.
-        IF <fs_check2>-char_ltxt IS NOT INITIAL.
-          show_col 'CHAR_LTXT'.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-    ELSE.
-      hide_col 'CHAR_LTXT'.
-    ENDIF.
+    PERFORM set_column_visibility_by_state.
+    lo_alv->refresh( ).
+
   ENDIF.
 
-  "==============================================================
-  " HANDLE MERKNR and KURZT_CHAR based on gv_show_char flag
-  "==============================================================
-  IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
-    hide_col 'MERKNR'.
-    hide_col 'KURZT_CHAR'.
-  ENDIF.
-
-ENDFORM.
+ENDMODULE.
