@@ -1,10 +1,11 @@
-" Remove unwanted default from domain fixed values
-IF so_exsta[] IS NOT INITIAL AND so_exsta-low IS INITIAL.
-  REFRESH so_exsta.
-ENDIF.
+AT SELECTION-SCREEN OUTPUT.
+  LOOP AT SCREEN.
+    IF screen-name = 'SO_EXSTA-LOW' OR
+       screen-name = 'SO_EXSTA-HIGH'.
+      screen-value = ''.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
 
-
-IF so_exsta-low IS NOT INITIAL
-   AND gs_base-execution_stage NOT IN so_exsta.
-  CONTINUE.
-ENDIF.
+gv_show_ltxt = gv_show_ltxt.
+gv_show_char = gv_show_char.
