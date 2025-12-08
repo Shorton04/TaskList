@@ -1,6 +1,95 @@
-MODULE status_0100 OUTPUT.
+FORM display_alv.
 
-  "Apply selection screen values BEFORE ALV creation
+  "--------------------------------------------------------------
+  " 1. Always rebuild GT_DISPLAY FIRST before touching SALV
+  "    (This applies selection flags, long text, char mode)
+  "--------------------------------------------------------------
+  PERFORM build_display.
+
+  IF lo_alv IS INITIAL.
+
+    "----------------------------------------------------------
+    " 2. Create SALV instance only once
+    "----------------------------------------------------------
+    TRY.
+        cl_salv_table=>factory(
+          IMPORTING r_salv_table = lo_alv
+          CHANGING  t_table      = gt_display ).
+
+        "Get columns
+        lo_columns = lo_alv->get_columns( ).
+        lo_columns->set_optimize( abap_true ).
+
+        "Enable row color column (your existing field)
+        lo_columns->set_color_column( 'LINE_COLOR' ).
+
+      CATCH cx_salv_not_found cx_salv_data_error cx_salv_msg.
+        RETURN.
+    ENDTRY.
+
+    "----------------------------------------------------------
+    " 3. Layout Settings
+    "----------------------------------------------------------
+    lo_layout = lo_alv->get_layout( ).
+    DATA(ls_key) = VALUE salv_s_layout_key( report = sy-repid ).
+    lo_layout->set_key( ls_key ).
+    lo_layout->set_default( abap_true ).
+    lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+
+    "----------------------------------------------------------
+    " 4. Toolbar (functions)
+    "----------------------------------------------------------
+    lo_funcs = lo_alv->get_functions( ).
+    lo_funcs->set_all( abap_true ).
+
+    "----------------------------------------------------------
+    " 5. Row selection mode
+    "----------------------------------------------------------
+    DATA(lo_sel) = lo_alv->get_selections( ).
+    lo_sel->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+    "----------------------------------------------------------
+    " 6. Register SALV Events
+    "----------------------------------------------------------
+    lo_events = lo_alv->get_event( ).
+    SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+    SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
+
+  ELSE.
+
+    "----------------------------------------------------------
+    " SALV already exists → just refresh rows
+    "----------------------------------------------------------
+    lo_alv->refresh( ).
+
+  ENDIF.
+
+  "--------------------------------------------------------------
+  " 7. Apply column visibility after SALV exists
+  "--------------------------------------------------------------
+  PERFORM set_column_visibility_by_state.
+
+  "--------------------------------------------------------------
+  " 8. PF-STATUS, Title, CI headers, Column order
+  "--------------------------------------------------------------
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+  PERFORM set_ci_headers.
+  PERFORM apply_column_order.
+
+  "--------------------------------------------------------------
+  " 9. Display SALV
+  "--------------------------------------------------------------
+  lo_alv->display( ).
+
+ENDFORM.
+
+
+MODULE status_0100 OUTPUT.
+  "---------------------------------------------------------
+  " Apply selection screen toggles BEFORE ALV is displayed
+  " (Selections behave like clicking toolbar buttons)
+  "---------------------------------------------------------
   IF p_showl = 'X'.
     gv_show_ltxt = abap_true.
   ENDIF.
@@ -9,75 +98,94 @@ MODULE status_0100 OUTPUT.
     gv_show_char = abap_true.
   ENDIF.
 
+  "---------------------------------------------------------
+  " Apply PF-STATUS and Title (SALV will already exist)
+  "---------------------------------------------------------
   PERFORM set_pfstatus_from_state.
   PERFORM set_title_from_state.
+
+  "---------------------------------------------------------
+  " DO NOT create or refresh ALV here
+  " This is handled safely in display_alv
+  "---------------------------------------------------------
 
 ENDMODULE.
 
 
 
 
-FORM display_alv.
+"===========================================================
+  " ALWAYS show FDS core fields
+  "===========================================================
+  show_col 'PLNNR'.
+  show_col 'PLNAL'.
+  show_col 'WERKS'.
+  show_col 'VORNR'.
+  show_col 'ARBPL_O'.
+  show_col 'ARBEI'.
+  show_col 'PMETHODE'.
+  show_col 'MERKNR'.         "later hidden depending on mode
+  show_col 'KURZT_CHAR'.     "later hidden depending on mode
 
-  DATA: lo_display TYPE REF TO cl_salv_display_settings.
+  " Long text columns ─ default hidden
+  hide_col 'TDFORMAT'.
+  hide_col 'OP_LTXT'.
+  hide_col 'CHAR_LTXT'.
 
-  " Create ALV only once
-  IF lo_alv IS INITIAL.
 
-    cl_salv_table=>factory(
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
+  "===========================================================
+  " MODE 1: SHOW LONG TEXT ONLY (gv_show_ltxt = X, gv_show_char = SPACE)
+  "===========================================================
+  IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
 
-    " Register events
-    lo_events = lo_alv->get_event( ).
-    SET HANDLER lcl_event_handler=>on_user_command FOR lo_events.
+    show_col 'TDFORMAT'.
+    show_col 'OP_LTXT'.
 
-    " Display settings
-    lo_display = lo_alv->get_display_settings( ).
-    lo_display->set_striped_pattern( abap_false ).
+    hide_col 'CHAR_LTXT'.   "char text only in BOTH mode
+
+    "Hide characteristic core fields
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
 
   ENDIF.
 
-  " Rebuild display table every time
-  PERFORM build_display.
 
-  " Apply column visibility after table is built
-  PERFORM set_column_visibility_by_state.
+  "===========================================================
+  " MODE 2: SHOW CHAR ONLY (gv_show_char = X, gv_show_ltxt = SPACE)
+  "===========================================================
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
 
-  " PF-STATUS & title now are safe to apply
-  PERFORM set_pfstatus_from_state.
-  PERFORM set_title_from_state.
+    "Characteristics visible but no long text
+    hide_col 'OP_LTXT'.
+    hide_col 'CHAR_LTXT'.
+    hide_col 'TDFORMAT'.
 
-  lo_alv->refresh( ).
+  ENDIF.
 
-  lo_alv->display( ).
+
+  "===========================================================
+  " MODE 3: BOTH TRUE (Show Characteristics + Long Text)
+  "===========================================================
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
+
+    show_col 'TDFORMAT'.
+    show_col 'CHAR_LTXT'.
+    hide_col 'OP_LTXT'.     "Do not mix op long text with char long text
+
+  ENDIF.
+
+
+  "===========================================================
+  " AUTO-DETECT LOGIC (optional, but simplified)
+  "===========================================================
+  READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
+
+  IF sy-subrc = 0.
+    "If any long-text rows exist, FK can appear (if mode allowed)
+    IF gv_show_ltxt = abap_true OR gv_show_char = abap_true.
+      show_col 'TDFORMAT'.
+    ENDIF.
+  ENDIF.
+
 
 ENDFORM.
-
-
-
-METHOD on_user_command.
-
-  CASE e_salv_function.
-
-    WHEN '&LTXT'.      "Show Long Text
-      gv_show_ltxt = abap_true.
-      gv_show_char = abap_false.
-
-    WHEN '&LTXTH'.     "Hide Long Text
-      gv_show_ltxt = abap_false.
-
-    WHEN '&CHAR'.      "Show Characteristics
-      gv_show_char = abap_true.
-      gv_show_ltxt = abap_false.
-
-    WHEN '&CHARH'.     "Hide Characteristics
-      gv_show_char = abap_false.
-
-  ENDCASE.
-
-  PERFORM build_display.
-  PERFORM set_column_visibility_by_state.
-  lo_alv->refresh( ).
-
-ENDMETHOD.
