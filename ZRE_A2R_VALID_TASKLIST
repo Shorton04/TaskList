@@ -55,25 +55,15 @@ INCLUDE zre_a2r_valid_tasklist_f01.
 * Selection-screen checks
 *---------------------------------------------------------------------*
 AT SELECTION-SCREEN.
+  CALL SCREEN 0100.
   PERFORM validate_selection.
 
 *---------------------------------------------------------------------*
 * Main processing
 *---------------------------------------------------------------------*
+
 START-OF-SELECTION.
 
-  "Initial state of toggles comes from checkboxes
-  IF p_showc = 'X'.
-    gv_show_char = gc_true.
-  ELSE.
-    gv_show_char = gc_false.
-  ENDIF.
-
-  IF p_showl = 'X'.
-    gv_show_ltxt = gc_true.
-  ELSE.
-    gv_show_ltxt = gc_false.
-  ENDIF.
 
   PERFORM get_data.
 
