@@ -2,13 +2,16 @@ AT SELECTION-SCREEN OUTPUT.
 
   LOOP AT SCREEN.
     IF screen-name = 'SO_EXSTA-LOW'.
-      screen-low = ''.
-      MODIFY SCREEN.
-    ELSEIF screen-name = 'SO_EXSTA-HIGH'.
-      screen-high = ''.
-      MODIFY SCREEN.
+      ASSIGN (screen-name) TO FIELD-SYMBOL(<fs>).
+      IF <fs> IS ASSIGNED.
+        <fs> = ''.   " <-- Clears the displayed value
+      ENDIF.
+    ENDIF.
+
+    IF screen-name = 'SO_EXSTA-HIGH'.
+      ASSIGN (screen-name) TO FIELD-SYMBOL(<fs2>).
+      IF <fs2> IS ASSIGNED.
+        <fs2> = ''.  " <-- Clears the displayed value
+      ENDIF.
     ENDIF.
   ENDLOOP.
-
-gv_show_ltxt = gv_show_ltxt.
-gv_show_char = gv_show_char.
