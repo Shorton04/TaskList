@@ -1,29 +1,10 @@
 MODULE status_0100 OUTPUT.
 
-  gv_show_ltxt = p_showl.
-  gv_show_char = p_showc.
-
-  " Initialize display flags based on selection screen parameters
-  IF so_opltx IS NOT INITIAL.
-    gv_show_ltxt = gc_true.
-  ENDIF.
-
-  IF so_chltx IS NOT INITIAL.
-    gv_show_char = gc_true.
-    gv_show_ltxt = gc_true.
-  ENDIF.
-
-  PERFORM set_pfstatus_from_state.
-  PERFORM set_title_from_state.
-
-  PERFORM build_display.     "always rebuild internal table
-  PERFORM set_column_visibility_by_state.
-
+  "1 — Create ALV container & SALV only once
   IF go_container IS INITIAL.
 
     CREATE OBJECT go_container
-      EXPORTING
-        container_name = 'CC_ALV'.
+      EXPORTING container_name = 'CC_ALV'.
 
     cl_salv_table=>factory(
       EXPORTING
@@ -31,18 +12,27 @@ MODULE status_0100 OUTPUT.
       IMPORTING
         r_salv_table = lo_alv
       CHANGING
-        t_table      = gt_display ).
+        t_table      = gt_display ).   " <-- display table already built
 
-    "<<< IMPORTANT
+    "2 — Apply column visibility AFTER ALV exists
     PERFORM set_column_visibility_by_state.
 
+    "3 — Build toolbar, title
+    PERFORM set_pfstatus_from_state.
+    PERFORM set_title_from_state.
+
+    "4 — Display ALV first time
     PERFORM display_alv.
-    lo_alv->refresh( ).
 
   ELSE.
-    PERFORM set_column_visibility_by_state.
-    lo_alv->refresh( ).
 
+    "Reassign data AFTER internal table was rebuilt in PAI or event
+    lo_alv->set_data( gt_display ).
+
+    "Apply column visibility AFTER assigning data
+    PERFORM set_column_visibility_by_state.
+
+    lo_alv->refresh( ).
   ENDIF.
 
 ENDMODULE.
