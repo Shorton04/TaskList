@@ -1,21 +1,3 @@
-"======================
-" PM TASK LIST TYPE FILTERING
-"======================
-
-"Exclude QM, PP, and any other types
-IF gs_base-plnty NOT IN ('T','E','A').
-  CONTINUE.
-ENDIF.
-
-"Then apply user selections
-IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
-  CONTINUE.
-ENDIF.
-
-IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
-  CONTINUE.
-ENDIF.
-
-IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
-  CONTINUE.
-ENDIF.
+gs_base-plnty <> 'T'
+AND gs_base-plnty <> 'E'
+AND gs_base-plnty <> 'A'
