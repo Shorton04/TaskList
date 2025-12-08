@@ -1,9 +1,66 @@
-table
-  
-  " Auto-detect if we have long text data
-  IF gv_show_ltxt = gc_false.
+"==============================================================
+  " AUTO-DETECT: Show TDFORMAT if there's long text data
+  "==============================================================
+  READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
+  IF sy-subrc = 0.
+    " We have long text rows, show TDFORMAT
+    show_col 'TDFORMAT'.
+  ELSE.
+    hide_col 'TDFORMAT'.
+  ENDIF.
+
+  "==============================================================
+  " AUTO-DETECT: Show OP_LTXT if selection screen has operation long text filter OR data exists
+  "==============================================================
+  IF so_opltx IS NOT INITIAL.
+    show_col 'OP_LTXT'.
+  ELSE.
+    " Check if we have operation long text data
     READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
     IF sy-subrc = 0.
-      gv_show_ltxt = gc_true.  " We have long text rows, show the column
+      " Check if any row has OP_LTXT filled
+      READ TABLE gt_display WITH KEY row_kind = 'L' 
+        TRANSPORTING NO FIELDS 
+        BINARY SEARCH.
+      IF sy-subrc = 0.
+        LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check>) WHERE row_kind = 'L'.
+          IF <fs_check>-op_ltxt IS NOT INITIAL.
+            show_col 'OP_LTXT'.
+            EXIT.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+    ELSE.
+      hide_col 'OP_LTXT'.
     ENDIF.
   ENDIF.
+
+  "==============================================================
+  " AUTO-DETECT: Show CHAR_LTXT if selection screen has char long text filter OR data exists
+  "==============================================================
+  IF so_chltx IS NOT INITIAL.
+    show_col 'CHAR_LTXT'.
+  ELSE.
+    " Check if we have characteristic long text data
+    READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
+    IF sy-subrc = 0.
+      LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check2>) WHERE row_kind = 'L'.
+        IF <fs_check2>-char_ltxt IS NOT INITIAL.
+          show_col 'CHAR_LTXT'.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+    ELSE.
+      hide_col 'CHAR_LTXT'.
+    ENDIF.
+  ENDIF.
+
+  "==============================================================
+  " HANDLE MERKNR and KURZT_CHAR based on gv_show_char flag
+  "==============================================================
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
+    hide_col 'MERKNR'.
+    hide_col 'KURZT_CHAR'.
+  ENDIF.
+
+ENDFORM.
