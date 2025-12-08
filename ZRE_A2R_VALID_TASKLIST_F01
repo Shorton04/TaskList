@@ -670,40 +670,44 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 MODULE status_0100 OUTPUT.
 
+  " Initialize display flags based on selection screen parameters
+  IF so_opltx IS NOT INITIAL.
+    gv_show_ltxt = gc_true.
+  ENDIF.
+
+  IF so_chltx IS NOT INITIAL.
+    gv_show_char = gc_true.
+    gv_show_ltxt = gc_true.
+  ENDIF.
+
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+
+  PERFORM build_display.     "always rebuild internal table
+  PERFORM set_column_visibility_by_state.
+
   IF go_container IS INITIAL.
 
-    " 1 — Create the control
     CREATE OBJECT go_container
-      EXPORTING container_name = 'CC_ALV'.
+      EXPORTING
+        container_name = 'CC_ALV'.
 
-    " 2 — Build SALV once
     cl_salv_table=>factory(
-      EXPORTING r_container  = go_container
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
+      EXPORTING
+        r_container  = go_container
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
 
-    " 3 — Apply behavior
+    "<<< IMPORTANT
     PERFORM set_column_visibility_by_state.
-    PERFORM set_pfstatus_from_state.
-    PERFORM set_title_from_state.
 
-    " 4 — Initial rendering (NO display(), NO dump)
-    lo_alv->display( ).  " ALLOWED ONLY ON FIRST RUN
+    PERFORM display_alv.
+    lo_alv->refresh( ).
 
   ELSE.
-
-    " 5 — Reassign latest data by recreating SALV
-    cl_salv_table=>factory(
-      EXPORTING r_container  = go_container
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
-
-    " 6 — Apply logic AGAIN
     PERFORM set_column_visibility_by_state.
-    PERFORM set_pfstatus_from_state.
-    PERFORM set_title_from_state.
-
-    " 7 — Refresh (not display)
     lo_alv->refresh( ).
 
   ENDIF.
@@ -965,17 +969,17 @@ FORM set_ci_headers.
 
   TRY.
       lo_col ?= lo_columns->get_column( 'ARBPL_O' ).
-      lo_col->set_long_text( 'Work Center Operation' ).
-      lo_col->set_medium_text( 'WC Operation' ).
-      lo_col->set_short_text( 'WC Op.' ).
+      lo_col->set_long_text( 'Work Center (Operation(' ).
+      lo_col->set_medium_text( 'WC (Operation)' ).
+      lo_col->set_short_text( 'WC (Op.)' ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
   TRY.
       lo_col ?= lo_columns->get_column( 'ARBPL_H' ).
-      lo_col->set_long_text( 'Work Center Header' ).
-      lo_col->set_medium_text( 'WC Header' ).
-      lo_col->set_short_text( 'WC HDR.' ).
+      lo_col->set_long_text( 'Work Center (Header)' ).
+      lo_col->set_medium_text( 'WC (Header)' ).
+      lo_col->set_short_text( 'WC (HDR.)' ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
@@ -1840,83 +1844,9 @@ FORM set_column_visibility_by_state.
   show_col 'OP_LTXT'.      "Operation Long Text
   show_col 'CHAR_LTXT'.    "Characteristic Long Text
 
-  IF p_showl IS NOT INITIAL.
-    show_col 'TDFORMAT'.
-    show_col 'OP_LTXT'.
-  ELSE.
-    hide_col 'TDFORMAT'.
-  ENDIF.
-
-  IF p_showl IS NOT INITIAL AND p_showc IS NOT INITIAL.
-    show_col 'CHAR_LTXT'.
-    hide_col 'OP_LTXT'.
-  ENDIF.
-
   IF gv_show_char = abap_false.
     hide_col 'MERKNR'.
     hide_col 'KURZT_CHAR'.
-  ENDIF.
-
-  "==============================================================
-  " AUTO-DETECT: Show TDFORMAT if there's long text data
-  "==============================================================
-  READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-  IF sy-subrc = 0.
-    " We have long text rows, show TDFORMAT
-    show_col 'TDFORMAT'.
-  ELSE.
-    hide_col 'TDFORMAT'.
-  ENDIF.
-
-  "==============================================================
-  " AUTO-DETECT: Show OP_LTXT if selection screen has operation long text filter OR data exists
-  "==============================================================
-  IF so_opltx IS NOT INITIAL.
-    show_col 'OP_LTXT'.
-    hide_col 'CHAR_LTXT'.
-  ELSE.
-    " Check if we have operation long text data
-    READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      " Check if any row has OP_LTXT filled
-      READ TABLE gt_display WITH KEY row_kind = 'L'
-        TRANSPORTING NO FIELDS
-        BINARY SEARCH.
-      IF sy-subrc = 0.
-        LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check>) WHERE row_kind = 'L'.
-          IF <fs_check>-op_ltxt IS NOT INITIAL.
-            show_col 'OP_LTXT'.
-            hide_col 'CHAR_LTXT'.
-            EXIT.
-          ENDIF.
-        ENDLOOP.
-      ENDIF.
-    ELSE.
-      hide_col 'OP_LTXT'.
-    ENDIF.
-  ENDIF.
-
-  "==============================================================
-  " AUTO-DETECT: Show CHAR_LTXT if selection screen has char long text filter OR data exists
-  "==============================================================
-  IF so_chltx IS NOT INITIAL.
-    show_col 'CHAR_LTXT'.
-    hide_col 'OP_LTXT'.
-  ELSE.
-    " Check if we have characteristic long text data
-    READ TABLE gt_display WITH KEY row_kind = 'L' TRANSPORTING NO FIELDS.
-    IF sy-subrc = 0.
-      LOOP AT gt_display ASSIGNING FIELD-SYMBOL(<fs_check2>) WHERE row_kind = 'L'.
-        IF <fs_check2>-char_ltxt IS NOT INITIAL.
-          show_col 'CHAR_LTXT'.
-          hide_col 'OP_LTXT'.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-    ELSE.
-      hide_col 'CHAR_LTXT'.
-      hide_col 'OP_LTXT'.
-    ENDIF.
   ENDIF.
 
   "==============================================================
