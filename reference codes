@@ -1,13 +1,10 @@
-gv_show_char = COND #( WHEN p_showc = 'X' THEN gc_true ELSE gc_false ).
-gv_show_ltxt = COND #( WHEN p_showl = 'X' THEN gc_true ELSE gc_false ).
-
-
-"--- Operation long text only ---
-IF gv_show_ltxt = gc_true AND gv_show_char = gc_false.
-  PERFORM append_op_longtext USING ls_base.
+" Remove unwanted default from domain fixed values
+IF so_exsta[] IS NOT INITIAL AND so_exsta-low IS INITIAL.
+  REFRESH so_exsta.
 ENDIF.
 
-"--- Characteristic long text only ---
-IF gv_show_ltxt = gc_true AND gv_show_char = gc_true.
-  PERFORM append_char_longtext USING ls_base.
+
+IF so_exsta-low IS NOT INITIAL
+   AND gs_base-execution_stage NOT IN so_exsta.
+  CONTINUE.
 ENDIF.
