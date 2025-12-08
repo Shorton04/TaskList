@@ -1,41 +1,22 @@
-MODULE status_0100 OUTPUT.
+FORM set_pfstatus_from_state.
 
-  IF go_container IS INITIAL.
+  " *** IMPORTANT ***
+  " DO NOT call lo_alv->set_screen_status here.
+  " SALV in container mode does not support it.
 
-    " 1 — Create the control
-    CREATE OBJECT go_container
-      EXPORTING container_name = 'CC_ALV'.
+  DATA lv_pf TYPE sypfkey.
 
-    " 2 — Build SALV once
-    cl_salv_table=>factory(
-      EXPORTING r_container  = go_container
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
-
-    " 3 — Apply behavior
-    PERFORM set_column_visibility_by_state.
-    PERFORM set_pfstatus_from_state.
-    PERFORM set_title_from_state.
-
-    " 4 — Initial rendering (NO display(), NO dump)
-    lo_alv->display( ).  " ALLOWED ONLY ON FIRST RUN
-
+  IF gv_show_char = gc_false AND gv_show_ltxt = gc_false.
+    lv_pf = 'ZSALV_BOTH_HIDE'.
+  ELSEIF gv_show_char = gc_false AND gv_show_ltxt = gc_true.
+    lv_pf = 'ZSALV_LTXT_SHOW'.
+  ELSEIF gv_show_char = gc_true AND gv_show_ltxt = gc_false.
+    lv_pf = 'ZSALV_CLIST_ONLY'.
   ELSE.
-
-    " 5 — Reassign latest data by recreating SALV
-    cl_salv_table=>factory(
-      EXPORTING r_container  = go_container
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
-
-    " 6 — Apply logic AGAIN
-    PERFORM set_column_visibility_by_state.
-    PERFORM set_pfstatus_from_state.
-    PERFORM set_title_from_state.
-
-    " 7 — Refresh (not display)
-    lo_alv->refresh( ).
-
+    lv_pf = 'ZSALV_CLIST_LTXT'.
   ENDIF.
 
-ENDMODULE.
+  "Set PF-STATUS using the screen, NOT SALV
+  SET PF-STATUS lv_pf OF PROGRAM sy-repid.
+
+ENDFORM.
