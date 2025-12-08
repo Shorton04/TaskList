@@ -67,19 +67,6 @@ FORM validate_selection.
     MESSAGE e398(00) WITH 'Enter a key date'.
   ENDIF.
 
-  "Initial state of toggles comes from checkboxes
-  IF p_showc IS NOT INITIAL.
-    gv_show_char = gc_true.
-  ELSE.
-    gv_show_char = gc_false.
-  ENDIF.
-
-  IF p_showl IS NOT INITIAL.
-    gv_show_ltxt = gc_true.
-  ELSE.
-    gv_show_ltxt = gc_false.
-  ENDIF.
-
   PERFORM build_display.
   PERFORM adjust_display_fields_by_state.
   PERFORM set_column_visibility_by_state.
@@ -673,9 +660,6 @@ ENDFORM.
 *& Module STATUS_0100 OUTPUT
 *&---------------------------------------------------------------------*
 MODULE status_0100 OUTPUT.
-  " Selection overrides PF-status toggles
-  gv_show_ltxt = abap_false.
-  gv_show_char = abap_false.
 
   IF p_showl = 'X'.
     gv_show_ltxt = abap_true.
@@ -684,6 +668,9 @@ MODULE status_0100 OUTPUT.
   IF p_showc = 'X'.
     gv_show_char = abap_true.
   ENDIF.
+
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
 
   " Initialize display flags based on selection screen parameters
   IF so_opltx IS NOT INITIAL.
@@ -694,9 +681,6 @@ MODULE status_0100 OUTPUT.
     gv_show_char = gc_true.
     gv_show_ltxt = gc_true.
   ENDIF.
-
-  PERFORM set_pfstatus_from_state.
-  PERFORM set_title_from_state.
 
   PERFORM build_display.     "always rebuild internal table
   PERFORM set_column_visibility_by_state.
@@ -719,11 +703,11 @@ MODULE status_0100 OUTPUT.
     PERFORM set_column_visibility_by_state.
 
     PERFORM display_alv.
-    lo_alv->refresh( ).
+    lo_alv->display( ).
 
   ELSE.
-    PERFORM set_column_visibility_by_state.
     lo_alv->refresh( ).
+    PERFORM set_column_visibility_by_state.
 
   ENDIF.
 
@@ -831,11 +815,6 @@ FORM build_display.
         PERFORM append_char_longtext USING ls_base.
       ENDIF.
 
-    ENDIF.
-
-    PERFORM set_column_visibility_by_state.
-    IF lo_alv IS BOUND.
-      lo_alv->refresh( ).
     ENDIF.
   ENDLOOP.
 
@@ -1843,14 +1822,16 @@ FORM set_column_visibility_by_state.
   show_col 'OP_LTXT'.      "Operation Long Text
   show_col 'CHAR_LTXT'.    "Characteristic Long Text
 
-  IF p_showl IS NOT INITIAL.
+  IF p_showl = abap_true AND p_showc = abap_false.
+    show_col 'LTXA1'.
     show_col 'TDFORMAT'.
     show_col 'OP_LTXT'.
   ELSE.
     hide_col 'TDFORMAT'.
   ENDIF.
 
-  IF p_showl IS NOT INITIAL AND p_showc IS NOT INITIAL.
+  IF p_showl = abap_true AND p_showc = abap_true.
+    show_col 'TDFORMAT'.
     show_col 'CHAR_LTXT'.
     hide_col 'OP_LTXT'.
   ENDIF.
