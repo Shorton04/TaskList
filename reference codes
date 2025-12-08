@@ -1,35 +1,48 @@
 MODULE status_0100 OUTPUT.
 
-  DATA: lv_pfstatus TYPE sy-pfkey,
-        lv_title    TYPE string.
+  gv_show_ltxt = p_showl.
+  gv_show_char = p_showc.
 
-  "Set proper PF-STATUS based on current toggles
-  IF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
-    lv_pfstatus = 'ZSALV_CHAR_SHOW'.
-  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
-    lv_pfstatus = 'ZSALV_LTXT_SHOW'.
-  ELSEIF gv_show_ltxt = abap_true AND gv_show_char = abap_true.
-    lv_pfstatus = 'ZSALV_BOTH_SHOW'.
-  ELSE.
-    lv_pfstatus = 'ZSALV_NONE_SHOW'.
+  " Initialize display flags based on selection screen parameters
+  IF so_opltx IS NOT INITIAL.
+    gv_show_ltxt = gc_true.
   ENDIF.
 
-  SET PF-STATUS lv_pfstatus.
-
-  "Set titlebar
-  lv_title = 'Maintenance Task List Report'.
-
-  IF gv_show_char = abap_true.
-    lv_title = lv_title && ' - Characteristics Active'.
+  IF so_chltx IS NOT INITIAL.
+    gv_show_char = gc_true.
+    gv_show_ltxt = gc_true.
   ENDIF.
 
-  IF gv_show_ltxt = abap_true.
-    lv_title = lv_title && ' - Long Text Active'.
-  ENDIF.
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
 
-  SET TITLEBAR 'TITLE_100' WITH lv_title.
-
-  "Build ALV visibility rules
+  PERFORM build_display.     "always rebuild internal table
   PERFORM set_column_visibility_by_state.
+
+  IF go_container IS INITIAL.
+
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'CC_ALV'.
+
+    cl_salv_table=>factory(
+      EXPORTING
+        r_container  = go_container
+      IMPORTING
+        r_salv_table = lo_alv
+      CHANGING
+        t_table      = gt_display ).
+
+    "<<< IMPORTANT
+    PERFORM set_column_visibility_by_state.
+
+    PERFORM display_alv.
+    lo_alv->refresh( ).
+
+  ELSE.
+    PERFORM set_column_visibility_by_state.
+    lo_alv->refresh( ).
+
+  ENDIF.
 
 ENDMODULE.
