@@ -1,11 +1,132 @@
-" Selection overrides PF-status toggles
-gv_show_ltxt = abap_false.
-gv_show_char = abap_false.
+FORM build_display .
 
-IF p_showl = 'X'.
-  gv_show_ltxt = abap_true.
-ENDIF.
+  " --- Long Text Format Key ---
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'LT_FORMAT'.
+  wa_fieldcat-scrtext_l = 'FK'.
+  wa_fieldcat-scrtext_m = 'FK'.
+  wa_fieldcat-scrtext_s = 'FK'.
+  wa_fieldcat-outputlen = 5.
+  APPEND wa_fieldcat TO gt_fieldcat.
 
-IF p_showc = 'X'.
-  gv_show_char = abap_true.
-ENDIF.
+  " --- Long Text Line ---
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'LT_TEXT'.
+  wa_fieldcat-scrtext_l = 'Long Text'.
+  wa_fieldcat-scrtext_m = 'Long Text'.
+  wa_fieldcat-scrtext_s = 'LT'.
+  wa_fieldcat-outputlen = 132.
+  APPEND wa_fieldcat TO gt_fieldcat.
+
+ENDFORM.
+
+
+
+FORM adjust_display_fields_by_state .
+
+  DATA(lo_cols) = lo_alv->get_columns( ).
+
+  " --- Long Text Visibility ---
+  IF gv_show_ltxt = abap_true.
+    lo_cols->get_column( 'LT_FORMAT' )->set_visible( abap_true ).
+    lo_cols->get_column( 'LT_TEXT'   )->set_visible( abap_true ).
+  ELSE.
+    lo_cols->get_column( 'LT_FORMAT' )->set_visible( abap_false ).
+    lo_cols->get_column( 'LT_TEXT'   )->set_visible( abap_false ).
+
+    " Blank column headers when LT is off
+    lo_cols->get_column( 'LT_FORMAT' )->set_short_text( '' ).
+    lo_cols->get_column( 'LT_TEXT'   )->set_short_text( '' ).
+  ENDIF.
+
+ENDFORM.
+
+
+
+FORM toggle_ltxt .
+
+  gv_show_ltxt = xsdbool( gv_show_ltxt = abap_false ).
+
+  PERFORM determine_ltext_level.
+  PERFORM adjust_display_fields_by_state.
+
+  lo_alv->refresh( ).
+
+ENDFORM.
+
+
+
+FORM toggle_char .
+
+  gv_show_char = xsdbool( gv_show_char = abap_false ).
+
+  PERFORM determine_ltext_level.
+  PERFORM adjust_display_fields_by_state.
+
+  lo_alv->refresh( ).
+
+ENDFORM.
+
+
+
+FORM determine_ltext_level .
+
+  IF gv_show_ltxt = abap_false.
+    gv_ltext_level = ''.
+    RETURN.
+  ENDIF.
+
+  IF gv_show_char = abap_true.
+    gv_ltext_level = 'CHAR'.   " Characteristic long text
+  ELSE.
+    gv_ltext_level = 'OPER'.   " Operation long text
+  ENDIF.
+
+ENDFORM.
+
+
+
+
+FORM fill_output_table .
+
+  LOOP AT gt_main INTO ls_main.
+
+    CLEAR ls_output.
+    MOVE-CORRESPONDING ls_main TO ls_output.
+
+    " ---- Default clear long text fields ----
+    CLEAR: ls_output-lt_format,
+           ls_output-lt_text.
+
+    " ---- No long text selected ----
+    IF gv_show_ltxt = abap_false.
+      APPEND ls_output TO gt_output.
+      CONTINUE.
+    ENDIF.
+
+    " ---- Determine which LT to show ----
+    DATA lt_text TYPE STANDARD TABLE OF tline WITH EMPTY KEY.
+
+    IF gv_ltext_level = 'OPER'.
+      PERFORM read_operation_longtext USING ls_main-plpo CHANGING lt_text.
+
+    ELSEIF gv_ltext_level = 'CHAR'.
+      PERFORM read_characteristic_longtext USING ls_main-plmk CHANGING lt_text.
+    ENDIF.
+
+    " ---- If no long text, append normal row ----
+    IF lt_text IS INITIAL.
+      APPEND ls_output TO gt_output.
+      CONTINUE.
+    ENDIF.
+
+    " ---- Expand long text into multiple rows ----
+    LOOP AT lt_text INTO DATA(ls_line).
+      ls_output-lt_format = ls_line-tdformat.
+      ls_output-lt_text   = ls_line-tdline.
+      APPEND ls_output TO gt_output.
+    ENDLOOP.
+
+  ENDLOOP.
+
+ENDFORM.
