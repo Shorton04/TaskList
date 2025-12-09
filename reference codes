@@ -1,39 +1,16 @@
-FORM set_column_visibility_for_selection.
+DATA(lo_cols) = lo_alv->get_columns( ).
 
-  DATA(lo_cols) = lo_alv->get_columns( ).
+TRY.
+    lo_cols->get_column( 'OP_LTXT' )->set_technical( abap_true ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-  "-----------------------------------------
-  " OPERATION LONG TEXT (old fields)
-  "-----------------------------------------
-  IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
+TRY.
+    lo_cols->get_column( 'TDFORMAT' )->set_technical( abap_true ).
+  CATCH cx_salv_not_found.
+ENDTRY.
 
-    TRY. lo_cols->get_column( 'TDFORMAT' )->set_visible( abap_true ). CATCH cx_salv_not_found. ENDTRY.
-    TRY. lo_cols->get_column( 'OP_LTXT' )->set_visible( abap_true ). CATCH cx_salv_not_found. ENDTRY.
-
-  ELSE.
-
-    TRY. lo_cols->get_column( 'TDFORMAT' )->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
-    TRY. lo_cols->get_column( 'OP_LTXT' )->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
-
-  ENDIF.
-
-  "-----------------------------------------
-  " CHARACTERISTIC LONG TEXT
-  "-----------------------------------------
-  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
-
-    TRY. lo_cols->get_column( 'CHAR_LTXT' )->set_visible( abap_true ). CATCH cx_salv_not_found. ENDTRY.
-
-  ELSE.
-
-    TRY. lo_cols->get_column( 'CHAR_LTXT' )->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
-
-  ENDIF.
-
-ENDFORM.
-
-
-
-
-
-PERFORM set_column_visibility_for_selection.
+TRY.
+    lo_cols->get_column( 'CHAR_LTXT' )->set_technical( abap_true ).
+  CATCH cx_salv_not_found.
+ENDTRY.
