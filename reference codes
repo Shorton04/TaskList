@@ -1,35 +1,27 @@
-MODULE status_0100 OUTPUT.
+IF ls_base-vornr <> lv_last_vornr
+OR ls_base-plnnr <> lv_last_plnnr
+OR ls_base-plnal <> lv_last_plnal
+OR ls_base-plnty <> lv_last_plnty.
 
-  " Rebuild display data before ALV creation/refresh
-  PERFORM build_display.
+  "============================================
+  " SKIP OPERATION ROWS THAT HAVE NO CHARACTERISTICS
+  " WHEN SHOW_CHAR = TRUE
+  "============================================
+  IF gv_show_char = abap_true.
+    "Check if ANY characteristic exists for this operation
+    READ TABLE gt_base WITH KEY
+      plnty = ls_base-plnty
+      plnnr = ls_base-plnnr
+      plnal = ls_base-plnal
+      vornr = ls_base-vornr
+      merknr <> space
+      TRANSPORTING NO FIELDS.
 
-  " Create ALV container only once
-  IF go_container IS INITIAL.
-
-    CREATE OBJECT go_container
-      EXPORTING
-        container_name = 'CC_ALV'.
-
-    cl_salv_table=>factory(
-      EXPORTING r_container  = go_container
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
-
-    " ALV NOW EXISTS → APPLY SELECTION SCREEN TOGGLES
-    PERFORM set_column_visibility_by_state.
-    PERFORM apply_column_order.
-    PERFORM set_ci_headers.
-
-    lo_alv->display( ).
-
-  ELSE.
-
-    " ALV already exists → apply visibility and refresh
-    PERFORM set_column_visibility_by_state.
-    PERFORM apply_column_order.
-
-    lo_alv->refresh( ).
-
+    IF sy-subrc <> 0.
+      CONTINUE.   "No characteristics → do not show this operation
+    ENDIF.
   ENDIF.
 
-ENDMODULE.
+  CLEAR ls_disp.
+  MOVE-CORRESPONDING ls_base TO ls_disp.
+  ls_disp-row_kind = 'O'.
