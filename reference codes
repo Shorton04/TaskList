@@ -2,25 +2,40 @@ FORM set_column_visibility_by_state.
 
   DATA(lo_cols) = lo_alv->get_columns( ).
 
+  " ------------------------------------------------------------------
+  " Operation Long Text visibility
+  " ------------------------------------------------------------------
+  DATA(lv_op_visible) = abap_false.
+  IF gv_ltext_level = 'OPER'.
+    lv_op_visible = abap_true.
+  ENDIF.
+
   TRY.
-      " Operation long text
-      lo_cols->get_column( 'LT_FORMAT' )->set_visible( gv_ltext_level = 'OPER' ).
+      lo_cols->get_column( 'LT_FORMAT' )->set_visible( lv_op_visible ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
   TRY.
-      lo_cols->get_column( 'LT_TEXT' )->set_visible( gv_ltext_level = 'OPER' ).
+      lo_cols->get_column( 'LT_TEXT' )->set_visible( lv_op_visible ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+
+  " ------------------------------------------------------------------
+  " Characteristic Long Text visibility
+  " ------------------------------------------------------------------
+  DATA(lv_char_visible) = abap_false.
+  IF gv_ltext_level = 'CHAR'.
+    lv_char_visible = abap_true.
+  ENDIF.
+
+  TRY.
+      lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( lv_char_visible ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
   TRY.
-      " Characteristic long text
-      lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( gv_ltext_level = 'CHAR' ).
-    CATCH cx_salv_not_found.
-  ENDTRY.
-
-  TRY.
-      lo_cols->get_column( 'CH_LT_TEXT' )->set_visible( gv_ltext_level = 'CHAR' ).
+      lo_cols->get_column( 'CH_LT_TEXT' )->set_visible( lv_char_visible ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
