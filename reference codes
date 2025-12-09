@@ -1,46 +1,19 @@
-"===================================================================
-" CHARACTERISTIC VISIBILITY RULES
-"===================================================================
-
-IF gv_show_char = abap_true.
-
-  "1. If this operation has NO characteristic at all → skip it
-  IF gs_base-merknr IS INITIAL.
-    CONTINUE.
+WHEN 'SHOWCHAR'.   "Your Show Characteristics button
+  gv_show_char = abap_true.
+  PERFORM get_data.
+  PERFORM build_display.
+  PERFORM set_column_visibility_by_state.
+  PERFORM apply_column_order.
+  IF lo_alv IS BOUND.
+    lo_alv->refresh( ).
   ENDIF.
 
-  "2. If user entered characteristic filters → at least ONE must match
-  DATA(lv_char_match) = abap_true.
-
-  IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
-    lv_char_match = abap_false.
+WHEN 'HIDECHAR'.   "Your Hide Characteristics button
+  gv_show_char = abap_false.
+  PERFORM get_data.
+  PERFORM build_display.
+  PERFORM set_column_visibility_by_state.
+  PERFORM apply_column_order.
+  IF lo_alv IS BOUND.
+    lo_alv->refresh( ).
   ENDIF.
-
-  IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
-    lv_char_match = abap_false.
-  ENDIF.
-
-  IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
-    lv_char_match = abap_false.
-  ENDIF.
-
-  IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
-    lv_char_match = abap_false.
-  ENDIF.
-
-  IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
-    lv_char_match = abap_false.
-  ENDIF.
-
-  "If ANY characteristic filters are provided, but this char does not match any → skip
-  IF ( so_merkn[] IS NOT INITIAL
-    OR so_mic[] IS NOT INITIAL
-    OR so_cktxt[] IS NOT INITIAL
-    OR so_meth[] IS NOT INITIAL
-    OR so_sproc[] IS NOT INITIAL )
-    AND lv_char_match = abap_false.
-
-    CONTINUE.
-  ENDIF.
-
-ENDIF.
