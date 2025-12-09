@@ -1,6 +1,10 @@
-IF lv_has_char = abap_false.
-
-  "--- Clear PLMK-related fields ---
+"============================================
+" Fill CI only when operation HAS characteristics
+"============================================
+IF lv_has_char = abap_true.
+  PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+ELSE.
+  " Operation has NO characteristics → clear EVERYTHING
   CLEAR: ls_disp-merknr,
          ls_disp-kurzt_char,
          ls_disp-pmethode,
@@ -14,24 +18,20 @@ IF lv_has_char = abap_false.
          ls_disp-steuerkz,
          ls_disp-ltextkz,
          ls_disp-char_ltxt,
-         ls_disp-tdformat,
-         ls_disp-gueltigab,
-         ls_disp-valid_to_c.
+         ls_disp-tdformat.
 
-  "--- Clear CI1–CI28 and CI1_TXT–CI28_TXT ---
+  " Clear CI01–CI28 and CIx_TXT
   DO 28 TIMES.
-    DATA(lv_idx) = sy-index.
+    ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_raw>).
+    ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
 
-    ASSIGN COMPONENT |CI{ lv_idx WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_raw>).
-    ASSIGN COMPONENT |CI{ lv_idx WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
-
-    IF <ci_raw> IS ASSIGNED.
-      CLEAR <ci_raw>.
-    ENDIF.
-
-    IF <ci_txt> IS ASSIGNED.
-      CLEAR <ci_txt>.
-    ENDIF.
+    IF <ci_raw> IS ASSIGNED. CLEAR <ci_raw>. ENDIF.
+    IF <ci_txt> IS ASSIGNED. CLEAR <ci_txt>. ENDIF.
   ENDDO.
-
 ENDIF.
+
+APPEND ls_disp TO gt_display.
+
+
+
+lo_alv->get_layout( )->apply_saved_layout( ).
