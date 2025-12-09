@@ -1,21 +1,101 @@
-"=========================================================
-" If operation has NO characteristics → clear all PLMK fields
-"=========================================================
-IF lv_has_char = abap_false.
+FORM get_ci_equivalent
+  USING    pv_index  TYPE i
+           pv_char   TYPE char1
+  CHANGING pv_result TYPE string.
 
-  CLEAR: ls_disp-merknr,
-         ls_disp-kurzt_char,
-         ls_disp-pmethode,
-         ls_disp-verwmerkm,
-         ls_disp-toleranzun,
-         ls_disp-toleranzob,
-         ls_disp-pruefeinh,
-         ls_disp-stichprver,
-         ls_disp-katalgart1,
-         ls_disp-auswmenge1,
-         ls_disp-steuerkz,
-         ls_disp-ltextkz,
-         ls_disp-char_ltxt,
-         ls_disp-tdformat.
+  CASE pv_index.
 
-ENDIF.
+    WHEN 1.
+      CASE pv_char.
+        WHEN 'X'.
+          pv_result = 'Quantitative'.
+        WHEN ' '.
+          pv_result = 'Qualitative'.
+        WHEN OTHERS.
+          pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 7.
+      CASE pv_char.
+        WHEN ' '.
+          pv_result = 'Scope not fixed'.
+        WHEN '='.
+          pv_result = 'Fixed scope'.
+        WHEN '<'.
+          pv_result = 'Smaller scope'.
+        WHEN '>'.
+          pv_result = 'Larger scope'.
+        WHEN OTHERS.
+          pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 9.
+      CASE pv_char.
+        WHEN ' '.
+          pv_result = 'Summarized recording'.
+        WHEN '+'.
+          pv_result = 'Single result'.
+        WHEN '-'.
+          pv_result = 'No recording'.
+        WHEN '*'.
+          pv_result = 'Classed recording'.
+        WHEN OTHERS.
+          pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 10.
+      CASE pv_char.
+        WHEN ' '.
+          pv_result = 'No documentation'.
+        WHEN '.'.
+          pv_result = 'Doc if rejected'.
+        WHEN '+'.
+          pv_result = 'Documentation required'.
+        WHEN OTHERS.
+          pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 11.
+      CASE pv_char.
+        WHEN 'X'.
+          pv_result = 'Required'.
+        WHEN ' '.
+          pv_result = 'Optional'.
+        WHEN '+'.
+          pv_result = 'After acceptance'.
+        WHEN '-'.
+          pv_result = 'After rejection'.
+        WHEN OTHERS.
+          pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 15.
+      CASE pv_char.
+        WHEN ' '.
+          pv_result = 'No formula'.
+        WHEN 'X'.
+          pv_result = 'Calculated characteristic'.
+        WHEN '1'.
+          pv_result = 'Input processing'.
+        WHEN OTHERS.
+          pv_result = pv_char.
+      ENDCASE.
+
+    WHEN 26.
+      CASE pv_char.
+        WHEN ' '.
+          pv_result = 'Print'.
+        WHEN 'X'.
+          pv_result = 'Do not print'.
+        WHEN '*'.
+          pv_result = 'Do not print (skip)'.
+        WHEN OTHERS.
+          pv_result = pv_char.
+      ENDCASE.
+
+    WHEN OTHERS.
+      pv_result = pv_char.
+
+  ENDCASE.
+
+ENDFORM.
