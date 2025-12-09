@@ -1,15 +1,21 @@
-DATA(lo_layout) = lo_alv->get_layout( ).
+"=========================================================
+" If operation has NO characteristics → clear all PLMK fields
+"=========================================================
+IF lv_has_char = abap_false.
 
-IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
-    lo_layout->set_key( value = 'DEFAULT' ).
-
-ELSEIF gv_show_char = abap_true  AND gv_show_ltxt = abap_false.
-    lo_layout->set_key( value = 'CHAR_ONLY' ).
-
-ELSEIF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
-    lo_layout->set_key( value = 'OP_LT_ONLY' ).
-
-ELSEIF gv_show_char = abap_true  AND gv_show_ltxt = abap_true.
-    lo_layout->set_key( value = 'BOTH_LT' ).
+  CLEAR: ls_disp-merknr,
+         ls_disp-kurzt_char,
+         ls_disp-pmethode,
+         ls_disp-verwmerkm,
+         ls_disp-toleranzun,
+         ls_disp-toleranzob,
+         ls_disp-pruefeinh,
+         ls_disp-stichprver,
+         ls_disp-katalgart1,
+         ls_disp-auswmenge1,
+         ls_disp-steuerkz,
+         ls_disp-ltextkz,
+         ls_disp-char_ltxt,
+         ls_disp-tdformat.
 
 ENDIF.
