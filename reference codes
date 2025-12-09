@@ -1,16 +1,15 @@
-DATA(lo_cols) = lo_alv->get_columns( ).
+DATA(lo_layout) = lo_alv->get_layout( ).
 
-TRY.
-    lo_cols->get_column( 'OP_LTXT' )->set_technical( abap_true ).
-  CATCH cx_salv_not_found.
-ENDTRY.
+IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
+    lo_layout->set_key( value = 'DEFAULT' ).
 
-TRY.
-    lo_cols->get_column( 'TDFORMAT' )->set_technical( abap_true ).
-  CATCH cx_salv_not_found.
-ENDTRY.
+ELSEIF gv_show_char = abap_true  AND gv_show_ltxt = abap_false.
+    lo_layout->set_key( value = 'CHAR_ONLY' ).
 
-TRY.
-    lo_cols->get_column( 'CHAR_LTXT' )->set_technical( abap_true ).
-  CATCH cx_salv_not_found.
-ENDTRY.
+ELSEIF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+    lo_layout->set_key( value = 'OP_LT_ONLY' ).
+
+ELSEIF gv_show_char = abap_true  AND gv_show_ltxt = abap_true.
+    lo_layout->set_key( value = 'BOTH_LT' ).
+
+ENDIF.
