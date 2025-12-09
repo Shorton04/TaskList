@@ -588,10 +588,6 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_exsta[] IS NOT INITIAL AND gs_base-execution_stage NOT IN so_exsta.
-      CONTINUE.
-    ENDIF.
-
     IF so_anlzo[] IS NOT INITIAL AND gs_base-anlzu_o NOT IN so_anlzo.
       CONTINUE.
     ENDIF.
@@ -727,6 +723,7 @@ MODULE status_0100 OUTPUT.
   "--------------------------------------------------------------
   PERFORM set_pfstatus_from_state.
   PERFORM set_title_from_state.
+  PERFORM set_visibility_for_selection.
 
 
   "--------------------------------------------------------------
@@ -753,6 +750,7 @@ MODULE status_0100 OUTPUT.
     " Apply column visibility rules BEFORE FIRST DISPLAY
     PERFORM set_column_visibility_by_state.
     PERFORM apply_column_order.
+    PERFORM set_visibility_for_selection.
 
     lo_alv->display( ).
 
@@ -761,6 +759,7 @@ MODULE status_0100 OUTPUT.
     " ALV already exists → update columns & refresh
     PERFORM set_column_visibility_by_state.
     PERFORM apply_column_order.
+    PERFORM set_visibility_for_selection.
 
     lo_alv->refresh( ).
 
@@ -826,6 +825,43 @@ FORM build_display.
 
       CLEAR ls_disp.
       MOVE-CORRESPONDING ls_base TO ls_disp.
+
+      IF lv_has_char = abap_false.
+
+        "--- Clear PLMK-related fields ---
+        CLEAR: ls_disp-merknr,
+               ls_disp-kurzt_char,
+               ls_disp-pmethode,
+               ls_disp-verwmerkm,
+               ls_disp-toleranzun,
+               ls_disp-toleranzob,
+               ls_disp-pruefeinh,
+               ls_disp-stichprver,
+               ls_disp-katalgart1,
+               ls_disp-auswmenge1,
+               ls_disp-steuerkz,
+               ls_disp-ltextkz,
+               ls_disp-char_ltxt,
+               ls_disp-tdformat.
+
+        "--- Clear CI1–CI28 and CI1_TXT–CI28_TXT ---
+        DO 28 TIMES.
+          DATA(lv_idx) = sy-index.
+
+          ASSIGN COMPONENT |CI{ lv_idx WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_raw>).
+          ASSIGN COMPONENT |CI{ lv_idx WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
+
+          IF <ci_raw> IS ASSIGNED.
+            CLEAR <ci_raw>.
+          ENDIF.
+
+          IF <ci_txt> IS ASSIGNED.
+            CLEAR <ci_txt>.
+          ENDIF.
+        ENDDO.
+
+      ENDIF.
+
       ls_disp-row_kind = 'O'.
       "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
       DATA: lv_tolun_p   TYPE p LENGTH 16 DECIMALS 9,
@@ -960,35 +996,39 @@ FORM fill_ci_fields
   ps_disp-ci27 = pv_steuerkz+26(1).
   ps_disp-ci28 = pv_steuerkz+27(1).
 
-  " Equivalent full text (CIx_TXT)
-  PERFORM get_ci_equivalent USING  1 ps_disp-ci1  CHANGING ps_disp-ci1_txt.
-  PERFORM get_ci_equivalent USING  2 ps_disp-ci2  CHANGING ps_disp-ci2_txt.
-  PERFORM get_ci_equivalent USING  3 ps_disp-ci3  CHANGING ps_disp-ci3_txt.
-  PERFORM get_ci_equivalent USING  4 ps_disp-ci4  CHANGING ps_disp-ci4_txt.
-  PERFORM get_ci_equivalent USING  5 ps_disp-ci5  CHANGING ps_disp-ci5_txt.
-  PERFORM get_ci_equivalent USING  6 ps_disp-ci6  CHANGING ps_disp-ci6_txt.
-  PERFORM get_ci_equivalent USING  7 ps_disp-ci7  CHANGING ps_disp-ci7_txt.
-  PERFORM get_ci_equivalent USING  8 ps_disp-ci8  CHANGING ps_disp-ci8_txt.
-  PERFORM get_ci_equivalent USING  9 ps_disp-ci9  CHANGING ps_disp-ci9_txt.
-  PERFORM get_ci_equivalent USING 10 ps_disp-ci10 CHANGING ps_disp-ci10_txt.
-  PERFORM get_ci_equivalent USING 11 ps_disp-ci11 CHANGING ps_disp-ci11_txt.
-  PERFORM get_ci_equivalent USING 12 ps_disp-ci12 CHANGING ps_disp-ci12_txt.
-  PERFORM get_ci_equivalent USING 13 ps_disp-ci13 CHANGING ps_disp-ci13_txt.
-  PERFORM get_ci_equivalent USING 14 ps_disp-ci14 CHANGING ps_disp-ci14_txt.
-  PERFORM get_ci_equivalent USING 15 ps_disp-ci15 CHANGING ps_disp-ci15_txt.
-  PERFORM get_ci_equivalent USING 16 ps_disp-ci16 CHANGING ps_disp-ci16_txt.
-  PERFORM get_ci_equivalent USING 17 ps_disp-ci17 CHANGING ps_disp-ci17_txt.
-  PERFORM get_ci_equivalent USING 18 ps_disp-ci18 CHANGING ps_disp-ci18_txt.
-  PERFORM get_ci_equivalent USING 19 ps_disp-ci19 CHANGING ps_disp-ci19_txt.
-  PERFORM get_ci_equivalent USING 20 ps_disp-ci20 CHANGING ps_disp-ci20_txt.
-  PERFORM get_ci_equivalent USING 21 ps_disp-ci21 CHANGING ps_disp-ci21_txt.
-  PERFORM get_ci_equivalent USING 22 ps_disp-ci22 CHANGING ps_disp-ci22_txt.
-  PERFORM get_ci_equivalent USING 23 ps_disp-ci23 CHANGING ps_disp-ci23_txt.
-  PERFORM get_ci_equivalent USING 24 ps_disp-ci24 CHANGING ps_disp-ci24_txt.
-  PERFORM get_ci_equivalent USING 25 ps_disp-ci25 CHANGING ps_disp-ci25_txt.
-  PERFORM get_ci_equivalent USING 26 ps_disp-ci26 CHANGING ps_disp-ci26_txt.
-  PERFORM get_ci_equivalent USING 27 ps_disp-ci27 CHANGING ps_disp-ci27_txt.
-  PERFORM get_ci_equivalent USING 28 ps_disp-ci28 CHANGING ps_disp-ci28_txt.
+  IF gv_show_char = abap_true.
+
+    " Equivalent full text (CIx_TXT)
+    PERFORM get_ci_equivalent USING  1 ps_disp-ci1  CHANGING ps_disp-ci1_txt.
+    PERFORM get_ci_equivalent USING  2 ps_disp-ci2  CHANGING ps_disp-ci2_txt.
+    PERFORM get_ci_equivalent USING  3 ps_disp-ci3  CHANGING ps_disp-ci3_txt.
+    PERFORM get_ci_equivalent USING  4 ps_disp-ci4  CHANGING ps_disp-ci4_txt.
+    PERFORM get_ci_equivalent USING  5 ps_disp-ci5  CHANGING ps_disp-ci5_txt.
+    PERFORM get_ci_equivalent USING  6 ps_disp-ci6  CHANGING ps_disp-ci6_txt.
+    PERFORM get_ci_equivalent USING  7 ps_disp-ci7  CHANGING ps_disp-ci7_txt.
+    PERFORM get_ci_equivalent USING  8 ps_disp-ci8  CHANGING ps_disp-ci8_txt.
+    PERFORM get_ci_equivalent USING  9 ps_disp-ci9  CHANGING ps_disp-ci9_txt.
+    PERFORM get_ci_equivalent USING 10 ps_disp-ci10 CHANGING ps_disp-ci10_txt.
+    PERFORM get_ci_equivalent USING 11 ps_disp-ci11 CHANGING ps_disp-ci11_txt.
+    PERFORM get_ci_equivalent USING 12 ps_disp-ci12 CHANGING ps_disp-ci12_txt.
+    PERFORM get_ci_equivalent USING 13 ps_disp-ci13 CHANGING ps_disp-ci13_txt.
+    PERFORM get_ci_equivalent USING 14 ps_disp-ci14 CHANGING ps_disp-ci14_txt.
+    PERFORM get_ci_equivalent USING 15 ps_disp-ci15 CHANGING ps_disp-ci15_txt.
+    PERFORM get_ci_equivalent USING 16 ps_disp-ci16 CHANGING ps_disp-ci16_txt.
+    PERFORM get_ci_equivalent USING 17 ps_disp-ci17 CHANGING ps_disp-ci17_txt.
+    PERFORM get_ci_equivalent USING 18 ps_disp-ci18 CHANGING ps_disp-ci18_txt.
+    PERFORM get_ci_equivalent USING 19 ps_disp-ci19 CHANGING ps_disp-ci19_txt.
+    PERFORM get_ci_equivalent USING 20 ps_disp-ci20 CHANGING ps_disp-ci20_txt.
+    PERFORM get_ci_equivalent USING 21 ps_disp-ci21 CHANGING ps_disp-ci21_txt.
+    PERFORM get_ci_equivalent USING 22 ps_disp-ci22 CHANGING ps_disp-ci22_txt.
+    PERFORM get_ci_equivalent USING 23 ps_disp-ci23 CHANGING ps_disp-ci23_txt.
+    PERFORM get_ci_equivalent USING 24 ps_disp-ci24 CHANGING ps_disp-ci24_txt.
+    PERFORM get_ci_equivalent USING 25 ps_disp-ci25 CHANGING ps_disp-ci25_txt.
+    PERFORM get_ci_equivalent USING 26 ps_disp-ci26 CHANGING ps_disp-ci26_txt.
+    PERFORM get_ci_equivalent USING 27 ps_disp-ci27 CHANGING ps_disp-ci27_txt.
+    PERFORM get_ci_equivalent USING 28 ps_disp-ci28 CHANGING ps_disp-ci28_txt.
+
+  ENDIF.
 
 ENDFORM.
 
@@ -1180,13 +1220,12 @@ FORM apply_column_order.
   "=====================================================
   IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
 
-    pos 'TDFORMAT'     5.   "FK
-    pos 'OP_LTXT'      6.   "Operation Long Text
-
-    pos 'ARBPL_O'      7.   "Work Center
-    pos 'ARBEI'        8.   "Work
-    pos 'LTXA1'        9.   "Description
-    pos 'PMETHODE'     10.  "Method
+    pos 'ARBPL_O'      5.   "Work Center
+    pos 'ARBEI'        6.   "Work
+    pos 'LTXA1'        7.   "Description
+    pos 'PMETHODE'     8.  "Method
+    pos 'TDFORMAT'     9.   "FK
+    pos 'OP_LTXT'      10.   "Operation Long Text
 
     "=====================================================
     " CASE 2: Show Long Text = TRUE AND Show Characteristics = TRUE
@@ -1214,100 +1253,103 @@ FORM get_ci_equivalent
            pv_char   TYPE char1
   CHANGING pv_result TYPE string.
 
-  CASE pv_index.
+  IF gv_show_char = abap_true.
 
-    WHEN 1.
-      CASE pv_char.
-        WHEN 'X'.
-          pv_result = 'Quantitative'.
-        WHEN ' '.
-          pv_result = 'Qualitative'.
-        WHEN OTHERS.
-          pv_result = pv_char.
-      ENDCASE.
+    CASE pv_index.
 
-    WHEN 7.
-      CASE pv_char.
-        WHEN ' '.
-          pv_result = 'Scope not fixed'.
-        WHEN '='.
-          pv_result = 'Fixed scope'.
-        WHEN '<'.
-          pv_result = 'Smaller scope'.
-        WHEN '>'.
-          pv_result = 'Larger scope'.
-        WHEN OTHERS.
-          pv_result = pv_char.
-      ENDCASE.
+      WHEN 1.
+        CASE pv_char.
+          WHEN 'X'.
+            pv_result = 'Quantitative'.
+          WHEN ' '.
+            pv_result = 'Qualitative'.
+          WHEN OTHERS.
+            pv_result = pv_char.
+        ENDCASE.
 
-    WHEN 9.
-      CASE pv_char.
-        WHEN ' '.
-          pv_result = 'Summarized recording'.
-        WHEN '+'.
-          pv_result = 'Single result'.
-        WHEN '-'.
-          pv_result = 'No recording'.
-        WHEN '*'.
-          pv_result = 'Classed recording'.
-        WHEN OTHERS.
-          pv_result = pv_char.
-      ENDCASE.
+      WHEN 7.
+        CASE pv_char.
+          WHEN ' '.
+            pv_result = 'Scope not fixed'.
+          WHEN '='.
+            pv_result = 'Fixed scope'.
+          WHEN '<'.
+            pv_result = 'Smaller scope'.
+          WHEN '>'.
+            pv_result = 'Larger scope'.
+          WHEN OTHERS.
+            pv_result = pv_char.
+        ENDCASE.
 
-    WHEN 10.
-      CASE pv_char.
-        WHEN ' '.
-          pv_result = 'No documentation'.
-        WHEN '.'.
-          pv_result = 'Doc if rejected'.
-        WHEN '+'.
-          pv_result = 'Documentation required'.
-        WHEN OTHERS.
-          pv_result = pv_char.
-      ENDCASE.
+      WHEN 9.
+        CASE pv_char.
+          WHEN ' '.
+            pv_result = 'Summarized recording'.
+          WHEN '+'.
+            pv_result = 'Single result'.
+          WHEN '-'.
+            pv_result = 'No recording'.
+          WHEN '*'.
+            pv_result = 'Classed recording'.
+          WHEN OTHERS.
+            pv_result = pv_char.
+        ENDCASE.
 
-    WHEN 11.
-      CASE pv_char.
-        WHEN 'X'.
-          pv_result = 'Required'.
-        WHEN ' '.
-          pv_result = 'Optional'.
-        WHEN '+'.
-          pv_result = 'After acceptance'.
-        WHEN '-'.
-          pv_result = 'After rejection'.
-        WHEN OTHERS.
-          pv_result = pv_char.
-      ENDCASE.
+      WHEN 10.
+        CASE pv_char.
+          WHEN ' '.
+            pv_result = 'No documentation'.
+          WHEN '.'.
+            pv_result = 'Doc if rejected'.
+          WHEN '+'.
+            pv_result = 'Documentation required'.
+          WHEN OTHERS.
+            pv_result = pv_char.
+        ENDCASE.
 
-    WHEN 15.
-      CASE pv_char.
-        WHEN ' '.
-          pv_result = 'No formula'.
-        WHEN 'X'.
-          pv_result = 'Calculated characteristic'.
-        WHEN '1'.
-          pv_result = 'Input processing'.
-        WHEN OTHERS.
-          pv_result = pv_char.
-      ENDCASE.
+      WHEN 11.
+        CASE pv_char.
+          WHEN 'X'.
+            pv_result = 'Required'.
+          WHEN ' '.
+            pv_result = 'Optional'.
+          WHEN '+'.
+            pv_result = 'After acceptance'.
+          WHEN '-'.
+            pv_result = 'After rejection'.
+          WHEN OTHERS.
+            pv_result = pv_char.
+        ENDCASE.
 
-    WHEN 26.
-      CASE pv_char.
-        WHEN ' '.
-          pv_result = 'Print'.
-        WHEN 'X'.
-          pv_result = 'Do not print'.
-        WHEN '*'.
-          pv_result = 'Do not print (skip)'.
-        WHEN OTHERS.
-          pv_result = pv_char.
-      ENDCASE.
+      WHEN 15.
+        CASE pv_char.
+          WHEN ' '.
+            pv_result = 'No formula'.
+          WHEN 'X'.
+            pv_result = 'Calculated characteristic'.
+          WHEN '1'.
+            pv_result = 'Input processing'.
+          WHEN OTHERS.
+            pv_result = pv_char.
+        ENDCASE.
 
-    WHEN OTHERS.
-      pv_result = pv_char.
+      WHEN 26.
+        CASE pv_char.
+          WHEN ' '.
+            pv_result = 'Print'.
+          WHEN 'X'.
+            pv_result = 'Do not print'.
+          WHEN '*'.
+            pv_result = 'Do not print (skip)'.
+          WHEN OTHERS.
+            pv_result = pv_char.
+        ENDCASE.
 
-  ENDCASE.
+      WHEN OTHERS.
+        pv_result = pv_char.
+
+    ENDCASE.
+  ENDIF.
 
 ENDFORM.
 
@@ -1652,8 +1694,6 @@ MODULE user_command_0100 INPUT.
       gv_show_char = abap_true.
       PERFORM get_data.
       PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      PERFORM apply_column_order.
       IF lo_alv IS BOUND.
         lo_alv->refresh( ).
       ENDIF.
@@ -1662,16 +1702,12 @@ MODULE user_command_0100 INPUT.
       gv_show_char = abap_false.
       PERFORM get_data.
       PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      PERFORM apply_column_order.
       IF lo_alv IS BOUND.
         lo_alv->refresh( ).
       ENDIF.
 
     WHEN 'REFRESH'.
       PERFORM build_display.
-      PERFORM set_column_visibility_by_state.
-      PERFORM apply_column_order.
       IF lo_alv IS BOUND.
         lo_alv->refresh( ).
       ENDIF.
@@ -1998,21 +2034,18 @@ FORM set_column_visibility_by_state.
 
   DATA(lo_cols) = lo_alv->get_columns( ).
 
-  " ------------------------------------------------------------------
-  " Operation Long Text visibility
-  " ------------------------------------------------------------------
-  DATA(lv_op_visible) = abap_false.
-  IF gv_ltext_level = 'OPER'.
-    lv_op_visible = abap_true.
-  ENDIF.
-
   TRY.
-      lo_cols->get_column( 'LT_FORMAT' )->set_visible( lv_op_visible ).
+      lo_cols->get_column( 'OP_LTXT' )->set_technical( abap_true ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
   TRY.
-      lo_cols->get_column( 'LT_TEXT' )->set_visible( lv_op_visible ).
+      lo_cols->get_column( 'TDFORMAT' )->set_technical( abap_true ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_cols->get_column( 'CHAR_LTXT' )->set_technical( abap_true ).
     CATCH cx_salv_not_found.
   ENDTRY.
 
@@ -2075,6 +2108,40 @@ FORM set_column_visibility_by_state.
     show_col 'TDFORMAT'.
     hide_col 'OP_LTXT'.
     show_col 'CHAR_LTXT'.
+
+  ENDIF.
+
+ENDFORM.
+
+FORM set_visibility_for_selection.
+
+  DATA(lo_cols) = lo_alv->get_columns( ).
+
+  "-----------------------------------------
+  " OPERATION LONG TEXT (old fields)
+  "-----------------------------------------
+  IF gv_show_ltxt = abap_true AND gv_show_char = abap_false.
+
+    TRY. lo_cols->get_column( 'TDFORMAT' )->set_visible( abap_true ). CATCH cx_salv_not_found. ENDTRY.
+    TRY. lo_cols->get_column( 'OP_LTXT' )->set_visible( abap_true ). CATCH cx_salv_not_found. ENDTRY.
+
+  ELSE.
+
+    TRY. lo_cols->get_column( 'TDFORMAT' )->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
+    TRY. lo_cols->get_column( 'OP_LTXT' )->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
+
+  ENDIF.
+
+  "-----------------------------------------
+  " CHARACTERISTIC LONG TEXT
+  "-----------------------------------------
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
+
+    TRY. lo_cols->get_column( 'CHAR_LTXT' )->set_visible( abap_true ). CATCH cx_salv_not_found. ENDTRY.
+
+  ELSE.
+
+    TRY. lo_cols->get_column( 'CHAR_LTXT' )->set_visible( abap_false ). CATCH cx_salv_not_found. ENDTRY.
 
   ENDIF.
 
