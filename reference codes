@@ -1,147 +1,3 @@
-FORM get_data.
-
-  DATA: lv_keydat TYPE plko-datuv.
-
-  CLEAR gt_base.
-  CLEAR gs_base.
-
-  lv_keydat = so_keydt.
-
-  "===================================================================*
-  "* FDS JOIN WITH ALL FIELDS REQUIRED IN TY_TASK_BASE
-  "===================================================================*
-  SELECT
-    "================ HEADER (PLKO) ==================================
-    plko~plnty,
-    plko~plnnr,
-    plko~plnal,
-    plko~datuv,
-    plko~valid_to           AS valid_to,
-    plko~werks,
-    plko~ktext,
-    plko~verwe,
-    plko~vagrp,
-    plko~statu              AS statu_h,
-    plko~anlzu              AS anlzu_h,
-    plko~strat,
-    plko~istru              AS istru_h,
-    plko~adpsp,
-    plko~slwbez,
-    plko~loekz              AS loekz_h,
-    plko~andat,
-    plko~annam,
-    plko~aedat,
-    plko~aenam,
-
-    "================ FLOC / EQUIP (TAPL/EAPL) =======================
-    tapl~tplnr,
-    eapl~equnr,
-
-    crhd_h~arbpl AS arbpl_h,
-
-    "================ OPERATION (PLPO) ===============================
-    plpo~plnkn,
-    plpo~zaehl,
-    plpo~datuv              AS datuv_o,
-    plpo~valid_to           AS valid_to_o,
-    plpo~vornr,
-    plpo~ltxa1,
-    plpo~steus,
-    crhd~arbpl              AS arbpl_o,
-    crhd~werks              AS werks_o,
-    plpo~ktsch,
-    plpo~arbei,
-    plpo~arbeh,
-    plpo~dauno,
-    plpo~daune,
-    plpo~kalid,
-    plpo~execution_stage,
-    plpo~anlzu              AS anlzu_o,
-    plpo~istru              AS istru_o,
-    plpo~larnt,
-    plpo~ebeln,
-    plpo~ebelp,
-    plpo~lifnr,
-    plpo~preis,
-    plpo~waers,
-    plpo~sakto,
-    plpo~ekorg,
-    plpo~ekgrp,
-    plpo~txtsp              AS txtsp_op,
-    plpo~loekz              AS loekz_o,
-
-    "================ CHARACTERISTIC (PLMK) ==========================
-    plmk~merknr,
-    plmk~verwmerkm,
-    plmk~kurztext           AS kurzt_char,
-    plmk~ltextkz,
-    plmk~toleranzun,
-    plmk~toleranzob,
-    plmk~pruefeinh,
-    plmk~stichprver,
-    plmk~pmethode,
-    plmk~katalgart1,
-    plmk~auswmenge1,
-    plmk~steuerkz,
-    plmk~loekz              AS loekz_c,
-    plmk~gueltigab          AS gueltigab,
-    plmk~valid_to_on_db     AS valid_to_c
-
-    FROM  plko
-      INNER JOIN plas
-        ON plas~plnty = plko~plnty
-       AND plas~plnnr = plko~plnnr
-       AND plas~plnal = plko~plnal
-       AND plas~loekz = ' '
-       AND plas~datuv <= @lv_keydat
-       AND plas~valid_to >= @lv_keydat
-
-      INNER JOIN plpo
-        ON plpo~plnty = plas~plnty
-       AND plpo~plnnr = plas~plnnr
-       AND plpo~plnkn = plas~plnkn
-       AND plpo~zaehl = plas~zaehl
-       AND plpo~loekz = ' '
-
-      LEFT JOIN plmk
-        ON plmk~plnty = plpo~plnty
-       AND plmk~plnnr = plpo~plnnr
-       AND plmk~plnkn = plpo~plnkn
-       "AND plmk~zaehl = plpo~zaehl
-       AND plmk~loekz = ' '
-
-      LEFT JOIN tapl
-        ON tapl~plnty = 'T'
-       AND tapl~plnnr = plko~plnnr
-       AND tapl~plnal = plko~plnal
-       AND tapl~loekz = ' '
-
-      LEFT JOIN eapl
-        ON eapl~plnty = 'E'
-       AND eapl~plnnr = plko~plnnr
-       AND eapl~plnal = plko~plnal
-       AND eapl~loekz = ' '
-
-      LEFT JOIN crhd
-        ON crhd~objid = plpo~arbid
-
-      LEFT JOIN crhd AS crhd_h
-      ON crhd_h~objid = plko~arbid
-      AND crhd_h~objty = plko~arbty
-
-    WHERE plko~loekz = ' '
-      AND plko~datuv <= @lv_keydat
-      AND plko~valid_to >= @lv_keydat
-      AND plpo~datuv <= @lv_keydat
-      AND plpo~valid_to >= @lv_keydat
-      AND ( plmk~gueltigab IS INITIAL OR plmk~gueltigab <= @lv_keydat )
-      AND ( plmk~valid_to_on_db IS INITIAL OR plmk~valid_to_on_db >= @lv_keydat )
-          INTO CORRESPONDING FIELDS OF TABLE @gt_base.
-
-
-  SORT gt_base BY plnty plnnr plnal vornr merknr.
-  DELETE ADJACENT DUPLICATES FROM gt_base COMPARING plnty plnnr plnal vornr merknr.
-
   "===================================================================*
   "* ABAP-LEVEL FILTERING BASED ON SELECTION-SCREEN
   "===================================================================*
@@ -306,11 +162,11 @@ FORM get_data.
       CONTINUE.
     ENDIF.
 
-    IF so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
+    IF gs_base-plnty = 'T' AND so_tplnr[] IS NOT INITIAL AND gs_base-tplnr NOT IN so_tplnr.
       CONTINUE.
     ENDIF.
 
-    IF so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
+    IF gs_base-plnty = 'E' AND so_equnr[] IS NOT INITIAL AND gs_base-equnr NOT IN so_equnr.
       CONTINUE.
     ENDIF.
 
@@ -443,29 +299,36 @@ FORM get_data.
     "===================================================================*
     "* CHARACTERISTIC FILTERS (ONLY IF SHOW CHAR IS ON)
     "===================================================================*
-
-    IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+    IF gv_show_char = abap_true AND gs_base-merknr IS INITIAL.
       CONTINUE.
     ENDIF.
 
-    IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
-      CONTINUE.
-    ENDIF.
+    IF gv_show_char = abap_true.
 
-    IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
-      CONTINUE.
-    ENDIF.
+      IF so_merkn[] IS NOT INITIAL AND gs_base-merknr NOT IN so_merkn.
+        CONTINUE.
+      ENDIF.
 
-    IF so_ltxtk = 'X' AND gs_base-txtsp_op IS INITIAL.
-      CONTINUE.
-    ENDIF.
+      IF so_mic[] IS NOT INITIAL AND gs_base-verwmerkm NOT IN so_mic.
+        CONTINUE.
+      ENDIF.
 
-    IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
-      CONTINUE.
-    ENDIF.
+      IF so_cktxt[] IS NOT INITIAL AND gs_base-kurzt_char NOT IN so_cktxt.
+        CONTINUE.
+      ENDIF.
 
-    IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
-      CONTINUE.
+      IF so_ltxtk = 'X' AND gs_base-txtsp_op IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      IF so_meth[] IS NOT INITIAL AND gs_base-pmethode NOT IN so_meth.
+        CONTINUE.
+      ENDIF.
+
+      IF so_sproc[] IS NOT INITIAL AND gs_base-stichprver NOT IN so_sproc.
+        CONTINUE.
+      ENDIF.
+
     ENDIF.
 
 
