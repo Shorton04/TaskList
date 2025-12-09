@@ -6,7 +6,6 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
         lv_indent TYPE string,
         ls_color  TYPE lvc_s_scol.
 
-
   CLEAR: lt_lines, lv_name.
 
   CONCATENATE sy-mandt
@@ -34,15 +33,14 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
 
   LOOP AT lt_lines INTO ls_line.
 
-
     CLEAR gs_display.
     MOVE-CORRESPONDING is_base TO gs_display.
 
-    gs_display-row_kind = 'L'.
-    gs_display-op_ltxt  = ls_line-tdline.
-    gs_display-tdformat = ls_line-tdformat.
+    gs_display-row_kind  = 'L'.
+    gs_display-lt_format = ls_line-tdformat. " <-- NEW FIELD
+    gs_display-lt_text   = ls_line-tdline.   " <-- NEW FIELD
 
-    CONCATENATE lv_indent gs_display-op_ltxt INTO gs_display-op_ltxt.
+    CONCATENATE lv_indent gs_display-lt_text INTO gs_display-lt_text.
 
     "GREEN color
     CLEAR ls_color.
@@ -56,14 +54,7 @@ FORM append_op_longtext USING is_base TYPE ty_task_base.
 ENDFORM.
 
 
-*&---------------------------------------------------------------------*
-*& Form APPEND_CHAR_LONGTEXT
-*&---------------------------------------------------------------------*
-*  - Appends characteristic long text lines as separate rows in GT_DISPLAY
-*    with:
-*       ROW_KIND  = 'L'
-*       CHAR_LTXT = text line
-*&---------------------------------------------------------------------*
+
 FORM append_char_longtext USING is_base TYPE ty_task_base.
 
   DATA: lt_lines  TYPE STANDARD TABLE OF tline,
@@ -71,7 +62,6 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
         lv_name   TYPE thead-tdname,
         lv_tmp    TYPE thead-tdname,
         lv_indent TYPE string,
-        lv_merknr TYPE char08,
         ls_color  TYPE lvc_s_scol.
 
   CLEAR: lt_lines, lv_name, lv_tmp.
@@ -79,8 +69,6 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
   IF is_base-ltextkz IS INITIAL.
     RETURN.
   ENDIF.
-
-  lv_merknr = is_base-merknr.
 
   CONCATENATE sy-mandt
               is_base-plnty
@@ -109,17 +97,14 @@ FORM append_char_longtext USING is_base TYPE ty_task_base.
 
   LOOP AT lt_lines INTO ls_line.
 
-
     CLEAR gs_display.
     MOVE-CORRESPONDING is_base TO gs_display.
 
-    gs_display-row_kind  = 'L'.
-    gs_display-char_ltxt = ls_line-tdline.
-    gs_display-tdformat  = ls_line-tdformat.
+    gs_display-row_kind     = 'L'.
+    gs_display-ch_lt_format = ls_line-tdformat. " <-- NEW FIELD
+    gs_display-ch_lt_text   = ls_line-tdline.   " <-- NEW FIELD
 
-    CONCATENATE lv_indent gs_display-char_ltxt INTO gs_display-char_ltxt.
-
-    CLEAR gs_display-op_ltxt.
+    CONCATENATE lv_indent gs_display-ch_lt_text INTO gs_display-ch_lt_text.
 
     "GREEN color
     CLEAR ls_color.
