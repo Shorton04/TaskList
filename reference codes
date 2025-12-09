@@ -1,42 +1,248 @@
+START-OF-SELECTION.
+
+  "---------------------------------------
+  " Initialize display flags from selection
+  "---------------------------------------
+  gv_show_char = abap_false.
+  gv_show_ltxt = abap_false.
+
+  IF p_showc = 'X'.
+    gv_show_char = abap_true.
+  ENDIF.
+
+  IF p_showl = 'X'.
+    gv_show_ltxt = abap_true.
+  ENDIF.
+
+  "Long text filter entered
+  IF so_opltx IS NOT INITIAL.
+    gv_show_ltxt = abap_true.
+  ENDIF.
+
+  "Char long text filter entered
+  IF so_chltx IS NOT INITIAL.
+    gv_show_char = abap_true.
+    gv_show_ltxt = abap_true.
+  ENDIF.
+
+  PERFORM evaluate_display_mode.   " <— VERY IMPORTANT
+  PERFORM build_display.           " <— Build GT_DISPLAY BEFORE ALV exists
+
+  CALL SCREEN 0100.
+
+
+
+MODULE status_0100 OUTPUT.
+
+  " PF-Status and Title update
+  PERFORM set_pfstatus_from_state.
+  PERFORM set_title_from_state.
+
+  " SALV creation or refresh
+  IF go_container IS INITIAL.
+
+    CREATE OBJECT go_container
+      EXPORTING container_name = 'CC_ALV'.
+
+    cl_salv_table=>factory(
+      EXPORTING r_container  = go_container
+      IMPORTING r_salv_table = lo_alv
+      CHANGING  t_table      = gt_display ).
+
+    " MUST be before the first DISPLAY
+    PERFORM set_column_visibility_by_state.
+    PERFORM apply_column_order.
+
+    lo_alv->display( ).
+
+  ELSE.
+
+    PERFORM set_column_visibility_by_state.
+    PERFORM apply_column_order.
+
+    lo_alv->refresh( ).
+
+  ENDIF.
+
+ENDMODULE.
+
+
+
+
+FORM evaluate_display_mode.
+
+  CLEAR gv_ltext_level.
+
+  " Case 1 — Operation LT only
+  IF gv_show_char = abap_false
+     AND gv_show_ltxt = abap_true.
+    gv_ltext_level = 'OPER'.
+  ENDIF.
+
+  " Case 2 — Characteristics only
+  IF gv_show_char = abap_true
+     AND gv_show_ltxt = abap_false.
+    gv_ltext_level = ''.
+  ENDIF.
+
+  " Case 3 — Characteristics + char long text
+  IF gv_show_char = abap_true
+     AND gv_show_ltxt = abap_true.
+    gv_ltext_level = 'CHAR'.
+  ENDIF.
+
+ENDFORM.
+
+
+
 FORM set_column_visibility_by_state.
 
   DATA(lo_cols) = lo_alv->get_columns( ).
 
-  " ------------------------------------------------------------------
-  " Operation Long Text visibility
-  " ------------------------------------------------------------------
+  "------------------------------------------
+  " Operation Long Text columns
+  "------------------------------------------
   DATA(lv_op_visible) = abap_false.
   IF gv_ltext_level = 'OPER'.
     lv_op_visible = abap_true.
   ENDIF.
 
   TRY.
-      lo_cols->get_column( 'LT_FORMAT' )->set_visible( lv_op_visible ).
-    CATCH cx_salv_not_found.
+    lo_cols->get_column( 'LT_FORMAT' )->set_visible( lv_op_visible ).
+  CATCH cx_salv_not_found.
   ENDTRY.
 
   TRY.
-      lo_cols->get_column( 'LT_TEXT' )->set_visible( lv_op_visible ).
-    CATCH cx_salv_not_found.
+    lo_cols->get_column( 'LT_TEXT' )->set_visible( lv_op_visible ).
+  CATCH cx_salv_not_found.
   ENDTRY.
 
 
-  " ------------------------------------------------------------------
-  " Characteristic Long Text visibility
-  " ------------------------------------------------------------------
+  "------------------------------------------
+  " Characteristic Long Text columns
+  "------------------------------------------
   DATA(lv_char_visible) = abap_false.
   IF gv_ltext_level = 'CHAR'.
     lv_char_visible = abap_true.
   ENDIF.
 
   TRY.
-      lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( lv_char_visible ).
-    CATCH cx_salv_not_found.
+    lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( lv_char_visible ).
+  CATCH cx_salv_not_found.
   ENDTRY.
 
   TRY.
-      lo_cols->get_column( 'CH_LT_TEXT' )->set_visible( lv_char_visible ).
-    CATCH cx_salv_not_found.
+    lo_cols->get_column( 'CH_LT_TEXT' )->set_visible( lv_char_visible ).
+  CATCH cx_salv_not_found.
   ENDTRY.
+
+ENDFORM.
+
+
+
+
+FORM build_display.
+
+  CLEAR gt_display.
+
+  LOOP AT gt_operations INTO DATA(ls_plpo).
+
+    "----------------------------------------------------------
+    " 1. Build base fields for both operation and characteristic
+    "----------------------------------------------------------
+    CLEAR ls_output.
+    MOVE-CORRESPONDING ls_plko        TO ls_output.
+    MOVE-CORRESPONDING ls_plpo        TO ls_output.
+    MOVE-CORRESPONDING ls_header_join TO ls_output.   " tplnr, equnr, etc.
+
+    "==========================================================
+    " 2. OPERATION ROW (always shown)
+    "==========================================================
+    ls_output-row_kind = 'O'.
+    APPEND ls_output TO gt_display.
+
+    "==========================================================
+    " 3. OPERATION LONG TEXT ROWS  (SHOW CHAR = FALSE, SHOW LT = TRUE)
+    "==========================================================
+    IF gv_ltext_level = 'OPER'.
+
+      DATA(lt_optext) = VALUE tt_tline( ).
+      PERFORM read_operation_longtext USING ls_plpo CHANGING lt_optext.
+
+      LOOP AT lt_optext INTO DATA(ls_line_op).
+
+        CLEAR ls_output.
+        MOVE-CORRESPONDING ls_plko        TO ls_output.
+        MOVE-CORRESPONDING ls_plpo        TO ls_output.
+        MOVE-CORRESPONDING ls_header_join TO ls_output.
+
+        ls_output-row_kind  = 'L'.
+        ls_output-lt_format = ls_line_op-tdformat.
+        ls_output-lt_text   = ls_line_op-tdline.
+
+        APPEND ls_output TO gt_display.
+
+      ENDLOOP.
+
+    ENDIF.
+
+
+    "==========================================================
+    " 4. CHARACTERISTICS (SHOW CHAR = TRUE)
+    "==========================================================
+    IF gv_show_char = abap_true.
+
+      LOOP AT gt_characteristics INTO DATA(ls_plmk)
+        WHERE plnty = ls_plpo-plnty
+          AND plnnr = ls_plpo-plnnr
+          AND plnkn = ls_plpo-plnkn
+          AND zaehl = ls_plpo-zaehl.
+
+        "------------------------------------------
+        " Characteristic summary row
+        "------------------------------------------
+        CLEAR ls_output.
+        MOVE-CORRESPONDING ls_plko        TO ls_output.
+        MOVE-CORRESPONDING ls_plpo        TO ls_output.
+        MOVE-CORRESPONDING ls_header_join TO ls_output.
+        MOVE-CORRESPONDING ls_plmk        TO ls_output.
+
+        ls_output-row_kind = 'C'.
+        APPEND ls_output TO gt_display.
+
+
+        "======================================================
+        " 5. CHARACTERISTIC LONG TEXT (SHOW CHAR + SHOW LT)
+        "======================================================
+        IF gv_ltext_level = 'CHAR' AND ls_plmk-ltextkz = 'X'.
+
+          DATA(lt_chtext) = VALUE tt_tline( ).
+          PERFORM read_characteristic_longtext
+                  USING ls_plmk
+                  CHANGING lt_chtext.
+
+          LOOP AT lt_chtext INTO DATA(ls_line_char).
+
+            CLEAR ls_output.
+            MOVE-CORRESPONDING ls_plko        TO ls_output.
+            MOVE-CORRESPONDING ls_plpo        TO ls_output.
+            MOVE-CORRESPONDING ls_header_join TO ls_output.
+            MOVE-CORRESPONDING ls_plmk        TO ls_output.
+
+            ls_output-row_kind     = 'L'.
+            ls_output-ch_lt_format = ls_line_char-tdformat.
+            ls_output-ch_lt_text   = ls_line_char-tdline.
+
+            APPEND ls_output TO gt_display.
+
+          ENDLOOP.
+
+        ENDIF.
+
+      ENDLOOP.
+
+    ENDIF.
+
+  ENDLOOP.
 
 ENDFORM.
