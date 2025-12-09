@@ -1,121 +1,27 @@
-FORM evaluate_display_mode.
-
-  "Default state
-  gv_ltext_level = ''.
-
-  "CASE 1: Show operation long text only
-  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
-    gv_ltext_level = 'OPER'.
-  ENDIF.
-
-  "CASE 2: Show characteristics without long text
-  IF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
-    gv_ltext_level = ''.
-  ENDIF.
-
-  "CASE 3: Show characteristics + characteristic long text
-  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
-    gv_ltext_level = 'CHAR'.
-  ENDIF.
-
-ENDFORM.
-
-
-
-
 FORM set_column_visibility_by_state.
 
   DATA(lo_cols) = lo_alv->get_columns( ).
 
-  "Operation long text columns
-  lo_cols->get_column( 'LT_FORMAT' )->set_visible( gv_ltext_level = 'OPER' ).
-  lo_cols->get_column( 'LT_TEXT'   )->set_visible( gv_ltext_level = 'OPER' ).
+  TRY.
+      " Operation long text
+      lo_cols->get_column( 'LT_FORMAT' )->set_visible( gv_ltext_level = 'OPER' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
-  "Characteristic long text columns
-  lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( gv_ltext_level = 'CHAR' ).
-  lo_cols->get_column( 'CH_LT_TEXT'   )->set_visible( gv_ltext_level = 'CHAR' ).
+  TRY.
+      lo_cols->get_column( 'LT_TEXT' )->set_visible( gv_ltext_level = 'OPER' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      " Characteristic long text
+      lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( gv_ltext_level = 'CHAR' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
+
+  TRY.
+      lo_cols->get_column( 'CH_LT_TEXT' )->set_visible( gv_ltext_level = 'CHAR' ).
+    CATCH cx_salv_not_found.
+  ENDTRY.
 
 ENDFORM.
-
-
-
-
-MODULE status_0100 OUTPUT.
-
-  "--------------------------------------------------------------
-  " 1. Initialize state from selection screen
-  "--------------------------------------------------------------
-  gv_show_char = abap_false.
-  gv_show_ltxt = abap_false.
-
-  " Show Characteristics flag
-  IF p_showc = 'X'.
-    gv_show_char = abap_true.
-  ENDIF.
-
-  " Show Long Text flag
-  IF p_showl = 'X'.
-    gv_show_ltxt = abap_true.
-  ENDIF.
-
-  " Long text filters force LT mode
-  IF so_opltx IS NOT INITIAL.
-    gv_show_ltxt = abap_true.
-  ENDIF.
-
-  " Characteristic long text filter forces both char + LT
-  IF so_chltx IS NOT INITIAL.
-    gv_show_char = abap_true.
-    gv_show_ltxt = abap_true.
-  ENDIF.
-
-  "--------------------------------------------------------------
-  " 2. Evaluate display mode (operation LT / char only / char LT)
-  "--------------------------------------------------------------
-  PERFORM evaluate_display_mode.  " <-- sets gv_ltext_level = OPER | CHAR | ''
-
-
-  "--------------------------------------------------------------
-  " 3. PF-STATUS and Title update based on mode
-  "--------------------------------------------------------------
-  PERFORM set_pfstatus_from_state.
-  PERFORM set_title_from_state.
-
-
-  "--------------------------------------------------------------
-  " 4. Always rebuild the GT_DISPLAY internal table
-  "--------------------------------------------------------------
-  PERFORM build_display.
-
-
-  "--------------------------------------------------------------
-  " 5. Initialize ALV or refresh existing one
-  "--------------------------------------------------------------
-  IF go_container IS INITIAL.
-
-    " First time creation
-    CREATE OBJECT go_container
-      EXPORTING container_name = 'CC_ALV'.
-
-    cl_salv_table=>factory(
-      EXPORTING r_container  = go_container
-      IMPORTING r_salv_table = lo_alv
-      CHANGING  t_table      = gt_display ).
-
-    " Apply column visibility rules BEFORE FIRST DISPLAY
-    PERFORM set_column_visibility_by_state.
-    PERFORM apply_column_order.
-
-    lo_alv->display( ).
-
-  ELSE.
-
-    " ALV already exists → update columns & refresh
-    PERFORM set_column_visibility_by_state.
-    PERFORM apply_column_order.
-
-    lo_alv->refresh( ).
-
-  ENDIF.
-
-ENDMODULE.
