@@ -1,31 +1,33 @@
-MODULE status_0100 OUTPUT.
+START-OF-SELECTION.
 
-  "----------------------------------------------
-  " Set correct PF-STATUS based on state
-  "----------------------------------------------
-  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
-    SET PF-STATUS 'ZSTAT_CHAR_LTXT'.
+  " Read selection screen flags
+  gv_show_char = abap_false.
+  gv_show_ltxt = abap_false.
 
-  ELSEIF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
-    SET PF-STATUS 'ZSTAT_CHAR'.
+  IF p_showc = 'X'. gv_show_char = abap_true. ENDIF.
+  IF p_showl = 'X'. gv_show_ltxt = abap_true. ENDIF.
 
-  ELSEIF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
-    SET PF-STATUS 'ZSTAT_LTXT'.
-
-  ELSE.
-    SET PF-STATUS 'ZSTAT_DEFAULT'.
+  IF so_opltx IS NOT INITIAL.
+    gv_show_ltxt = abap_true.
   ENDIF.
 
+  IF so_chltx IS NOT INITIAL.
+    gv_show_char = abap_true.
+    gv_show_ltxt = abap_true.
+  ENDIF.
 
-  "----------------------------------------------
-  " Title (optional)
-  "----------------------------------------------
+  PERFORM evaluate_display_mode.
+  PERFORM build_display.
+
+  CALL SCREEN 0100.
+
+
+
+MODULE status_0100 OUTPUT.
+
+  PERFORM set_pfstatus_from_state.
   SET TITLEBAR 'TASKLIST'.
 
-
-  "----------------------------------------------
-  " Create ALV (first time) OR refresh
-  "----------------------------------------------
   IF go_container IS INITIAL.
 
     CREATE OBJECT go_container
@@ -51,3 +53,173 @@ MODULE status_0100 OUTPUT.
   ENDIF.
 
 ENDMODULE.
+
+
+
+
+FORM set_pfstatus_from_state.
+
+  DATA lv_pf TYPE sypfkey.
+
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_false.
+    lv_pf = 'ZSALV_BOTH_HIDE'.
+
+  ELSEIF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+    lv_pf = 'ZSALV_LTXT_SHOW'.
+
+  ELSEIF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
+    lv_pf = 'ZSALV_CLIST_ONLY'.
+
+  ELSE.
+    lv_pf = 'ZSALV_CLIST_LTXT'.
+  ENDIF.
+
+  " Apply Screen PF-STATUS (safe for SALV)
+  SET PF-STATUS lv_pf.
+
+ENDFORM.
+
+
+
+
+FORM evaluate_display_mode.
+
+  CLEAR gv_ltext_level.
+
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+    gv_ltext_level = 'OPER'.
+  ENDIF.
+
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
+    gv_ltext_level = ''.
+  ENDIF.
+
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
+    gv_ltext_level = 'CHAR'.
+  ENDIF.
+
+ENDFORM.
+
+
+
+
+FORM set_column_visibility_by_state.
+
+  DATA(lo_cols) = lo_alv->get_columns( ).
+
+  " Operation Long Text
+  DATA(lv_op_visible) = abap_false.
+  IF gv_ltext_level = 'OPER'.
+    lv_op_visible = abap_true.
+  ENDIF.
+
+  TRY. lo_cols->get_column( 'LT_FORMAT' )->set_visible( lv_op_visible ). CATCH cx_salv_not_found. ENDTRY.
+  TRY. lo_cols->get_column( 'LT_TEXT'   )->set_visible( lv_op_visible ). CATCH cx_salv_not_found. ENDTRY.
+
+  " Characteristic Long Text
+  DATA(lv_char_visible) = abap_false.
+  IF gv_ltext_level = 'CHAR'.
+    lv_char_visible = abap_true.
+  ENDIF.
+
+  TRY. lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( lv_char_visible ). CATCH cx_salv_not_found. ENDTRY.
+  TRY. lo_cols->get_column( 'CH_LT_TEXT'   )->set_visible( lv_char_visible ). CATCH cx_salv_not_found. ENDTRY.
+
+ENDFORM.
+
+
+
+FORM append_op_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines TYPE STANDARD TABLE OF tline,
+        ls_line  TYPE tline,
+        lv_name  TYPE thead-tdname,
+        ls_color TYPE lvc_s_scol.
+
+  CONCATENATE sy-mandt
+              is_base-plnty
+              is_base-plnnr
+              is_base-plnkn
+              is_base-zaehl
+         INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING client = sy-mandt id = 'PLPO' language = sy-langu
+              name = lv_name object = 'ROUTING'
+    TABLES    lines = lt_lines.
+
+  IF lt_lines IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_lines INTO ls_line.
+
+    CLEAR gs_display.
+    MOVE-CORRESPONDING is_base TO gs_display.
+
+    gs_display-row_kind  = 'L'.
+    gs_display-lt_format = ls_line-tdformat.
+    gs_display-lt_text   = ls_line-tdline.
+
+    APPEND gs_display TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
+
+
+
+
+FORM build_display.
+
+  CLEAR gt_display.
+
+  SORT gt_base BY plnty plnnr plnal vornr merknr.
+
+  DATA lv_last_vornr TYPE vornr.
+  DATA lv_last_merknr TYPE merknr.
+
+  LOOP AT gt_base INTO DATA(ls_base).
+
+    " Operation row
+    IF ls_base-vornr <> lv_last_vornr.
+
+      CLEAR gs_display.
+      MOVE-CORRESPONDING ls_base TO gs_display.
+      gs_display-row_kind = 'O'.
+
+      APPEND gs_display TO gt_display.
+
+      lv_last_vornr = ls_base-vornr.
+
+      " OP LT only when CHAR=FALSE and LTXT=TRUE
+      IF gv_ltext_level = 'OPER'.
+        PERFORM append_op_longtext USING ls_base.
+      ENDIF.
+
+    ENDIF.
+
+    " Characteristic rows
+    IF gv_show_char = abap_true AND ls_base-merknr IS NOT INITIAL.
+
+      IF ls_base-merknr <> lv_last_merknr.
+
+        CLEAR gs_display.
+        MOVE-CORRESPONDING ls_base TO gs_display.
+        gs_display-row_kind = 'C'.
+        APPEND gs_display TO gt_display.
+
+        lv_last_merknr = ls_base-merknr.
+
+      ENDIF.
+
+      " CHAR LT only when gv_ltext_level = 'CHAR'
+      IF gv_ltext_level = 'CHAR'.
+        PERFORM append_char_longtext USING ls_base.
+      ENDIF.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
