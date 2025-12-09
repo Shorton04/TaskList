@@ -1,20 +1,42 @@
-IF gv_show_char = abap_true.
+FORM evaluate_display_mode.
 
-  DATA(lv_has_char) = abap_false.
+  "Default state
+  gv_ltext_level = ''.
 
-  LOOP AT gt_base TRANSPORTING NO FIELDS
-       WHERE plnty  = ls_base-plnty
-         AND plnnr  = ls_base-plnnr
-         AND plnal  = ls_base-plnal
-         AND vornr  = ls_base-vornr
-         AND merknr IS NOT INITIAL.
-
-    lv_has_char = abap_true.
-    EXIT.
-  ENDLOOP.
-
-  IF lv_has_char = abap_false.
-    CONTINUE.  "👉 Skip this operation — no characteristics
+  "CASE 1: Show operation long text only
+  IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
+    gv_ltext_level = 'OPER'.
   ENDIF.
 
-ENDIF.
+  "CASE 2: Show characteristics without long text
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_false.
+    gv_ltext_level = ''.
+  ENDIF.
+
+  "CASE 3: Show characteristics + characteristic long text
+  IF gv_show_char = abap_true AND gv_show_ltxt = abap_true.
+    gv_ltext_level = 'CHAR'.
+  ENDIF.
+
+ENDFORM.
+
+
+
+
+FORM set_column_visibility_by_state.
+
+  DATA(lo_cols) = lo_alv->get_columns( ).
+
+  "Operation long text columns
+  lo_cols->get_column( 'LT_FORMAT' )->set_visible( gv_ltext_level = 'OPER' ).
+  lo_cols->get_column( 'LT_TEXT'   )->set_visible( gv_ltext_level = 'OPER' ).
+
+  "Characteristic long text columns
+  lo_cols->get_column( 'CH_LT_FORMAT' )->set_visible( gv_ltext_level = 'CHAR' ).
+  lo_cols->get_column( 'CH_LT_TEXT'   )->set_visible( gv_ltext_level = 'CHAR' ).
+
+ENDFORM.
+
+
+
+
