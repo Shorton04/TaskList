@@ -7,7 +7,8 @@ FORM build_display.
         lv_last_plnal  TYPE plnal,
         lv_last_vornr  TYPE plnkn,
         lv_last_merknr TYPE merknr,
-        ls_color       TYPE lvc_s_scol.
+        ls_color       TYPE lvc_s_scol,
+        lv_has_char    TYPE abap_bool.
 
   CLEAR: gt_display,
          lv_last_plnty,
@@ -20,141 +21,78 @@ FORM build_display.
 
   LOOP AT gt_base INTO ls_base.
 
-    " NEW OPERATION GROUP
+    "===========================================================
+    "  NEW OPERATION ROW
+    "===========================================================
     IF ls_base-vornr <> lv_last_vornr
- OR ls_base-plnnr <> lv_last_plnnr
- OR ls_base-plnal <> lv_last_plnal
- OR ls_base-plnty <> lv_last_plnty.
+    OR ls_base-plnnr <> lv_last_plnnr
+    OR ls_base-plnal <> lv_last_plnal
+    OR ls_base-plnty <> lv_last_plnty.
 
-      "============================================
-      " SKIP OPERATION ROWS THAT HAVE NO CHARACTERISTICS
-      " WHEN SHOW_CHAR = TRUE
-      "============================================
-      IF gv_show_char = abap_true.
+      "Check if this operation actually has characteristics
+      lv_has_char = abap_false.
+      LOOP AT gt_base TRANSPORTING NO FIELDS
+           WHERE plnty = ls_base-plnty
+             AND plnnr = ls_base-plnnr
+             AND plnal = ls_base-plnal
+             AND vornr = ls_base-vornr
+             AND merknr IS NOT INITIAL.
+        lv_has_char = abap_true.
+        EXIT.
+      ENDLOOP.
 
-        DATA(lv_has_char) = abap_false.
-
-        LOOP AT gt_base TRANSPORTING NO FIELDS
-             WHERE plnty  = ls_base-plnty
-               AND plnnr  = ls_base-plnnr
-               AND plnal  = ls_base-plnal
-               AND vornr  = ls_base-vornr
-               AND merknr IS NOT INITIAL.
-
-          lv_has_char = abap_true.
-          EXIT.
-        ENDLOOP.
-
-        IF lv_has_char = abap_false.
-          CONTINUE.  "Skip this operation — no characteristics
-        ENDIF.
-
+      "If user wants characteristics only → skip ops without characteristics
+      IF gv_show_char = abap_true AND lv_has_char = abap_false.
+        CONTINUE.
       ENDIF.
 
+      "Build OPERATION row
       CLEAR ls_disp.
       MOVE-CORRESPONDING ls_base TO ls_disp.
-
-      IF lv_has_char = abap_true AND ls_disp-row_kind = 'C'.
-        PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
-      ELSE.
-        " Operation has NO characteristics → clear EVERYTHING
-        CLEAR: ls_disp-merknr,
-               ls_disp-kurzt_char,
-               ls_disp-pmethode,
-               ls_disp-verwmerkm,
-               ls_disp-toleranzun,
-               ls_disp-toleranzob,
-               ls_disp-pruefeinh,
-               ls_disp-stichprver,
-               ls_disp-katalgart1,
-               ls_disp-auswmenge1,
-               ls_disp-steuerkz,
-               ls_disp-ltextkz,
-               ls_disp-char_ltxt,
-               ls_disp-tdformat.
-
-        " Clear CI01–CI28 and CIx_TXT
-        DO 28 TIMES.
-          ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_raw>).
-          ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
-
-          IF <ci_raw> IS ASSIGNED. CLEAR <ci_raw>. ENDIF.
-          IF <ci_txt> IS ASSIGNED. CLEAR <ci_txt>. ENDIF.
-        ENDDO.
-      ENDIF.
-
-      IF ls_disp-row_kind = 'O'.  " operation row → must not show CI fields
-
-        " Clear characteristic header fields
-        CLEAR: ls_disp-merknr,
-               ls_disp-kurzt_char,
-               ls_disp-pmethode,
-               ls_disp-verwmerkm,
-               ls_disp-toleranzun,
-               ls_disp-toleranzob,
-               ls_disp-pruefeinh,
-               ls_disp-stichprver,
-               ls_disp-katalgart1,
-               ls_disp-auswmenge1,
-               ls_disp-steuerkz,
-               ls_disp-ltextkz,
-               ls_disp-char_ltxt,
-               ls_disp-tdformat.
-
-        " Clear CI01–CI28 + CIxx_TXT
-        DO 28 TIMES.
-          ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<fs_ci_raw>).
-          ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<fs_ci_txt>).
-
-          IF <fs_ci_raw> IS ASSIGNED. CLEAR <fs_ci_raw>. ENDIF.
-          IF <fs_ci_txt> IS ASSIGNED. CLEAR <fs_ci_txt>. ENDIF.
-        ENDDO.
-
-      ENDIF.
-
       ls_disp-row_kind = 'O'.
-      "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
-      DATA: lv_tolun_p   TYPE p LENGTH 16 DECIMALS 9,
-            lv_tolob_p   TYPE p LENGTH 16 DECIMALS 9,
-            lv_tolun_txt TYPE c LENGTH 20,
-            lv_tolob_txt TYPE c LENGTH 20.
 
-      CLEAR: lv_tolun_p, lv_tolob_p, lv_tolun_txt, lv_tolob_txt.
+      "============== REMOVE ALL CI FIELDS FROM OP ROW ==============
+      CLEAR: ls_disp-merknr,
+             ls_disp-kurzt_char,
+             ls_disp-pmethode,
+             ls_disp-verwmerkm,
+             ls_disp-toleranzun,
+             ls_disp-toleranzob,
+             ls_disp-pruefeinh,
+             ls_disp-stichprver,
+             ls_disp-katalgart1,
+             ls_disp-auswmenge1,
+             ls_disp-steuerkz,
+             ls_disp-ltextkz,
+             ls_disp-char_ltxt,
+             ls_disp-tdformat.
 
-      "--- Lower Spec Limit
-      IF ls_base-toleranzun IS NOT INITIAL.
-        lv_tolun_p = ls_base-toleranzun.
-        WRITE lv_tolun_p TO lv_tolun_txt DECIMALS 9.
-        ls_disp-toleranzun = lv_tolun_txt.
-      ENDIF.
-
-      "--- Upper Spec Limit
-      IF ls_base-toleranzob IS NOT INITIAL.
-        lv_tolob_p = ls_base-toleranzob.
-        WRITE lv_tolob_p TO lv_tolob_txt DECIMALS 9.
-        ls_disp-toleranzob = lv_tolob_txt.
-      ENDIF.
-
-      " Fill CI fields here
-      PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+      DO 28 TIMES.
+        ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<raw>).
+        ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<txt>).
+        IF <raw> IS ASSIGNED. CLEAR <raw>. ENDIF.
+        IF <txt> IS ASSIGNED. CLEAR <txt>. ENDIF.
+      ENDDO.
 
       APPEND ls_disp TO gt_display.
 
-      lv_last_plnty = ls_base-plnty.
-      lv_last_plnnr = ls_base-plnnr.
-      lv_last_plnal = ls_base-plnal.
-      lv_last_vornr = ls_base-vornr.
-
-      CLEAR lv_last_merknr.
-      "Operation long text (if char OFF and longtext ON)
+      "Append OP long text rows only when char OFF + long text ON
       IF gv_show_char = abap_false AND gv_show_ltxt = abap_true.
         PERFORM append_op_longtext USING ls_base.
       ENDIF.
 
+      lv_last_plnty = ls_base-plnty.
+      lv_last_plnnr = ls_base-plnnr;
+      lv_last_plnal = ls_base-plnal.
+      lv_last_vornr = ls_base-vornr.
+      CLEAR lv_last_merknr.
 
     ENDIF.
 
-    " CHARACTERISTIC ROW
+
+    "===========================================================
+    "  CHARACTERISTIC ROWS
+    "===========================================================
     IF gv_show_char = abap_true
     AND ls_base-merknr IS NOT INITIAL.
 
@@ -164,7 +102,7 @@ FORM build_display.
         MOVE-CORRESPONDING ls_base TO ls_disp.
         ls_disp-row_kind = 'C'.
 
-        " fill CI
+        "Here only we populate CI fields
         PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
 
         ls_color-color-col = 6.
@@ -176,11 +114,13 @@ FORM build_display.
         lv_last_merknr = ls_base-merknr.
 
       ENDIF.
+
       IF gv_show_ltxt = gc_true.
         PERFORM append_char_longtext USING ls_base.
       ENDIF.
 
     ENDIF.
+
   ENDLOOP.
 
 ENDFORM.
