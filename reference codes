@@ -1,16 +1,24 @@
 "==========================================================
-"* CHARACTERISTIC LONG TEXT INDICATOR FILTER (PLMK-LTEXTKZ)
+"* CHARACTERISTIC LONG TEXT INDICATOR (Operation-Level Filter)
+"* Show only operations that HAVE characteristic long text
 "==========================================================
-IF gv_show_char = abap_true.   "Only relevant when char rows exist
+IF so_ltxtk = 'X'.
 
-  "User wants only characteristics WITH long text
-  IF so_ltxtk = 'X' AND gs_base-ltextkz IS INITIAL.
-    CONTINUE.
-  ENDIF.
+  DATA(lv_has_char_ltxt) = abap_false.
 
-  "User wants only characteristics WITHOUT long text
-  IF so_ltxtk = ' ' AND gs_base-ltextkz = 'X'.
-    CONTINUE.
+  LOOP AT gt_base TRANSPORTING NO FIELDS
+       WHERE plnty = gs_base-plnty
+         AND plnnr = gs_base-plnnr
+         AND plnal = gs_base-plnal
+         AND vornr = gs_base-vornr
+         AND ltextkz = 'X'.     "Characteristic has long text
+
+    lv_has_char_ltxt = abap_true.
+    EXIT.
+  ENDLOOP.
+
+  IF lv_has_char_ltxt = abap_false.
+    CONTINUE.   "Operation has NO characteristic long text → skip
   ENDIF.
 
 ENDIF.
