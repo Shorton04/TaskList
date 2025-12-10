@@ -1,17 +1,15 @@
-"===================================================================*
+"==========================================================
 "* CHARACTERISTIC LONG TEXT INDICATOR FILTER (PLMK-LTEXTKZ)
-"===================================================================*
-
-"User selected something in so_ltxtk
-IF so_ltxtk IS NOT INITIAL.
+"==========================================================
+IF gv_show_char = abap_true.   "Only relevant when char rows exist
 
   "User wants only characteristics WITH long text
-  IF so_ltxtk = 'X' AND gs_base-ltextkz <> 'X'.
+  IF so_ltxtk = 'X' AND gs_base-ltextkz IS INITIAL.
     CONTINUE.
   ENDIF.
 
   "User wants only characteristics WITHOUT long text
-  IF so_ltxtk = ' ' AND gs_base-ltextkz <> ' '.
+  IF so_ltxtk = ' ' AND gs_base-ltextkz = 'X'.
     CONTINUE.
   ENDIF.
 
