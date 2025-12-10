@@ -32,10 +32,9 @@ CLASS lcl_event_handler IMPLEMENTATION.
     PERFORM build_display.
     PERFORM set_pfstatus_from_state.
     PERFORM set_title_from_state.
-    PERFORM set_column_visibility_by_state.
-    PERFORM apply_column_order.
 
     IF lo_alv IS BOUND.
+
       lo_alv->refresh( ).
     ENDIF.
 
@@ -459,6 +458,18 @@ FORM get_data.
     " PM TASK LIST TYPE FILTERING
     "======================
 
+    IF p_ftl = 'X'.
+      DELETE gt_base WHERE plnty <> 'T'.
+    ENDIF.
+
+    IF p_etl = 'X'.
+      DELETE gt_base WHERE plnty <> 'E'.
+    ENDIF.
+
+    IF p_gtl = 'X'.
+      DELETE gt_base WHERE plnty <> 'A'.
+    ENDIF.
+
     "Exclude QM, PP, and any other types
     IF gs_base-plnty <> 'T'
      AND gs_base-plnty <> 'E'
@@ -468,14 +479,17 @@ FORM get_data.
 
     "Then apply user selections
     IF gs_base-plnty = 'T' AND p_ftl IS INITIAL.
+      DELETE gt_base WHERE tplnr IS INITIAL.
       CONTINUE.
     ENDIF.
 
     IF gs_base-plnty = 'E' AND p_etl IS INITIAL.
+      DELETE gt_base WHERE equnr IS INITIAL.
       CONTINUE.
     ENDIF.
 
     IF gs_base-plnty = 'A' AND p_gtl IS INITIAL.
+      DELETE gt_base WHERE tplnr IS INITIAL OR equnr IS INITIAL.
       CONTINUE.
     ENDIF.
 
@@ -758,8 +772,6 @@ MODULE status_0100 OUTPUT.
 
     " ALV already exists → update columns & refresh
     PERFORM set_column_visibility_by_state.
-    PERFORM apply_column_order.
-    PERFORM set_visibility_for_selection.
 
     lo_alv->refresh( ).
 
@@ -826,9 +838,10 @@ FORM build_display.
       CLEAR ls_disp.
       MOVE-CORRESPONDING ls_base TO ls_disp.
 
-      IF lv_has_char = abap_false.
-
-        "--- Clear PLMK-related fields ---
+      IF lv_has_char = abap_true.
+        PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
+      ELSE.
+        " Operation has NO characteristics → clear EVERYTHING
         CLEAR: ls_disp-merknr,
                ls_disp-kurzt_char,
                ls_disp-pmethode,
@@ -844,23 +857,17 @@ FORM build_display.
                ls_disp-char_ltxt,
                ls_disp-tdformat.
 
-        "--- Clear CI1–CI28 and CI1_TXT–CI28_TXT ---
+        " Clear CI01–CI28 and CIx_TXT
         DO 28 TIMES.
-          DATA(lv_idx) = sy-index.
+          ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_raw>).
+          ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
 
-          ASSIGN COMPONENT |CI{ lv_idx WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_raw>).
-          ASSIGN COMPONENT |CI{ lv_idx WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
-
-          IF <ci_raw> IS ASSIGNED.
-            CLEAR <ci_raw>.
-          ENDIF.
-
-          IF <ci_txt> IS ASSIGNED.
-            CLEAR <ci_txt>.
-          ENDIF.
+          IF <ci_raw> IS ASSIGNED. CLEAR <ci_raw>. ENDIF.
+          IF <ci_txt> IS ASSIGNED. CLEAR <ci_txt>. ENDIF.
         ENDDO.
-
       ENDIF.
+
+      APPEND ls_disp TO gt_display.
 
       ls_disp-row_kind = 'O'.
       "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
@@ -1475,6 +1482,7 @@ FORM display_alv.
     SET HANDLER lcl_event_handler=>on_link_click   FOR lo_events.
 
   ELSE.
+
     lo_alv->refresh( ).
   ENDIF.
 
@@ -1650,10 +1658,9 @@ FORM toggle_char.
   PERFORM build_display.
   PERFORM set_pfstatus_from_state.
   PERFORM set_title_from_state.
-  PERFORM set_column_visibility_by_state.
-  PERFORM apply_column_order.
 
   IF lo_alv IS BOUND.
+
     lo_alv->refresh( ).
   ENDIF.
 
@@ -1673,10 +1680,9 @@ FORM toggle_ltxt.
   PERFORM build_display.
   PERFORM set_pfstatus_from_state.
   PERFORM set_title_from_state.
-  PERFORM set_column_visibility_by_state.
-  PERFORM apply_column_order.
 
   IF lo_alv IS BOUND.
+
     lo_alv->refresh( ).
   ENDIF.
 
@@ -1694,7 +1700,11 @@ MODULE user_command_0100 INPUT.
       gv_show_char = abap_true.
       PERFORM get_data.
       PERFORM build_display.
+      PERFORM adjust_display_fields_by_state.
+      PERFORM set_column_visibility_by_state.
+      PERFORM apply_column_order.
       IF lo_alv IS BOUND.
+
         lo_alv->refresh( ).
       ENDIF.
 
@@ -1702,13 +1712,18 @@ MODULE user_command_0100 INPUT.
       gv_show_char = abap_false.
       PERFORM get_data.
       PERFORM build_display.
+      PERFORM adjust_display_fields_by_state.
+      PERFORM set_column_visibility_by_state.
+      PERFORM apply_column_order.
       IF lo_alv IS BOUND.
+
         lo_alv->refresh( ).
       ENDIF.
 
     WHEN 'REFRESH'.
       PERFORM build_display.
       IF lo_alv IS BOUND.
+
         lo_alv->refresh( ).
       ENDIF.
 
