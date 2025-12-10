@@ -1,137 +1,23 @@
-FORM build_display.
+"=== CLEAR ALL CHARACTERISTIC FIELDS FOR LONG TEXT ROWS ===
+CLEAR: ls_disp-merknr,
+       ls_disp-kurzt_char,
+       ls_disp-pmethode,
+       ls_disp-verwmerkm,
+       ls_disp-toleranzun,
+       ls_disp-toleranzob,
+       ls_disp-pruefeinh,
+       ls_disp-stichprver,
+       ls_disp-katalgart1,
+       ls_disp-auswmenge1,
+       ls_disp-steuerkz,
+       ls_disp-ltextkz,
+       ls_disp-char_ltxt,
+       ls_disp-tdformat.
 
-  DATA: ls_base        TYPE ty_task_base,
-        ls_disp        TYPE ty_task_disp,
-        lv_last_plnty  TYPE plnty,
-        lv_last_plnnr  TYPE plnnr,
-        lv_last_plnal  TYPE plnal,
-        lv_last_vornr  TYPE plnkn,
-        lv_last_merknr TYPE merknr,
-        ls_color       TYPE lvc_s_scol,
-        lv_has_char    TYPE abap_bool.
+DO 28 TIMES.
+  ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_raw>).
+  ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
 
-  CLEAR: gt_display,
-         lv_last_plnty,
-         lv_last_plnnr,
-         lv_last_plnal,
-         lv_last_vornr,
-         lv_last_merknr.
-
-  SORT gt_base BY plnty plnnr plnal vornr merknr.
-
-  LOOP AT gt_base INTO ls_base.
-
-    "===========================================================
-    " NEW OPERATION HEADER (executed only once per VORNR)
-    "===========================================================
-    IF ls_base-vornr <> lv_last_vornr
-    OR ls_base-plnnr <> lv_last_plnnr
-    OR ls_base-plnal <> lv_last_plnal
-    OR ls_base-plnty <> lv_last_plnty.
-
-      "Determine if this operation has characteristics
-      lv_has_char = abap_false.
-
-      LOOP AT gt_base TRANSPORTING NO FIELDS
-           WHERE plnty = ls_base-plnty
-             AND plnnr = ls_base-plnnr
-             AND plnal = ls_base-plnal
-             AND vornr = ls_base-vornr
-             AND merknr IS NOT INITIAL.
-        lv_has_char = abap_true.
-        EXIT.
-      ENDLOOP.
-
-      "=======================================================
-      " IF show_char = TRUE → we still show operation even if
-      " it has no characteristics (as per user requirement)
-      "=======================================================
-
-      "Build OPERATION row
-      CLEAR ls_disp.
-      MOVE-CORRESPONDING ls_base TO ls_disp.
-      ls_disp-row_kind = 'O'.
-
-      "=======================================================
-      " REMOVE ALL CHARACTERISTIC FIELDS FROM OPERATION ROW
-      "=======================================================
-      CLEAR: ls_disp-merknr,
-             ls_disp-kurzt_char,
-             ls_disp-pmethode,
-             ls_disp-verwmerkm,
-             ls_disp-toleranzun,
-             ls_disp-toleranzob,
-             ls_disp-pruefeinh,
-             ls_disp-stichprver,
-             ls_disp-katalgart1,
-             ls_disp-auswmenge1,
-             ls_disp-steuerkz,
-             ls_disp-ltextkz,
-             ls_disp-char_ltxt,
-             ls_disp-tdformat.
-
-      DO 28 TIMES.
-        ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }|     OF STRUCTURE ls_disp TO FIELD-SYMBOL(<op_raw>).
-        ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<op_txt>).
-
-        IF <op_raw> IS ASSIGNED. CLEAR <op_raw>. ENDIF.
-        IF <op_txt> IS ASSIGNED. CLEAR <op_txt>. ENDIF.
-      ENDDO.
-
-      "Append OPERATION row only ONCE (important – prevents blanks!)
-      APPEND ls_disp TO gt_display.
-
-      "Append operation long text only when
-      "characteristics are OFF and long text ON
-      IF gv_show_char = abap_false
-      AND gv_show_ltxt = abap_true.
-        PERFORM append_op_longtext USING ls_base.
-      ENDIF.
-
-      "Update last keys
-      lv_last_plnty = ls_base-plnty.
-      lv_last_plnnr = ls_base-plnnr.
-      lv_last_plnal = ls_base-plnal.
-      lv_last_vornr = ls_base-vornr.
-      CLEAR lv_last_merknr.
-
-    ENDIF.
-
-
-    "===========================================================
-    " CHARACTERISTIC ROWS
-    "===========================================================
-    IF gv_show_char = abap_true
-    AND ls_base-merknr IS NOT INITIAL.
-
-      "New characteristic → print row
-      IF ls_base-merknr <> lv_last_merknr.
-
-        CLEAR ls_disp.
-        MOVE-CORRESPONDING ls_base TO ls_disp.
-        ls_disp-row_kind = 'C'.
-
-        "Populate CI fields ONLY for characteristic rows
-        PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
-
-        "Apply color
-        ls_color-color-col = 6.
-        ls_color-color-int = 1.
-        APPEND ls_color TO ls_disp-line_color.
-
-        APPEND ls_disp TO gt_display.
-
-        lv_last_merknr = ls_base-merknr.
-
-      ENDIF.
-
-      "Append characteristic long text if enabled
-      IF gv_show_ltxt = gc_true.
-        PERFORM append_char_longtext USING ls_base.
-      ENDIF.
-
-    ENDIF.
-
-  ENDLOOP.
-
-ENDFORM.
+  IF <ci_raw> IS ASSIGNED. CLEAR <ci_raw>. ENDIF.
+  IF <ci_txt> IS ASSIGNED. CLEAR <ci_txt>. ENDIF.
+ENDDO.
