@@ -1,15 +1,31 @@
-"-----------------------------------------------------------------
-" FINAL FILTER BY TASK LIST TYPE (critical for removing duplicates)
-"-----------------------------------------------------------------
+"---------------------------------------------------------
+" CLEAR CI FIELDS FOR NON-CHARACTERISTIC ROWS
+"---------------------------------------------------------
+IF ls_disp-row_kind = 'O'.  " operation row → must not show CI fields
 
-IF p_ftl = 'X'.
-  DELETE gt_base WHERE plnty <> 'T'.
-ENDIF.
+  " Clear characteristic header fields
+  CLEAR: ls_disp-merknr,
+         ls_disp-kurzt_char,
+         ls_disp-pmethode,
+         ls_disp-verwmerkm,
+         ls_disp-toleranzun,
+         ls_disp-toleranzob,
+         ls_disp-pruefeinh,
+         ls_disp-stichprver,
+         ls_disp-katalgart1,
+         ls_disp-auswmenge1,
+         ls_disp-steuerkz,
+         ls_disp-ltextkz,
+         ls_disp-char_ltxt,
+         ls_disp-tdformat.
 
-IF p_etl = 'X'.
-  DELETE gt_base WHERE plnty <> 'E'.
-ENDIF.
+  " Clear CI01–CI28 + CIxx_TXT
+  DO 28 TIMES.
+    ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_val>).
+    ASSIGN COMPONENT |CI{ sy-index WIDTH = 2 PAD = '0' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_txt>).
 
-IF p_gtl = 'X'.
-  DELETE gt_base WHERE plnty <> 'A'.
+    IF <ci_val> IS ASSIGNED. CLEAR <ci_val>. ENDIF.
+    IF <ci_txt> IS ASSIGNED. CLEAR <ci_txt>. ENDIF.
+  ENDDO.
+
 ENDIF.
