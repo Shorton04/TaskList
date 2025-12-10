@@ -1,11 +1,15 @@
+"-----------------------------------------------------------------
+" FINAL FILTER BY TASK LIST TYPE (critical for removing duplicates)
+"-----------------------------------------------------------------
+
 IF p_ftl = 'X'.
-  DELETE gt_base WHERE tplnr IS INITIAL.
+  DELETE gt_base WHERE plnty <> 'T'.
 ENDIF.
 
 IF p_etl = 'X'.
-  DELETE gt_base WHERE equnr IS INITIAL.
+  DELETE gt_base WHERE plnty <> 'E'.
 ENDIF.
 
 IF p_gtl = 'X'.
-  DELETE gt_base WHERE tplnr IS NOT INITIAL OR equnr IS NOT INITIAL.
+  DELETE gt_base WHERE plnty <> 'A'.
 ENDIF.
