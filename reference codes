@@ -54,7 +54,7 @@ FORM build_display.
       CLEAR ls_disp.
       MOVE-CORRESPONDING ls_base TO ls_disp.
 
-      IF lv_has_char = abap_true.
+      IF lv_has_char = abap_true AND ls_disp-row_kind = 'C'.
         PERFORM fill_ci_fields USING ls_base-steuerkz CHANGING ls_disp.
       ELSE.
         " Operation has NO characteristics → clear EVERYTHING
@@ -111,8 +111,6 @@ FORM build_display.
         ENDDO.
 
       ENDIF.
-
-      APPEND ls_disp TO gt_display.
 
       ls_disp-row_kind = 'O'.
       "--- Format Upper / Lower Spec for ALV (FLTP → CHAR)
