@@ -1,28 +1,18 @@
 "===================================================================*
-"* OPERATION LONG TEXT INDICATOR FILTER (PLPO-TXTSP)
-"===================================================================*
-IF p_oltin = 'X'.
-    "User wants ONLY operations WITH long text
-    IF gs_base-txtsp_op IS INITIAL.
-        CONTINUE.
-    ENDIF.
-ELSE.
-    "User wants ONLY operations WITHOUT long text
-    IF gs_base-txtsp_op IS NOT INITIAL.
-        CONTINUE.
-    ENDIF.
-ENDIF.
-
-
-
-"===================================================================*
 "* CHARACTERISTIC LONG TEXT INDICATOR FILTER (PLMK-LTEXTKZ)
 "===================================================================*
+
+"User selected something in so_ltxtk
 IF so_ltxtk IS NOT INITIAL.
 
-    "Apply user-selected range for characteristic long text indicator
-    IF gs_base-ltextkz NOT IN so_ltxtk.
-        CONTINUE.
-    ENDIF.
+  "User wants only characteristics WITH long text
+  IF so_ltxtk = 'X' AND gs_base-ltextkz <> 'X'.
+    CONTINUE.
+  ENDIF.
+
+  "User wants only characteristics WITHOUT long text
+  IF so_ltxtk = ' ' AND gs_base-ltextkz <> ' '.
+    CONTINUE.
+  ENDIF.
 
 ENDIF.
