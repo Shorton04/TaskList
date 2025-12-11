@@ -1,92 +1,84 @@
-REPORT ztest_char_longtext.
+REPORT z_test_char_longtext.
 
-PARAMETERS: p_plnty TYPE plnty OBLIGATORY,   "Task List Type
-            p_plnnr TYPE plnnr OBLIGATORY,   "Group
-            p_plnal TYPE plnal OBLIGATORY.   "Group Counter
+TABLES: plmk, qpmk.
 
-DATA: lt_plmk TYPE TABLE OF plmk,
-      ls_plmk TYPE plmk,
-      ls_mic  TYPE qpmk,
-      lt_text TYPE STANDARD TABLE OF tline,
-      ls_line TYPE tline,
-      lv_tdname TYPE thead-tdname.
+PARAMETERS: p_plnnr TYPE plnnr OBLIGATORY,
+            p_plnal TYPE plnal DEFAULT '1'.
 
-WRITE: / 'Testing characteristic long text for:', p_plnty, p_plnnr, p_plnal.
+DATA: lt_plmk   TYPE STANDARD TABLE OF plmk,
+      ls_plmk   TYPE plmk,
+      ls_qpmk   TYPE qpmk,
+      lt_lines  TYPE STANDARD TABLE OF tline,
+      ls_line   TYPE tline,
+      lv_tdname TYPE thead-tdname,
+      lv_text   TYPE string.
 
-"---------------------------------------------------------------
-" 1. READ ALL CHARACTERISTICS (PLMK)
-"---------------------------------------------------------------
+*-------------------------------------------------------------
+* 1. SELECT CHARACTERISTICS FROM PLMK
+*-------------------------------------------------------------
 SELECT *
   FROM plmk
   INTO TABLE lt_plmk
- WHERE plnty = @p_plnty
-   AND plnnr = @p_plnnr
-   AND plnkn > '0000'      "ignore header
-   AND loekz = ' '.
+ WHERE plnnr = p_plnnr
+   AND plnal = p_plnal
+   AND loekz = ''.
 
-IF lt_plmk IS INITIAL.
-  WRITE: / 'No characteristics found.'.
-  STOP.
-ENDIF.
+WRITE: / 'Found', lines( lt_plmk ), 'PLMK rows'.
 
 LOOP AT lt_plmk INTO ls_plmk.
 
-  "-------------------------------------------------------------
-  " 2. Get the MIC number + version from QPMK
-  "-------------------------------------------------------------
-  CLEAR ls_mic.
+  WRITE: / '--------------------------------------'.
+  WRITE: / 'MIC:', ls_plmk-verwmerkm,
+         'TaskListChar:', ls_plmk-merknr,
+         'Plant:', ls_plmk-werks.
 
-  SELECT SINGLE *
-    FROM qpmk
-    INTO ls_mic
-   WHERE merknr = @ls_plmk-verwmerkm.
+*-------------------------------------------------------------
+* 2. READ MIC VERSION FROM QPMK
+*-------------------------------------------------------------
+  SELECT SINGLE * FROM qpmk
+   WHERE verwmerkm = ls_plmk-verwmerkm
+     AND werks     = ls_plmk-werks
+     AND loekz     = ''
+    INTO ls_qpmk.
 
   IF sy-subrc <> 0.
-    WRITE: / 'MERKNR', ls_plmk-merknr, ' → No MIC found in QPMK (verwmerkm=', ls_plmk-verwmerkm, ')'.
+    WRITE: / '⚠️ No QPMK found'.
     CONTINUE.
   ENDIF.
 
-  "-------------------------------------------------------------
-  " 3. Build TDNAME for characteristic long text
-  "     FORMAT: <MANDT><PLNTY><PLNNR><PLNKN><MERKNR><MIC_VERSION>
-  "-------------------------------------------------------------
-  CLEAR lv_tdname.
+  WRITE: / 'Version:', ls_qpmk-version.
 
-  CONCATENATE sy-mandt
-              ls_plmk-plnty
-              ls_plmk-plnnr
-              ls_plmk-plnkn
-              ls_plmk-merknr
-              ls_mic-version
-         INTO lv_tdname.
+*-------------------------------------------------------------
+* 3. BUILD TDNAME (Correct SAP Logic)
+*-------------------------------------------------------------
+  lv_tdname = |{ ls_plmk-verwmerkm ALPHA = OUT }{ ls_qpmk-version }{ ls_plmk-werks }|.
 
-  "-------------------------------------------------------------
-  " 4. READ_TEXT for characteristic long text
-  "-------------------------------------------------------------
-  CLEAR lt_text.
+  WRITE: / 'TDNAME =', lv_tdname.
 
+*-------------------------------------------------------------
+* 4. READ LONG TEXT
+*-------------------------------------------------------------
+  CLEAR lt_lines.
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      id      = 'LTXT'
-      language = sy-langu
+      id       = 'LTXT'
       name     = lv_tdname
+      language = sy-langu
       object   = 'QSS'
     TABLES
-      lines    = lt_text
-    EXCEPTIONS
-      OTHERS   = 8.
+      lines    = lt_lines.
 
-  WRITE: / '-----------------------------------------------'.
-  WRITE: / 'Characteristic MERKNR:', ls_plmk-merknr,
-          ' (MIC=', ls_mic-merknr, ', Version=', ls_mic-version, ')'.
+  IF lt_lines IS INITIAL.
+    WRITE: / '❌ No long text'.
+    CONTINUE.
+  ENDIF;
 
-  IF lt_text IS INITIAL.
-    WRITE: / ' → NO LONG TEXT FOUND.'.
-  ELSE.
-    WRITE: / ' → LONG TEXT FOUND:'.
-    LOOP AT lt_text INTO ls_line.
-      WRITE: / ls_line-tdline.
-    ENDLOOP.
-  ENDIF.
+*-------------------------------------------------------------
+* 5. DISPLAY LONG TEXT
+*-------------------------------------------------------------
+  WRITE: / '✅ LONG TEXT:'.
+  LOOP AT lt_lines INTO ls_line.
+    WRITE: / ls_line-tdline.
+  ENDLOOP.
 
 ENDLOOP.
