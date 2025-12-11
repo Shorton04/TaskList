@@ -1,112 +1,42 @@
-REPORT ztest_char_longtext.
+REPORT ztest_char_ltxt.
 
-*----------------------------------------------------------------------
-* PARAMETERS
-*----------------------------------------------------------------------
-PARAMETERS:
-  p_plnty TYPE plmk-plnty OBLIGATORY,     "Task list type  (A/E/T)
-  p_plnnr TYPE plmk-plnnr OBLIGATORY,     "Group number
-  p_plnkn TYPE plmk-plnkn OBLIGATORY,     "Task list node
-  p_merkn TYPE plmk-merknr OBLIGATORY,    "Characteristic number
-  p_zaehl TYPE plmk-zaehl  OBLIGATORY.    "Counter
+PARAMETERS: p_plnty TYPE plmk-plnty,
+            p_plnnr TYPE plmk-plnnr,
+            p_plnkn TYPE plmk-plnkn,
+            p_merkn TYPE plmk-merknr,
+            p_zaehl TYPE plmk-zaehl.
 
-*----------------------------------------------------------------------
-* INTERNAL TABLES
-*----------------------------------------------------------------------
-DATA: lt_plmk  TYPE STANDARD TABLE OF plmk,
-      ls_plmk  TYPE plmk,
-      lt_lines TYPE STANDARD TABLE OF tline,
-      ls_line  TYPE tline.
+DATA: lt_text TYPE STANDARD TABLE OF tline,
+      ls_line TYPE tline,
+      lv_tdname TYPE thead-tdname.
 
-*----------------------------------------------------------------------
-* STEP 1: SELECT CHARACTERISTIC FROM PLMK
-*----------------------------------------------------------------------
-SELECT *
-  FROM plmk
-  INTO TABLE @lt_plmk
- WHERE plnty = @p_plnty
-   AND plnnr = @p_plnnr
-   AND plnkn = @p_plnkn
-   AND merknr = @p_merkn
-   AND zaehl  = @p_zaehl
-   AND loekz  = ''.
+" Build TDNAME exactly like IA39
+lv_tdname =
+      |{ sy-mandt      ALPHA = IN }|
+   && |{ p_plnty       ALPHA = IN }|
+   && |{ p_plnnr       ALPHA = IN }|
+   && |{ p_plnkn       ALPHA = IN }|
+   && ' '                         " <- required space
+   && |{ p_merkn       ALPHA = IN }|
+   && |{ p_zaehl       ALPHA = IN }|.
 
-IF lt_plmk IS INITIAL.
-  WRITE: / '⚠ No PLMK entry found.'.
-  RETURN.
-ENDIF.
-
-READ TABLE lt_plmk INTO ls_plmk INDEX 1.
-
-WRITE: / '--- PLMK ENTRY FOUND ----'.
-WRITE: / 'PLNTY =', ls_plmk-plnty.
-WRITE: / 'PLNNR =', ls_plmk-plnnr.
-WRITE: / 'PLNKN =', ls_plmk-plnkn.
-WRITE: / 'MERKNR =', ls_plmk-merknr.
-WRITE: / 'ZAEHL  =', ls_plmk-zaehl.
-WRITE: / '--------------------------------'.
-
-*----------------------------------------------------------------------
-* STEP 2: BUILD THE CORRECT TDNAME FOR QM/QSS CHARACTERISTIC LONG TEXT
-*----------------------------------------------------------------------
-DATA:
-  lv_mandt  TYPE char03,
-  lv_plnty  TYPE char01,
-  lv_plnnr  TYPE char08,
-  lv_plnkn  TYPE char08,
-  lv_merknr TYPE char04,
-  lv_zaehl  TYPE char08,
-  lv_tdname TYPE thead-tdname.
-
-lv_mandt  = sy-mandt.
-lv_plnty  = ls_plmk-plnty.
-
-lv_plnnr  = |{ ls_plmk-plnnr ALPHA = IN }|.
-lv_plnkn  = |{ ls_plmk-plnkn ALPHA = IN }|.
-lv_merknr = |{ ls_plmk-merknr ALPHA = IN }|.
-lv_zaehl  = |{ ls_plmk-zaehl  ALPHA = IN }|.
-
-CONCATENATE
-    lv_mandt
-    lv_plnty
-    lv_plnnr
-    lv_plnkn
-    lv_merknr
-    lv_zaehl
-  INTO lv_tdname
-  NO-GAPS.
-
-WRITE: / 'TDNAME Used:', lv_tdname.
-
-*----------------------------------------------------------------------
-* STEP 3: READ LONG TEXT USING READ_TEXT
-*----------------------------------------------------------------------
-CLEAR lt_lines.
+WRITE: / 'TDNAME:', lv_tdname.
 
 CALL FUNCTION 'READ_TEXT'
   EXPORTING
-    client   = sy-mandt
-    id       = 'QM'
+    id      = 'QM'
+    name    = lv_tdname
     language = sy-langu
-    name     = lv_tdname
     object   = 'QSS'
   TABLES
-    lines    = lt_lines
+    lines = lt_text
   EXCEPTIONS
-    OTHERS   = 8.
+    OTHERS = 4.
 
-IF sy-subrc <> 0 OR lt_lines IS INITIAL.
-  WRITE: / '⚠ No long text found for characteristic.'.
-  RETURN.
+IF lt_text IS INITIAL.
+  WRITE: / 'No long text found'.
+ELSE.
+  LOOP AT lt_text INTO ls_line.
+    WRITE: / ls_line-tdline.
+  ENDLOOP.
 ENDIF.
-
-*----------------------------------------------------------------------
-* STEP 4: DISPLAY THE LONG TEXT
-*----------------------------------------------------------------------
-WRITE: / '--------------------------------'.
-WRITE: / '✔ Long Text Retrieved:'.
-WRITE: / '--------------------------------'.
-
-LOOP AT lt_lines INTO ls_line.
-  WRITE: / ls_line-tdformat, ls_line-tdline.
-ENDLOOP.
