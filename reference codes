@@ -1,36 +1,36 @@
-REPORT ztest_plmk_ltxt.
+REPORT ztest_vt.
 
 PARAMETERS: p_plnty TYPE plnty,
-            p_plnnr TYPE plnnr,
-            p_plnal TYPE plnal.
+            p_plnnr TYPE plnnr.
 
-DATA: lt_plmk TYPE TABLE OF plmk,
-      ls_plmk TYPE plmk,
-      lt_text TYPE STANDARD TABLE OF tline,
-      ls_line TYPE tline,
+DATA: lt_plmk  TYPE TABLE OF plmk,
+      ls_plmk  TYPE plmk,
+      lt_text  TYPE STANDARD TABLE OF tline,
+      ls_line  TYPE tline,
       lv_tdname TYPE thead-tdname.
 
+"--- SELECT CHARACTERISTICS FOR THIS TASK LIST -----------------------
 SELECT *
   FROM plmk
   INTO TABLE @lt_plmk
  WHERE plnty = @p_plnty
    AND plnnr = @p_plnnr
-   AND plnal = @p_plnal
    AND loekz = ''.
 
 IF lt_plmk IS INITIAL.
-  WRITE: / '❌ No characteristics found in PLMK.'.
+  WRITE: / '❌ No PLMK entries found for this task list.'.
   RETURN.
 ENDIF.
 
+"--- LOOP THROUGH EACH CHAR AND TRY TO READ LONG TEXT ----------------
 LOOP AT lt_plmk INTO ls_plmk.
 
   WRITE: / '============================================'.
   WRITE: / 'MERKNR: ', ls_plmk-merknr,
-          ' ZAEHL: ', ls_plmk-zaehl,
-          ' PLNKN: ', ls_plmk-plnkn.
+          '  ZAEHL: ', ls_plmk-zaehl,
+          '  PLNKN: ', ls_plmk-plnkn.
 
-  "Build TDNAME using PLMK structure
+  "Build TDNAME: MANDT + PLNTY + PLNNR + PLNKN + MERKNR + ZAEHL
   CONCATENATE ls_plmk-mandt
               ls_plmk-plnty
               ls_plmk-plnnr
@@ -38,7 +38,6 @@ LOOP AT lt_plmk INTO ls_plmk.
               ls_plmk-merknr
               ls_plmk-zaehl
          INTO lv_tdname.
-
   CONDENSE lv_tdname NO-GAPS.
 
   WRITE: / 'TDNAME = ', lv_tdname.
@@ -57,7 +56,7 @@ LOOP AT lt_plmk INTO ls_plmk.
       OTHERS   = 4.
 
   IF sy-subrc <> 0 OR lt_text IS INITIAL.
-    WRITE: / '⚠ No long text found.'.
+    WRITE: / '⚠ No long text found for this characteristic.'.
   ELSE.
     WRITE: / '✔ Long text found:'.
     LOOP AT lt_text INTO ls_line.
