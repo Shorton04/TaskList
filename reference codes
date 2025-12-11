@@ -1,96 +1,20 @@
-DATA: lo_columns TYPE REF TO cl_salv_columns_table,
-      lo_column  TYPE REF TO cl_salv_column_table,
-      ls_ddic    TYPE salv_s_ddic_reference.
+FORM add_f4_shl USING iv_col iv_tab iv_field.
 
-lo_columns = lo_alv->get_columns( ).
-lo_columns->set_optimize( abap_true ).
+  DATA: ls_ddic TYPE lvc_s_ddic,
+        lo_col  TYPE REF TO cl_salv_column.
 
-"---------------------------------------------------------------
-" TASK LIST TYPE  (PLKO-PLNTY)
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'PLNTY' ).
-ls_ddic-table = 'PLKO'.
-ls_ddic-field = 'PLNTY'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
+  TRY.
+      lo_col ?= lo_alv->get_columns( )->get_column( iv_col ).
+    CATCH cx_salv_not_found.
+      RETURN. "Column not found → silently skip
+  ENDTRY.
 
-"---------------------------------------------------------------
-" PLANT (HEADER) - PLKO-WERKS
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'WERKS_H' ).
-ls_ddic-table = 'T001W'.
-ls_ddic-field = 'WERKS'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
+  ls_ddic-table = iv_tab.
+  ls_ddic-field = iv_field.
 
-"---------------------------------------------------------------
-" PLANT (OPERATION) - CRHD-WERKS
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'WERKS_O' ).
-ls_ddic-table = 'CRHD'.
-ls_ddic-field = 'WERKS'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
+  lo_col->set_ddic_reference( ls_ddic ).
+  lo_col->set_f4( abap_true ).
 
-"---------------------------------------------------------------
-" WORK CENTER HEADER - CRHD-ARBPL
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'ARBPL_H' ).
-ls_ddic-table = 'CRHD'.
-ls_ddic-field = 'ARBPL'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
+ENDFORM.
 
-"---------------------------------------------------------------
-" WORK CENTER OPERATION - CRHD-ARBPL
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'ARBPL_O' ).
-ls_ddic-table = 'CRHD'.
-ls_ddic-field = 'ARBPL'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
 
-"---------------------------------------------------------------
-" INSPECTION CHARACTERISTIC (MIC) - PLMK-VERWMERKM
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'VERWMERKM' ).
-ls_ddic-table = 'PLMK'.
-ls_ddic-field = 'VERWMERKM'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
-
-"---------------------------------------------------------------
-" CONTROL KEY - PLPO-STEUS
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'STEUS' ).
-ls_ddic-table = 'PLPO'.
-ls_ddic-field = 'STEUS'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
-
-"---------------------------------------------------------------
-" WORK UNIT (UNIT OF MEASURE) - PLPO-ARBEH
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'ARBEH' ).
-ls_ddic-table = 'PLPO'.
-ls_ddic-field = 'ARBEH'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
-
-"---------------------------------------------------------------
-" INSPECTION METHOD - PLMK-PMMETHODE
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'PMETHODE' ).
-ls_ddic-table = 'PLMK'.
-ls_ddic-field = 'PMETHODE'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
-
-"---------------------------------------------------------------
-" SAMPLING PROCEDURE - PLMK-STICHPRVER
-"---------------------------------------------------------------
-lo_column ?= lo_columns->get_column( 'STICHPRVER' ).
-ls_ddic-table = 'PLMK'.
-ls_ddic-field = 'STICHPRVER'.
-lo_column->set_ddic_reference( ls_ddic ).
-lo_column->set_f4( abap_true ).
