@@ -1,42 +1,173 @@
-REPORT ztest_char_ltxt.
+FORM append_op_longtext USING is_base TYPE ty_task_base.
 
-PARAMETERS: p_plnty TYPE plmk-plnty,
-            p_plnnr TYPE plmk-plnnr,
-            p_plnkn TYPE plmk-plnkn,
-            p_merkn TYPE plmk-merknr,
-            p_zaehl TYPE plmk-zaehl.
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_indent TYPE string,
+        ls_color  TYPE lvc_s_scol,
+        ls_disp   TYPE ty_task_disp.
 
-DATA: lt_text TYPE STANDARD TABLE OF tline,
-      ls_line TYPE tline,
-      lv_tdname TYPE thead-tdname.
 
-" Build TDNAME exactly like IA39
-lv_tdname =
-      |{ sy-mandt      ALPHA = IN }|
-   && |{ p_plnty       ALPHA = IN }|
-   && |{ p_plnnr       ALPHA = IN }|
-   && |{ p_plnkn       ALPHA = IN }|
-   && ' '                         " <- required space
-   && |{ p_merkn       ALPHA = IN }|
-   && |{ p_zaehl       ALPHA = IN }|.
+  CLEAR: lt_lines, lv_name.
 
-WRITE: / 'TDNAME:', lv_tdname.
+  CONCATENATE sy-mandt
+              is_base-plnty
+              is_base-plnnr
+              is_base-plnkn
+              is_base-zaehl
+         INTO lv_name.
 
-CALL FUNCTION 'READ_TEXT'
-  EXPORTING
-    id      = 'QM'
-    name    = lv_tdname
-    language = sy-langu
-    object   = 'QSS'
-  TABLES
-    lines = lt_text
-  EXCEPTIONS
-    OTHERS = 4.
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      client   = sy-mandt
+      id       = 'PLPO'
+      language = sy-langu
+      name     = lv_name
+      object   = 'ROUTING'
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      OTHERS   = 4.
 
-IF lt_text IS INITIAL.
-  WRITE: / 'No long text found'.
-ELSE.
-  LOOP AT lt_text INTO ls_line.
-    WRITE: / ls_line-tdline.
+  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_lines INTO ls_line.
+
+    ls_disp-row_kind = 'L'.
+
+    CLEAR ls_disp.
+    MOVE-CORRESPONDING is_base TO ls_disp.
+    CLEAR: ls_disp-merknr,
+       ls_disp-kurzt_char,
+       ls_disp-pmethode,
+       ls_disp-verwmerkm,
+       ls_disp-toleranzun,
+       ls_disp-toleranzob,
+       ls_disp-pruefeinh,
+       ls_disp-stichprver,
+       ls_disp-katalgart1,
+       ls_disp-auswmenge1,
+       ls_disp-steuerkz,
+       ls_disp-ltextkz.
+
+    DO 28 TIMES.
+      ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_lt_raw>).
+      ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_lt_txt>).
+
+      IF <ci_lt_raw> IS ASSIGNED. CLEAR <ci_lt_raw>. ENDIF.
+      IF <ci_lt_txt> IS ASSIGNED. CLEAR <ci_lt_txt>. ENDIF.
+    ENDDO.
+
+    ls_disp-op_ltxt  = ls_line-tdline.
+    ls_disp-tdformat = ls_line-tdformat.
+
+    CONCATENATE lv_indent ls_disp-op_ltxt INTO ls_disp-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 1.
+    APPEND ls_color TO ls_disp-line_color.
+
+    APPEND ls_disp TO gt_display.
+
   ENDLOOP.
-ENDIF.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form APPEND_CHAR_LONGTEXT
+*&---------------------------------------------------------------------*
+*  - Appends characteristic long text lines as separate rows in GT_DISPLAY
+*    with:
+*       ROW_KIND  = 'L'
+*       CHAR_LTXT = text line
+*&---------------------------------------------------------------------*
+FORM append_char_longtext USING is_base TYPE ty_task_base.
+
+  DATA: lt_lines  TYPE STANDARD TABLE OF tline,
+        ls_line   TYPE tline,
+        lv_name   TYPE thead-tdname,
+        lv_tmp    TYPE thead-tdname,
+        lv_indent TYPE string,
+        lv_merknr TYPE char08,
+        ls_disp   TYPE ty_task_disp,
+        ls_color  TYPE lvc_s_scol.
+
+  CLEAR: lt_lines, lv_name, lv_tmp.
+
+  IF is_base-ltextkz IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  lv_merknr = is_base-merknr.
+
+  CONCATENATE sy-mandt
+              is_base-plnty
+              is_base-plnnr
+              is_base-plnkn
+         INTO lv_tmp.
+
+  CONCATENATE lv_tmp is_base-merknr INTO lv_tmp SEPARATED BY space.
+  CONCATENATE lv_tmp is_base-zaehl INTO lv_name.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      client   = sy-mandt
+      id       = 'QM'
+      language = sy-langu
+      name     = lv_name
+      object   = 'QSS'
+    TABLES
+      lines    = lt_lines
+    EXCEPTIONS
+      OTHERS   = 8.
+
+  IF sy-subrc <> 0 OR lt_lines IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_lines INTO ls_line.
+
+    ls_disp-row_kind  = 'L'.
+    CLEAR ls_disp.
+    MOVE-CORRESPONDING is_base TO ls_disp.
+    CLEAR: ls_disp-merknr,
+       ls_disp-kurzt_char,
+       ls_disp-pmethode,
+       ls_disp-verwmerkm,
+       ls_disp-toleranzun,
+       ls_disp-toleranzob,
+       ls_disp-pruefeinh,
+       ls_disp-stichprver,
+       ls_disp-katalgart1,
+       ls_disp-auswmenge1,
+       ls_disp-steuerkz,
+       ls_disp-ltextkz.
+
+    DO 28 TIMES.
+      ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_chl_raw>).
+      ASSIGN COMPONENT |CI{ sy-index WIDTH = '02' }_TXT| OF STRUCTURE ls_disp TO FIELD-SYMBOL(<ci_chl_txt>).
+
+      IF <ci_chl_raw> IS ASSIGNED. CLEAR <ci_chl_raw>. ENDIF.
+      IF <ci_chl_txt> IS ASSIGNED. CLEAR <ci_chl_txt>. ENDIF.
+    ENDDO.
+    ls_disp-char_ltxt = ls_line-tdline.
+    ls_disp-tdformat  = ls_line-tdformat.
+
+    CONCATENATE lv_indent ls_disp-char_ltxt INTO ls_disp-char_ltxt.
+
+    CLEAR ls_disp-op_ltxt.
+
+    "GREEN color
+    CLEAR ls_color.
+    ls_color-color-col = 4.
+    APPEND ls_color TO ls_disp-line_color.
+
+    APPEND ls_disp TO gt_display.
+
+  ENDLOOP.
+
+ENDFORM.
