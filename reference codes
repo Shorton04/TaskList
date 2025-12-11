@@ -1,67 +1,112 @@
-REPORT ztest_vt.
+REPORT ztest_char_longtext.
 
-PARAMETERS: p_plnty TYPE plnty,
-            p_plnnr TYPE plnnr.
+*----------------------------------------------------------------------
+* PARAMETERS
+*----------------------------------------------------------------------
+PARAMETERS:
+  p_plnty TYPE plmk-plnty OBLIGATORY,     "Task list type  (A/E/T)
+  p_plnnr TYPE plmk-plnnr OBLIGATORY,     "Group number
+  p_plnkn TYPE plmk-plnkn OBLIGATORY,     "Task list node
+  p_merkn TYPE plmk-merknr OBLIGATORY,    "Characteristic number
+  p_zaehl TYPE plmk-zaehl  OBLIGATORY.    "Counter
 
-DATA: lt_plmk  TYPE TABLE OF plmk,
+*----------------------------------------------------------------------
+* INTERNAL TABLES
+*----------------------------------------------------------------------
+DATA: lt_plmk  TYPE STANDARD TABLE OF plmk,
       ls_plmk  TYPE plmk,
-      lt_text  TYPE STANDARD TABLE OF tline,
-      ls_line  TYPE tline,
-      lv_tdname TYPE thead-tdname.
+      lt_lines TYPE STANDARD TABLE OF tline,
+      ls_line  TYPE tline.
 
-"--- SELECT CHARACTERISTICS FOR THIS TASK LIST -----------------------
+*----------------------------------------------------------------------
+* STEP 1: SELECT CHARACTERISTIC FROM PLMK
+*----------------------------------------------------------------------
 SELECT *
   FROM plmk
   INTO TABLE @lt_plmk
  WHERE plnty = @p_plnty
    AND plnnr = @p_plnnr
-   AND loekz = ''.
+   AND plnkn = @p_plnkn
+   AND merknr = @p_merkn
+   AND zaehl  = @p_zaehl
+   AND loekz  = ''.
 
 IF lt_plmk IS INITIAL.
-  WRITE: / '❌ No PLMK entries found for this task list.'.
+  WRITE: / '⚠ No PLMK entry found.'.
   RETURN.
 ENDIF.
 
-"--- LOOP THROUGH EACH CHAR AND TRY TO READ LONG TEXT ----------------
-LOOP AT lt_plmk INTO ls_plmk.
+READ TABLE lt_plmk INTO ls_plmk INDEX 1.
 
-  WRITE: / '============================================'.
-  WRITE: / 'MERKNR: ', ls_plmk-merknr,
-          '  ZAEHL: ', ls_plmk-zaehl,
-          '  PLNKN: ', ls_plmk-plnkn.
+WRITE: / '--- PLMK ENTRY FOUND ----'.
+WRITE: / 'PLNTY =', ls_plmk-plnty.
+WRITE: / 'PLNNR =', ls_plmk-plnnr.
+WRITE: / 'PLNKN =', ls_plmk-plnkn.
+WRITE: / 'MERKNR =', ls_plmk-merknr.
+WRITE: / 'ZAEHL  =', ls_plmk-zaehl.
+WRITE: / '--------------------------------'.
 
-  "Build TDNAME: MANDT + PLNTY + PLNNR + PLNKN + MERKNR + ZAEHL
-  CONCATENATE ls_plmk-mandt
-              ls_plmk-plnty
-              ls_plmk-plnnr
-              ls_plmk-plnkn
-              ls_plmk-merknr
-              ls_plmk-zaehl
-         INTO lv_tdname.
-  CONDENSE lv_tdname NO-GAPS.
+*----------------------------------------------------------------------
+* STEP 2: BUILD THE CORRECT TDNAME FOR QM/QSS CHARACTERISTIC LONG TEXT
+*----------------------------------------------------------------------
+DATA:
+  lv_mandt  TYPE char03,
+  lv_plnty  TYPE char01,
+  lv_plnnr  TYPE char08,
+  lv_plnkn  TYPE char08,
+  lv_merknr TYPE char04,
+  lv_zaehl  TYPE char08,
+  lv_tdname TYPE thead-tdname.
 
-  WRITE: / 'TDNAME = ', lv_tdname.
+lv_mandt  = sy-mandt.
+lv_plnty  = ls_plmk-plnty.
 
-  CLEAR lt_text.
+lv_plnnr  = |{ ls_plmk-plnnr ALPHA = IN }|.
+lv_plnkn  = |{ ls_plmk-plnkn ALPHA = IN }|.
+lv_merknr = |{ ls_plmk-merknr ALPHA = IN }|.
+lv_zaehl  = |{ ls_plmk-zaehl  ALPHA = IN }|.
 
-  CALL FUNCTION 'READ_TEXT'
-    EXPORTING
-      id       = 'QM'
-      name     = lv_tdname
-      language = 'E'
-      object   = 'QSS'
-    TABLES
-      lines    = lt_text
-    EXCEPTIONS
-      OTHERS   = 4.
+CONCATENATE
+    lv_mandt
+    lv_plnty
+    lv_plnnr
+    lv_plnkn
+    lv_merknr
+    lv_zaehl
+  INTO lv_tdname
+  NO-GAPS.
 
-  IF sy-subrc <> 0 OR lt_text IS INITIAL.
-    WRITE: / '⚠ No long text found for this characteristic.'.
-  ELSE.
-    WRITE: / '✔ Long text found:'.
-    LOOP AT lt_text INTO ls_line.
-      WRITE: / ls_line-tdline.
-    ENDLOOP.
-  ENDIF.
+WRITE: / 'TDNAME Used:', lv_tdname.
 
+*----------------------------------------------------------------------
+* STEP 3: READ LONG TEXT USING READ_TEXT
+*----------------------------------------------------------------------
+CLEAR lt_lines.
+
+CALL FUNCTION 'READ_TEXT'
+  EXPORTING
+    client   = sy-mandt
+    id       = 'QM'
+    language = sy-langu
+    name     = lv_tdname
+    object   = 'QSS'
+  TABLES
+    lines    = lt_lines
+  EXCEPTIONS
+    OTHERS   = 8.
+
+IF sy-subrc <> 0 OR lt_lines IS INITIAL.
+  WRITE: / '⚠ No long text found for characteristic.'.
+  RETURN.
+ENDIF.
+
+*----------------------------------------------------------------------
+* STEP 4: DISPLAY THE LONG TEXT
+*----------------------------------------------------------------------
+WRITE: / '--------------------------------'.
+WRITE: / '✔ Long Text Retrieved:'.
+WRITE: / '--------------------------------'.
+
+LOOP AT lt_lines INTO ls_line.
+  WRITE: / ls_line-tdformat, ls_line-tdline.
 ENDLOOP.
