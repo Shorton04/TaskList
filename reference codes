@@ -1,84 +1,68 @@
-REPORT z_test_char_longtext.
+REPORT ztest_plmk_ltxt.
 
-TABLES: plmk, qpmk.
+PARAMETERS: p_plnty TYPE plnty,
+            p_plnnr TYPE plnnr,
+            p_plnal TYPE plnal.
 
-PARAMETERS: p_plnnr TYPE plnnr OBLIGATORY,
-            p_plnal TYPE plnal DEFAULT '1'.
+DATA: lt_plmk TYPE TABLE OF plmk,
+      ls_plmk TYPE plmk,
+      lt_text TYPE STANDARD TABLE OF tline,
+      ls_line TYPE tline,
+      lv_tdname TYPE thead-tdname.
 
-DATA: lt_plmk   TYPE STANDARD TABLE OF plmk,
-      ls_plmk   TYPE plmk,
-      ls_qpmk   TYPE qpmk,
-      lt_lines  TYPE STANDARD TABLE OF tline,
-      ls_line   TYPE tline,
-      lv_tdname TYPE thead-tdname,
-      lv_text   TYPE string.
-
-*-------------------------------------------------------------
-* 1. SELECT CHARACTERISTICS FROM PLMK
-*-------------------------------------------------------------
 SELECT *
   FROM plmk
-  INTO TABLE lt_plmk
- WHERE plnnr = p_plnnr
-   AND plnal = p_plnal
+  INTO TABLE @lt_plmk
+ WHERE plnty = @p_plnty
+   AND plnnr = @p_plnnr
+   AND plnal = @p_plnal
    AND loekz = ''.
 
-WRITE: / 'Found', lines( lt_plmk ), 'PLMK rows'.
+IF lt_plmk IS INITIAL.
+  WRITE: / '❌ No characteristics found in PLMK.'.
+  RETURN.
+ENDIF.
 
 LOOP AT lt_plmk INTO ls_plmk.
 
-  WRITE: / '--------------------------------------'.
-  WRITE: / 'MIC:', ls_plmk-verwmerkm,
-         'TaskListChar:', ls_plmk-merknr,
-         'Plant:', ls_plmk-werks.
+  WRITE: / '============================================'.
+  WRITE: / 'MERKNR: ', ls_plmk-merknr,
+          ' ZAEHL: ', ls_plmk-zaehl,
+          ' PLNKN: ', ls_plmk-plnkn.
 
-*-------------------------------------------------------------
-* 2. READ MIC VERSION FROM QPMK
-*-------------------------------------------------------------
-  SELECT SINGLE * FROM qpmk
-   WHERE verwmerkm = ls_plmk-verwmerkm
-     AND werks     = ls_plmk-werks
-     AND loekz     = ''
-    INTO ls_qpmk.
+  "Build TDNAME using PLMK structure
+  CONCATENATE ls_plmk-mandt
+              ls_plmk-plnty
+              ls_plmk-plnnr
+              ls_plmk-plnkn
+              ls_plmk-merknr
+              ls_plmk-zaehl
+         INTO lv_tdname.
 
-  IF sy-subrc <> 0.
-    WRITE: / '⚠️ No QPMK found'.
-    CONTINUE.
-  ENDIF.
+  CONDENSE lv_tdname NO-GAPS.
 
-  WRITE: / 'Version:', ls_qpmk-version.
+  WRITE: / 'TDNAME = ', lv_tdname.
 
-*-------------------------------------------------------------
-* 3. BUILD TDNAME (Correct SAP Logic)
-*-------------------------------------------------------------
-  lv_tdname = |{ ls_plmk-verwmerkm ALPHA = OUT }{ ls_qpmk-version }{ ls_plmk-werks }|.
+  CLEAR lt_text.
 
-  WRITE: / 'TDNAME =', lv_tdname.
-
-*-------------------------------------------------------------
-* 4. READ LONG TEXT
-*-------------------------------------------------------------
-  CLEAR lt_lines.
   CALL FUNCTION 'READ_TEXT'
     EXPORTING
-      id       = 'LTXT'
+      id       = 'QM'
       name     = lv_tdname
-      language = sy-langu
+      language = 'E'
       object   = 'QSS'
     TABLES
-      lines    = lt_lines.
+      lines    = lt_text
+    EXCEPTIONS
+      OTHERS   = 4.
 
-  IF lt_lines IS INITIAL.
-    WRITE: / '❌ No long text'.
-    CONTINUE.
-  ENDIF;
-
-*-------------------------------------------------------------
-* 5. DISPLAY LONG TEXT
-*-------------------------------------------------------------
-  WRITE: / '✅ LONG TEXT:'.
-  LOOP AT lt_lines INTO ls_line.
-    WRITE: / ls_line-tdline.
-  ENDLOOP.
+  IF sy-subrc <> 0 OR lt_text IS INITIAL.
+    WRITE: / '⚠ No long text found.'.
+  ELSE.
+    WRITE: / '✔ Long text found:'.
+    LOOP AT lt_text INTO ls_line.
+      WRITE: / ls_line-tdline.
+    ENDLOOP.
+  ENDIF.
 
 ENDLOOP.
